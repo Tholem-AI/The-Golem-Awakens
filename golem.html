@@ -127,12 +127,14 @@ const chambers = [];
   chambers.push({w,h,tiles:g,px:2*T,py:11*T,glyphs:[]});
 })();
 
-// Ch.T: Test chamber — empty box, entered by pressing KeyT
+// Ch.T: Test chamber — push block spawn test, entered by pressing KeyT
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  chambers.push({w,h,tiles:g,px:12*T,py:10*T,glyphs:[]});
+  g[13][12]=PUSH_SPAWN;
+  chambers.push({w,h,tiles:g,px:12*T,py:10*T,glyphs:[],
+    pushSpawn:{x:12,y:13}});
 })();
 
 /* ── Player state ── */
@@ -186,6 +188,11 @@ function resolvePushBlockCollision(){
 
   const movingToward = (P.vx * dir > 0.1);
 
+  // Y-overlap guard: skip X separation when player is landing on top
+  const isOnTop = P.y < PB.y
+                 && P.y + P.h >= PB.y - 8
+                 && P.y + P.h <= PB.y + P.h / 2;
+
   if(P.onGround && movingToward){
     const tileStep = dir * T;
     if(!tileCollides(P.chamber, PB.x + tileStep, PB.y, PB.w, PB.h)){
@@ -200,6 +207,7 @@ function resolvePushBlockCollision(){
       P.vx = 0;
     }
   } else {
+    if(isOnTop) return; // let Y landing check (lines 689-698) handle this
     if(centerP < centerB) P.x = PB.x - P.w;
     else                  P.x = PB.x + PB.w;
   }

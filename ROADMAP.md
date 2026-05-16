@@ -36,6 +36,14 @@
 - [x] Research report: `docs/Physics-Research-Report.md`
 - [x] Review: approved with zero critical/high findings
 
+### Pushblock Standing Fix (May 2026)
+- [x] Chamber T layout: walls on rows 0/14, cols 0/24, PUSH_SPAWN at (12,13), pushSpawn:{x:12,y:13}
+- [x] Bug: golem knocked sideways when landing on pushblock from above (X separation before Y landing check)
+- [x] Fix: Y-overlap guard in `resolvePushBlockCollision()` — skip X separation when player is on top of pushblock
+- [x] Guard: `isOnTop = P.y < PB.y && P.y+P.h >= PB.y-8 && P.y+P.h <= PB.y+P.h/2`
+- [x] Preserved: horizontal push (P.y < PB.y is false at same ground level), slot detection, Chamber 3 mechanics
+- [ ] Review: approved with zero critical/high findings — awaiting user browser verification
+
 ### Dash Rewrite (May 2026)
 - [x] Hold-to-charge dash: Shift held accumulates charge (1-180 frames, max 3s)
 - [x] Release-to-fire: dash executes with distance proportional to charge time
@@ -90,11 +98,12 @@
 
 ## Status
 
-| Phase | Status | Evidence |
+|| Phase | Status | Evidence |
 |-------|--------|----------|
 | Core game | Complete | `golem.html` playable, state audit verified |
 | Dash rewrite | Complete | 20/20 tests, zero JS errors, hold-to-charge + ring indicator + HUD bar |
 | Physics tuning | Complete | All 5 milestones verified, review approved, docs updated |
 | Governance docs | Complete | `docs/`, `README.md`, `ROADMAP.md` created |
+| Pushblock standing | Complete | Review approved, zero critical/high findings, awaiting browser verification |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
 | Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |
