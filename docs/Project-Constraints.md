@@ -20,6 +20,9 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 17 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
+| Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px, release-to-fire | `golem.html` lines 22-27 (constants) |
+| Dash charge state | Input blocked (X frozen, facing aims), 1/10th gravity + velocity carryover | `golem.html` lines 545-566 |
+| Dash visual feedback | Ring indicator (8-40px radius, pulsates at max), HUD charge bar with MAX | `golem.html` render block |
 | Deployment | Single HTML file, served by any HTTP server or opened locally | No dependencies |
 
 ## Design Constraints

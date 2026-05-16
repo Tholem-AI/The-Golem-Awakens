@@ -7,7 +7,7 @@ Generated from observed repository structure.
 ```
 GOLEM_GAME/
   AGENTS.md                # Project-scoped governance (Tholem Hermes Kit)
-  golem.html              # Single-file HTML5 game (~992 lines, ~34 KB)
+  golem.html              # Single-file HTML5 game (~1087 lines, ~37 KB)
   README.md               # Project overview, controls, abilities, chambers
   ROADMAP.md              # Active development checkpoints
   chamber-data.md          # Chamber layouts extracted from golem.html (5 chambers + test)

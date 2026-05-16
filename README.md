@@ -12,7 +12,7 @@ Open `golem.html` in a browser. No build step required.
 |--------|------|
 | Move | Arrow keys / WASD |
 | Jump | Arrow Up / W / Space |
-| Dash (charge) | Shift (hold) |
+| Dash (charge) | Shift (hold to charge, release to fire) |
 | Test chamber | T |
 
 ## Abilities
@@ -38,7 +38,7 @@ Each chamber grants a glyph that unlocks the next chamber's core mechanic:
 
 | File | Purpose |
 |------|---------|
-| `golem.html` | Complete game (~992 lines, single file) |
+| `golem.html` | Complete game (~1087 lines, single file) |
 | `chamber-data.md` | Chamber layouts (ASCII grids) |
 | `chamber-proposal.md` | Proposed chamber improvements |
 | `chamber-template.md` | Tile legend and conversion spec |

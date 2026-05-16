@@ -20,6 +20,15 @@ C.width = W; C.height = H;
 /* ── Tile types ── */
 const AIR=0, WALL=1, PIT=2, DOOR_R=3, DOOR_D=4, GLYPH=5, BLOCK=6, CRACKED=7, PLATFORM=8, END_PORTAL=9, MAGICAL_WALL=10, PUSH_SPAWN=11;
 
+/* ── Dash constants ── */
+const DASH_CHARGE_MAX = 180;       // frames (3 seconds at 60fps)
+const DASH_DISTANCE_MIN = 60;      // px — minimum dash distance
+const DASH_DISTANCE_MAX = 267;     // px — ~1/3 of 800px chamber
+const DASH_DURATION = 10;          // frames — how long dash executes
+const DASH_COOLDOWN = 20;          // frames after dash before next charge
+const DASH_CHARGE_RING_MIN = 8;    // px — minimum indicator radius
+const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
+
 /* ── Level data ── */
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
 
@@ -278,6 +287,8 @@ document.addEventListener('keyup', function(e){ keys[e.code] = false; });
 
 function fresh(code){ return keys[code] && !prevKeys[code]; }
 
+function shiftHeld(){ return keys['ShiftLeft']||keys['ShiftRight']; }
+
 /* ── Tile helpers ── */
 function getTile(ch,x,y){
   const c=chambers[ch];
@@ -530,45 +541,70 @@ function update(){
   if(messageTimer>0) messageTimer--;
   if(portalLockMsg>0) portalLockMsg--;
 
+  /* ── Dash: charge on hold, execute on release ── */
+  const isCharging = P.dashCharge > 0;
+
   /* ── Horizontal input (acceleration + friction) ── */
   let inputX = 0;
   if(keys['ArrowLeft']||keys['KeyA']) inputX=-1;
   if(keys['ArrowRight']||keys['KeyD']) inputX=1;
-  if(inputX!==0) P.facing=inputX;
+  if(inputX!==0) P.facing=inputX;  /* facing always updates — allows aiming dash */
 
-  if(inputX!==0){
-    P.vx += inputX * (P.onGround ? 0.1 : 0.4);
-    if(Math.abs(P.vx)>5) P.vx = inputX*5;
-  } else {
-    if(P.vx>0) P.vx = Math.max(0, P.vx-0.45);
-    else if(P.vx<0) P.vx = Math.min(0, P.vx+0.45);
+  if(!isCharging && !P.dashing){
+    if(inputX!==0){
+      P.vx += inputX * (P.onGround ? 0.1 : 0.4);
+      if(Math.abs(P.vx)>5) P.vx = inputX*5;
+    } else {
+      if(P.vx>0) P.vx = Math.max(0, P.vx-0.45);
+      else if(P.vx<0) P.vx = Math.min(0, P.vx+0.45);
+    }
   }
 
-  /* ── Dash: charge (hover + purple particles) then burst (dash forward) ── */
-  if(P.dashCharge > 0){
-    P.vy *= 0.85;
+  if(isCharging){
+    /* Charging state: gravity and velocity heavily slowed (1/10th) */
+    P.vy = P.vy * 0.1 + 0.028;  /* 1/10th existing velocity + 1/10th normal gravity */
     P.vx *= 0.85;
-    P.dashCharge--;
-    spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(180,80,255,0.5)', 3);
-    if(P.dashCharge <= 0){
+
+    if(!shiftHeld()){
+      /* Shift released — execute dash */
+      const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
+      const dashDist = DASH_DISTANCE_MIN + (DASH_DISTANCE_MAX - DASH_DISTANCE_MIN) * chargeRatio;
+      const moveFrames = DASH_DURATION;
+      const dashSpeed = dashDist / moveFrames;
+
       P.dashing = true;
-      P.dashTimer = 10;
+      P.dashTimer = DASH_DURATION;
       P.dashDir = P.facing;
       P.dashPhase = true;
+      P.dashCharge = 0;
+
+      P.vx = P.dashDir * dashSpeed;
+      P.vy = 0;
+
+      spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(220,120,255,0.6)', 6);
+    } else {
+      /* Still holding — accumulate charge */
+      if(P.dashCharge < DASH_CHARGE_MAX){
+        P.dashCharge++;
+      }
+      /* Charge particles */
+      spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(180,80,255,0.4)', 2);
     }
-  }
-  if(P.canDash && !P.dashing && P.dashCharge<=0 && P.dashCooldown<=0){
+  } else if(P.canDash && !P.dashing && P.dashCooldown<=0){
+    /* Start charging on Shift press */
     if(fresh('ShiftLeft')||fresh('ShiftRight')){
-      P.dashCharge = 20;
+      P.dashCharge = 1;  /* Start charging — at least 1 frame */
     }
   }
+
+  /* Dash execution */
   if(P.dashing){
-    P.vx = P.dashDir * 10;
+    P.vx = P.dashDir * (P.vx !== 0 ? Math.abs(P.vx) : 10);
     P.vy = 0;
     P.dashTimer--;
     spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(220,120,255,0.4)', 2);
     if(P.dashTimer<=0){
-      P.dashing=false; P.dashCooldown=20; P.dashPhase=false;
+      P.dashing=false; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false;
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
       if(getTile(P.chamber,cx,cy)===MAGICAL_WALL){
         P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0;
@@ -580,9 +616,7 @@ function update(){
   if(P.dashCooldown>0) P.dashCooldown--;
 
   /* ── Gravity (only when airborne) ── */
-  if(P.dashCharge > 0){
-    P.vy *= 0.1;
-  } else if(!P.onGround){
+  if(!isCharging && !P.onGround){
     P.vy += 0.28;
   }
   if(P.vy>5) P.vy=5;
@@ -606,7 +640,7 @@ function update(){
         if(getTile(P.chamber,fcx,fcy)===CRACKED && P.canBreak){
           setTile(P.chamber,fcx,fcy,AIR);
           shatterBlock((fcx+0.5)*T,(fcy+0.5)*T);
-          P.dashing=false; P.dashTimer=0; P.dashCooldown=20; P.dashPhase=false;
+          P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false;
           P.vx=0;
         } else {
           if(P.vx>0){ P.x=gx2*T-P.w; }
@@ -879,6 +913,50 @@ function render(){
     X.globalAlpha=1;
   }
 
+  /* ── Dash charge indicator (behind player, does not obscure golem) ── */
+  if(P.dashCharge > 0){
+    const cx = ox + P.x + P.w / 2;
+    const cy = oy + P.y + P.h / 2;
+    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
+    const radius = DASH_CHARGE_RING_MIN + (DASH_CHARGE_RING_MAX - DASH_CHARGE_RING_MIN) * chargeRatio;
+
+    X.save();
+    X.lineWidth = 1.5;
+
+    if(chargeRatio >= 1){
+      /* Max charge — pulsating ring */
+      const pulse = Math.sin(Date.now() / 150) * 0.5 + 0.5;
+      const outerRadius = radius + 3 + pulse * 3;
+      /* Outer pulse ring */
+      X.strokeStyle = 'rgba(200,140,255,' + (0.15 + pulse * 0.25) + ')';
+      X.lineWidth = 2;
+      X.beginPath();
+      X.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+      X.stroke();
+      /* Inner steady ring — brighter at max */
+      X.strokeStyle = 'rgba(200,140,255,' + (0.5 + pulse * 0.2) + ')';
+      X.lineWidth = 2;
+      X.beginPath();
+      X.arc(cx, cy, radius, 0, Math.PI * 2);
+      X.stroke();
+    } else {
+      /* Charging — ring grows proportionally */
+      const alpha = 0.25 + chargeRatio * 0.35;
+      X.strokeStyle = 'rgba(180,120,255,' + alpha + ')';
+      X.lineWidth = 1.5;
+      X.beginPath();
+      X.arc(cx, cy, radius, 0, Math.PI * 2);
+      X.stroke();
+      /* Subtle fill to give a soft glow */
+      X.fillStyle = 'rgba(160,100,240,' + (alpha * 0.12) + ')';
+      X.beginPath();
+      X.arc(cx, cy, radius, 0, Math.PI * 2);
+      X.fill();
+    }
+
+    X.restore();
+  }
+
  /* ── Player (squash & stretch) ── */
   let pw=P.w, ph=P.h, poffX=0, poffY=0;
   const fallingFast = P.vy > 3;
@@ -928,6 +1006,23 @@ function render(){
   for(const [name,req] of abilities){
     X.fillStyle=glyphsCollected>=req?'#8f8':'#444';
     X.fillText(name, 10, ay); ay+=14;
+  }
+
+  /* Dash charge indicator in HUD */
+  if(P.dashCharge > 0){
+    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
+    const barW = 80, barH = 4;
+    const barX = 10, barY = ay + 4;
+    X.fillStyle='rgba(100,60,160,0.5)';
+    X.fillRect(barX, barY, barW, barH);
+    X.fillStyle='rgba(200,140,255,' + (0.5 + chargeRatio * 0.5) + ')';
+    X.fillRect(barX, barY, barW * chargeRatio, barH);
+    if(chargeRatio >= 1){
+      const pulse = Math.sin(Date.now()/150)*0.3+0.7;
+      X.fillStyle='rgba(220,160,255,' + pulse + ')';
+      X.font='9px monospace';
+      X.fillText('MAX', barX + barW + 4, barY + 4);
+    }
   }
 
   /* Chamber name + portal status */

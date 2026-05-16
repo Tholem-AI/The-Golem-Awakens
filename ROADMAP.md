@@ -1,19 +1,19 @@
 # ROADMAP
 
-## Completed
+### Completed
 
 ### Core Game Implementation
 - [x] Physics engine: gravity, acceleration, collision (X/Y separated), platform one-way logic
 - [x] Jump system: coyote time (8 frames), input buffering (8 frames), variable height
 - [x] Player entity: squash-and-stretch, facing, velocity caps
-- [x] Dash system: charge phase (20 frames), burst phase (10 frames), cooldown
+- [x] Dash system: hold-to-charge (up to 3s/180 frames), linear distance scaling (60-267px), release-to-fire, HUD charge bar, ring indicator, cooldown
 - [x] Push block: free-moving physics entity with slot detection
 - [x] Break ability: dash through CRACKED tiles with shatter particles
 - [x] Glyph system: 4 sequential glyphs with ability gating
 - [x] Door/portal system: glyph-locked exits, END_PORTAL ending sequence
 - [x] Chamber transitions: screen fade with alpha ramping
 - [x] Particle system: 10 trigger types, shatter effect (3 layers)
-- [x] HUD: ability panel, chamber name, messages, tutorial text
+- [x] HUD: ability panel, chamber name, messages, tutorial text, dash charge bar
 - [x] Chamber 0 — Awakening (current)
 - [x] Chamber 1 — The Library (current)
 - [x] Chamber 2 — The Hall of Echoes (current)
@@ -25,6 +25,15 @@
 - [x] Chamber template spec (`chamber-template.md`)
 - [x] Project bootstrap: governance docs, file structure reference, constraints
 - [x] AGENTS.md — project-scoped governance (safety, quality, RIPER, constraints)
+
+### Dash Rewrite (May 2026)
+- [x] Hold-to-charge dash: Shift held accumulates charge (1-180 frames, max 3s)
+- [x] Release-to-fire: dash executes with distance proportional to charge time
+- [x] Linear distance scaling: 60px (min) to 267px (max, ~1/3 chamber width)
+- [x] Charge state: input blocked (X movement frozen, facing still aims), 1/10th gravity with velocity carryover
+- [x] Visual feedback: ring indicator (radius 8-40px, pulsates at max), HUD charge bar with MAX indicator
+- [x] Preserved: magical wall pass-through, CRACKED block breaking, cooldown, direction follows facing
+- [x] Validation: 20/20 tests passed, zero JS errors
 
 ### Design Documentation
 - [x] `docs/File-Structure-Reference.md` — repository structure
@@ -54,15 +63,17 @@
 
 ### Code Quality (from `code-review.md`)
 
+#### Resolved
+- [x] Reduce dash charge time or switch to hold-to-charge — done: full hold-to-charge rewrite
+- [x] Add dash charge HUD indicator — done: bar + MAX pulse indicator
+
 #### High Priority
-- [ ] Reduce dash charge time (20 -> 8-10 frames) or switch to press-to-dash
 - [ ] Add responsive canvas scaling (CSS or JS viewport fit)
 - [ ] Remove dead `pushBlock()` function (line 350) and unused `BLOCK` tile references
 
 #### Medium Priority
 - [ ] Equalize jump velocities (first: -10, second: -13 -> make equal)
 - [ ] Add pause toggle (Escape key)
-- [ ] Add dash charge HUD indicator
 - [ ] Fix redundant chamber lookup in wall render loop (use `c` instead of `c2`)
 
 ---
@@ -72,6 +83,7 @@
 | Phase | Status | Evidence |
 |-------|--------|----------|
 | Core game | Complete | `golem.html` playable, state audit verified |
+| Dash rewrite | Complete | 20/20 tests, zero JS errors, hold-to-charge + ring indicator + HUD bar |
 | Governance docs | Complete | `docs/`, `README.md`, `ROADMAP.md` created |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
-| Code quality | Pending | Awaiting prioritization from `code-review.md` |
+| Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |
