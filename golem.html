@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Golem Awakens</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+canvas { display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const C = document.getElementById('c');
+const X = C.getContext('2d');
+const W = 800, H = 480, T = 32;
+C.width = W; C.height = H;
+
+/* ── Tile types ── */
+const AIR=0, WALL=1, PIT=2, DOOR_R=3, DOOR_D=4, GLYPH=5, BLOCK=6, CRACKED=7, PLATFORM=8, END_PORTAL=9, MAGICAL_WALL=10, PUSH_SPAWN=11;
+
+/* ── Level data ── */
+function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
+
+const chambers = [];
+
+// Chamber 0: Awakening — learn movement, get Glyph 1 (Double Jump)
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;}
+  for(let y=0;y<h-2;y++){g[y][w-1]=WALL;} g[h-3][w-1]=DOOR_D;
+  g[14][12]=PIT;g[14][13]=PIT;g[14][14]=PIT;
+  g[13][12]=PIT;g[13][13]=PIT;g[13][14]=PIT;
+  g[12][6]=WALL;g[12][7]=WALL; g[11][7]=WALL;g[11][8]=WALL;
+  g[10][8]=WALL;g[10][9]=WALL; g[9][9]=WALL;g[9][10]=WALL;
+  g[8][10]=GLYPH;
+  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:10,y:8}]});
+})();
+
+// Chamber 1: Need double jump, get Glyph 2 (Dash)
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  g[1][12]=DOOR_D;
+  for(let x=8;x<17;x++){g[14][x]=PIT;g[13][x]=PIT;}
+  for(let x=4;x<7;x++) g[11][x]=PLATFORM;
+  for(let x=10;x<13;x++) g[9][x]=PLATFORM;
+  for(let x=16;x<19;x++) g[7][x]=PLATFORM;
+  g[6][17]=GLYPH;
+  for(let y=4;y<13;y++) g[y][9]=WALL;
+  for(let y=6;y<13;y++) g[y][14]=WALL;
+  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:17,y:6}]});
+})();
+
+// Chamber 2: Need dash — vertical magical wall, only passable by dashing through
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  g[1][12]=DOOR_D;
+  for(let x=7;x<18;x++){g[14][x]=PIT;g[13][x]=PIT;}
+  g[11][4]=PLATFORM;g[11][5]=PLATFORM;
+  g[11][17]=PLATFORM;g[11][18]=PLATFORM;
+  for(let y=1;y<13;y++) g[y][10]=MAGICAL_WALL;
+  for(let x=1;x<10;x++) g[1][x]=WALL;
+  g[6][17]=GLYPH;
+  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:17,y:6}]});
+})();
+
+// Chamber 3: The Weight of Wisdom — push block down slot to open path
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  g[1][12]=DOOR_D;
+  /* Solid floor at row 12 — no death void */
+  for(let x=2;x<23;x++) g[12][x]=WALL;
+  /* Slot opening */
+  g[12][11]=AIR;
+  g[13][11]=AIR;
+  /* Block sits on solid floor left of slot, blocking path */
+  g[11][10]=PUSH_SPAWN;
+  /* Wall across row 10 — force push block into slot to cross */
+  for(let x=4;x<=13;x++) g[10][x]=WALL;
+  for(let x=1;x<=5;x++) g[9][x]=WALL;
+  /* Right side: platforms for reaching glyph */
+  for(let x=14;x<23;x++) g[10][x]=PLATFORM;
+  g[9][16]=PLATFORM; g[9][17]=PLATFORM;
+  g[8][17]=GLYPH;
+  chambers.push({w,h,tiles:g,px:3*T,py:10*T,glyphs:[{x:17,y:8}],
+    pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}});
+})();
+
+// Chamber 4: The Ibis speaks — final chamber, no glyph needed, END_PORTAL triggers ending
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  g[7][12]=END_PORTAL;
+  /* Inner 3x3 box — portal completely sealed */
+  g[6][11]=CRACKED;g[6][12]=CRACKED;g[6][13]=CRACKED;
+  g[7][11]=CRACKED;g[7][13]=CRACKED;
+  g[8][11]=CRACKED;g[8][12]=CRACKED;g[8][13]=CRACKED;
+  /* Outer diamond ring — decorative, dash through to break */
+  g[3][12]=CRACKED;g[11][12]=CRACKED;
+  g[5][10]=CRACKED;g[5][11]=CRACKED;g[5][13]=CRACKED;g[5][14]=CRACKED;
+  g[6][9]=CRACKED;g[6][14]=CRACKED;
+  g[7][8]=CRACKED;g[7][16]=CRACKED;
+  g[8][9]=CRACKED;g[8][14]=CRACKED;
+  g[9][10]=CRACKED;g[9][11]=CRACKED;g[9][13]=CRACKED;g[9][14]=CRACKED;
+  /* Platforms to stand on */
+  for(let x=4;x<8;x++) g[12][x]=PLATFORM;
+  for(let x=17;x<22;x++) g[12][x]=PLATFORM;
+  for(let x=11;x<14;x++) g[10][x]=PLATFORM;
+  chambers.push({w,h,tiles:g,px:2*T,py:11*T,glyphs:[]});
+})();
+
+// Ch.T: Test chamber — empty box, entered by pressing KeyT
+(function(){
+  const w=25,h=15,g=mkGrid(w,h);
+  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  chambers.push({w,h,tiles:g,px:12*T,py:10*T,glyphs:[]});
+})();
+
+/* ── Player state ── */
+const P = {
+  x:0, y:0, vx:0, vy:0, w:24, h:28,
+  onGround:false, jumps:0, maxJumps:1,
+  canDash:false, dashing:false, dashTimer:0, dashDir:0, dashCooldown:0, dashPhase:false, dashCharge:0,
+  canPush:false, canBreak:false,
+  facing:1, chamber:0, respawnX:0, respawnY:0,
+  coyoteTime:0, jumpBuffer:0,
+  pushing:false
+};
+
+let glyphsCollected = 0;
+let collectedGlyphs = [];          // per-chamber boolean
+let gameState = 'playing';
+let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
+let screenAlpha = 0;
+let messageText = '';
+let messageTimer = 0;
+let portalLockMsg = 0;     // cooldown for locked-portal message
+let particles = [];
+let testChamberSrc = -1;   // remembers which chamber we came from for test exit
+
+/* ── Push block entity (free-moving physics object) ── */
+const PB = {
+  x:0, y:0, w:T, h:T,
+  vx:0, vy:0,
+  active:false, inSlot:false
+};
+
+function resetPushBlock(){
+  const c=chambers[P.chamber];
+  if(!c || !c.pushSpawn){ PB.active=false; return; }
+  PB.x = c.pushSpawn.x * T;
+  PB.y = c.pushSpawn.y * T;
+  PB.vx = 0; PB.vy = 0;
+  PB.active = true;
+  PB.inSlot = false;
+}
+
+/* Push block: resolve AFTER normal X movement + tile collision.
+   Treat as a post-move overlap response — push or separate cleanly. */
+function resolvePushBlockCollision(){
+  if(!P.canPush || !PB.active || PB.inSlot) return;
+  if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
+
+  const centerP = P.x + P.w / 2;
+  const centerB = PB.x + PB.w / 2;
+  const dir = (centerP < centerB) ? 1 : -1;
+
+  const movingToward = (P.vx * dir > 0.1);
+
+  if(P.onGround && movingToward){
+    const tileStep = dir * T;
+    if(!tileCollides(P.chamber, PB.x + tileStep, PB.y, PB.w, PB.h)){
+      PB.x += tileStep;
+      if(dir > 0) P.x = PB.x - P.w;
+      else        P.x = PB.x + PB.w;
+      P.vx = 0;
+      spawnParticles(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 8);
+    } else {
+      if(dir > 0) P.x = PB.x - P.w;
+      else        P.x = PB.x + PB.w;
+      P.vx = 0;
+    }
+  } else {
+    if(centerP < centerB) P.x = PB.x - P.w;
+    else                  P.x = PB.x + PB.w;
+  }
+}
+
+/* AABB overlap test */
+function aabb(ax,ay,aw,ah, bx,by,bw,bh){
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+/* Check if AABB overlaps any solid tile */
+function tileCollides(ch, x, y, w, h){
+  const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
+  const y1=Math.floor(y/T), y2=Math.floor((y+h-1)/T);
+  for(let gy=y1;gy<=y2;gy++)
+    for(let gx=x1;gx<=x2;gx++)
+      if(solid(getTile(ch,gx,gy))) return true;
+  return false;
+}
+
+/* Push block: separate X then Y with gravity */
+function updatePushBlock(){
+  const ch=P.chamber;
+  const c=chambers[ch];
+  if(!c || !c.pushSpawn) return;
+  if(PB.inSlot) return;           // frozen in slot (still visible + rendered)
+
+  if(!PB.active){
+    resetPushBlock();
+    return;
+  }
+
+  /* Move X */
+  PB.x += PB.vx;
+  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
+    if(PB.vx>0) PB.x = Math.floor((PB.x+PB.w)/T)*T - PB.w;
+    else        PB.x = (Math.floor(PB.x/T)+1)*T;
+    PB.vx = 0;
+  }
+
+  /* Move Y (gravity) */
+  PB.vy += 0.3;
+  if(PB.vy>4) PB.vy=4;
+  PB.y += PB.vy;
+  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
+    if(PB.vy>0) PB.y = Math.floor((PB.y+PB.h)/T)*T - PB.h;
+    else        PB.y = (Math.floor(PB.y/T)+1)*T;
+    PB.vy = 0;
+  }
+
+  /* Friction */
+  PB.vx *= 0.85;
+  if(Math.abs(PB.vx)<0.1) PB.vx=0;
+
+  /* Check if block fell into slot — settle visibly in the hole */
+  const cx=Math.floor((PB.x+PB.w/2)/T);
+  const cy=Math.floor((PB.y+PB.h/2)/T);
+  if(c.pushSlot && cx===c.pushSlot.gx && cy===c.pushSlot.gy){
+    PB.x = c.pushSlot.gx * T;
+    PB.y = c.pushSlot.gy * T;
+    PB.vx = 0;
+    PB.vy = 0;
+    PB.inSlot = true;
+    spawnParticles((c.pushSlot.gx + 0.5)*T, PB.y + PB.h/2, '#d4a84b', 12);
+    showMessage("The weight settles.",80);
+  }
+
+  /* Reset if fallen past bottom */
+  if(PB.y > c.h*T){
+    PB.x = c.pushSpawn.x*T; PB.y = c.pushSpawn.y*T;
+    PB.vx=0; PB.vy=0; PB.inSlot=false;
+  }
+}
+
+/* ── Input (prev-frame tracking prevents repeat-on-hold) ── */
+let keys = {};
+let prevKeys = {};
+
+document.addEventListener('keydown', function(e){
+  keys[e.code] = true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight'].includes(e.code))
+    e.preventDefault();
+});
+document.addEventListener('keyup', function(e){ keys[e.code] = false; });
+
+function fresh(code){ return keys[code] && !prevKeys[code]; }
+
+/* ── Tile helpers ── */
+function getTile(ch,x,y){
+  const c=chambers[ch];
+  if(x<0||x>=c.w||y<0||y>=c.h) return WALL;
+  return c.tiles[y][x];
+}
+function setTile(ch,x,y,v){
+  const c=chambers[ch];
+  if(x>=0&&x<c.w&&y>=0&&y<c.h) c.tiles[y][x]=v;
+}
+
+/* Solid for walls/blocks/doors/end-portal (not one-way platforms) */
+function solid(t){ return t===WALL||t===BLOCK||t===CRACKED||t===DOOR_R||t===DOOR_D||t===END_PORTAL||t===MAGICAL_WALL; }
+
+/* Platform is solid ONLY when landing from above (falling through) */
+function platSolid(t, prevY, curY){
+  if(t!==PLATFORM) return false;
+  return prevY + P.h <= curY + P.h;
+}
+
+/* Check if AABB overlaps any solid tile (with one-way platforms) */
+function tileCollidesY(ch, x, y, w, h, prevY, curY){
+  const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
+  const y1=Math.floor(y/T), y2=Math.floor((y+h-1)/T);
+  for(let gy=y1;gy<=y2;gy++)
+    for(let gx=x1;gx<=x2;gx++){
+      const t=getTile(ch,gx,gy);
+      if(solid(t)) return true;
+      if(platSolid(t, prevY, curY)) return true;
+    }
+  return false;
+}
+
+/* collides: for Y movement — check solid tiles at the NEW position */
+function collides(gx1,gy1,gx2,gy2, ch, prevY, curY){
+  return tileCollidesY(ch, gx1*T, curY, (gx2-gx1+1)*T, P.h, prevY, curY);
+}
+
+/* collidesNoPlat: for X movement — solid tiles only, no platforms */
+function collidesNoPlat(gx1,gy1,gx2,gy2, ch){
+  for(let gy=gy1; gy<=gy2; gy++){
+    for(let gx=gx1; gx<=gx2; gx++){
+      if(solid(getTile(ch,gx,gy))) return true;
+    }
+  }
+  return false;
+}
+
+function collidesDash(gx1,gy1,gx2,gy2, ch, prevY, curY){
+  const x1=gx1*T, x2=(gx2+1)*T, y1=gy1*T, y2=(gy2+1)*T;
+  for(let gy=gy1;gy<=gy2;gy++)
+    for(let gx=gx1;gx<=gx2;gx++){
+      const t=getTile(ch,gx,gy);
+      if(t===MAGICAL_WALL) continue;
+      if(solid(t)) return true;
+      if(platSolid(t, prevY, curY)) return true;
+    }
+  /* Push block during dash */
+  if(PB.active){
+    if(aabb(x1, prevY, x2-x1, P.h, PB.x, PB.y, PB.w, PB.h)) return true;
+  }
+  return false;
+}
+
+function inPit(px,py){
+  return getTile(P.chamber, Math.floor(px/T), Math.floor(py/T))===PIT;
+}
+
+/* ── Abilities ── */
+function pushBlock(){
+  if(!P.canPush || !P.onGround || P.pushing) return;
+  const ch=P.chamber, dir=P.facing;
+  const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
+  const bx=cx+dir, by=cy;
+  if(getTile(ch,bx,by)===BLOCK && getTile(ch,bx+dir,by)===AIR){
+    setTile(ch,bx,by,AIR);
+    setTile(ch,bx+dir,by,BLOCK);
+    P.pushing = true;
+    spawnParticles((bx+0.5)*T, (by+0.5)*T, '#9a8d7d', 6);
+  }
+}
+
+/* ── Particles ── */
+function shatterBlock(x,y){
+  /* Chunky debris — fast, heavy */
+  for(let i=0;i<12;i++)
+    particles.push({x,y,
+      vx:(Math.random()-0.5)*8, vy:-Math.random()*5-2,
+      life:25+Math.random()*20, maxLife:45,
+      color:['#c86040','#a04030','#d08060','#e0a070'][i%4],
+      size:3+Math.random()*4});
+  /* Dust cloud — slow, diffuse */
+  for(let i=0;i<10;i++)
+    particles.push({x,y,
+      vx:(Math.random()-0.5)*3, vy:-Math.random()*2,
+      life:15+Math.random()*10, maxLife:25,
+      color:'rgba(200,160,100,0.5)',
+      size:2+Math.random()*2});
+  /* Spark flash */
+  for(let i=0;i<6;i++)
+    particles.push({x,y,
+      vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6,
+      life:8+Math.random()*6, maxLife:14,
+      color:'#ffe0a0',
+      size:1+Math.random()*2});
+}
+function spawnParticles(x,y,color,count){
+  for(let i=0;i<count;i++)
+    particles.push({
+      x, y,
+      vx:(Math.random()-0.5)*4,
+      vy:-Math.random()*3-1,
+      life:20+Math.random()*15,
+      maxLife:35,
+      color,
+      size:2+Math.random()*3
+    });
+}
+
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+/* ── Message ── */
+function showMessage(txt,dur){ messageText=txt; messageTimer=dur||120; }
+
+/* ── Transition with screen fade ── */
+let _testMode = false;  // set by test harness for instant transitions
+function _doTransition(toChamber){
+  P.chamber = toChamber;
+  const nc = chambers[toChamber];
+  P.x=nc.px;
+  /* Find floor row for this chamber (last WALL row at spawn x) */
+  const spawnGx=Math.floor(nc.px/T);
+  let floorRow=14;
+  for(let ry=nc.h-1;ry>=0;ry--){
+    const t=nc.tiles[ry]&&nc.tiles[ry][spawnGx];
+    if(t===WALL){floorRow=ry;break;}
+  }
+  P.y=(floorRow-2)*T;  /* Start 2 tiles above floor — golem height fits cleanly */
+  P.respawnX=nc.px; P.respawnY=P.y;
+  P.vx=0; P.vy=0; P.jumps=0;
+  P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
+  P.onGround=false; P.coyoteTime=0;
+  P.pushing=false;
+  resetPushBlock();
+}
+function transition(toChamber){
+  if(_testMode){ _doTransition(toChamber); return; }
+  screenFade = 1;
+  screenAlpha = 0;
+  setTimeout(function(){ _doTransition(toChamber); screenFade=-1; }, 300);
+}
+
+function checkDoors(){
+  const ch=P.chamber, c=chambers[ch];
+  const px=P.x+P.w/2, py=P.y+P.h/2;
+  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+    const t=getTile(ch,gx+dx,gy+dy);
+    if(t===DOOR_R||t===DOOR_D){
+      /* Return from test chamber */
+      if(ch === chambers.length - 1 && testChamberSrc >= 0){
+        transition(testChamberSrc);
+        return;
+      }
+      if(collectedGlyphs[ch]){
+        transition(ch+1);
+      } else {
+        if(portalLockMsg<=0){
+          showMessage("The seal demands Knowledge...", 70);
+          portalLockMsg = 45;
+        }
+      }
+      return;
+    }
+    if(t===END_PORTAL){
+      transitionEnding();
+      return;
+    }
+  }
+}
+
+function checkGlyphs(){
+  const ch=P.chamber, c=chambers[ch];
+  if(collectedGlyphs[ch]) return;
+  const px=P.x+P.w/2, py=P.y+P.h/2;
+  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  for(let i=0;i<c.glyphs.length;i++){
+    const gl=c.glyphs[i];
+    if(getTile(ch,gl.x,gl.y)!==GLYPH) continue;
+    if(Math.abs(gx-gl.x)<=1 && Math.abs(gy-gl.y)<=1){
+      if(glyphsCollected!==ch) continue;
+      setTile(ch,gl.x,gl.y,AIR);
+      collectedGlyphs[ch]=true;
+      glyphsCollected++;
+      spawnParticles((gl.x+0.5)*T,(gl.y+0.5)*T,'#f0d060',15);
+      if(glyphsCollected===1){ P.maxJumps=2; showMessage("Knowledge lifts me.",120); }
+      else if(glyphsCollected===2){ P.canDash=true; showMessage("Speed courses through me.",120); }
+      else if(glyphsCollected===3){ P.canPush=true; showMessage("Strength returns.",120); }
+      else if(glyphsCollected===4){ P.canBreak=true; showMessage("Clay becomes Wisdom.",120); }
+    }
+  }
+}
+
+function transitionEnding(){
+  if(_testMode){ gameState='ending'; showMessage("The Ibis speaks: 'You were clay. Now you are Wisdom.'",99999); return; }
+  screenFade=1; screenAlpha=0;
+  setTimeout(function(){
+    gameState='ending';
+    showMessage("The Ibis speaks: 'You were clay. Now you are Wisdom.'",99999);
+  },300);
+}
+
+/* ══════════════════════════════════════════════════
+   UPDATE — physics, input, game logic
+   ══════════════════════════════════════════════════ */
+function update(){
+  if(gameState==='ending') return;
+
+  /* Test chamber entry/exit — press T */
+  if(fresh('KeyT')){
+    if(P.chamber === chambers.length - 1 && testChamberSrc >= 0){
+      /* Return from test chamber */
+      transition(testChamberSrc);
+      showMessage("Back to chamber " + testChamberSrc + ".", 60);
+    } else {
+      /* Enter test chamber */
+      testChamberSrc = P.chamber;
+      glyphsCollected = 4;
+      P.maxJumps = 2;
+      P.canDash = true;
+      P.canPush = true;
+      P.canBreak = true;
+      transition(chambers.length - 1);
+      showMessage("Test chamber — all abilities unlocked.", 90);
+    }
+    return;
+  }
+
+  /* Screen fade */
+  if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1;screenFade=-1;} }
+  if(screenFade===-1){ screenAlpha-=0.06; if(screenAlpha<=0){screenAlpha=0;screenFade=0;} }
+  if(screenFade!==0) return;
+
+  if(messageTimer>0) messageTimer--;
+  if(portalLockMsg>0) portalLockMsg--;
+
+  /* ── Horizontal input (acceleration + friction) ── */
+  let inputX = 0;
+  if(keys['ArrowLeft']||keys['KeyA']) inputX=-1;
+  if(keys['ArrowRight']||keys['KeyD']) inputX=1;
+  if(inputX!==0) P.facing=inputX;
+
+  if(inputX!==0){
+    P.vx += inputX * (P.onGround ? 0.1 : 0.4);
+    if(Math.abs(P.vx)>5) P.vx = inputX*5;
+  } else {
+    if(P.vx>0) P.vx = Math.max(0, P.vx-0.45);
+    else if(P.vx<0) P.vx = Math.min(0, P.vx+0.45);
+  }
+
+  /* ── Dash: charge (hover + purple particles) then burst (dash forward) ── */
+  if(P.dashCharge > 0){
+    P.vy *= 0.85;
+    P.vx *= 0.85;
+    P.dashCharge--;
+    spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(180,80,255,0.5)', 3);
+    if(P.dashCharge <= 0){
+      P.dashing = true;
+      P.dashTimer = 10;
+      P.dashDir = P.facing;
+      P.dashPhase = true;
+    }
+  }
+  if(P.canDash && !P.dashing && P.dashCharge<=0 && P.dashCooldown<=0){
+    if(fresh('ShiftLeft')||fresh('ShiftRight')){
+      P.dashCharge = 20;
+    }
+  }
+  if(P.dashing){
+    P.vx = P.dashDir * 10;
+    P.vy = 0;
+    P.dashTimer--;
+    spawnParticles(P.x+P.w/2, P.y+P.h/2, 'rgba(220,120,255,0.4)', 2);
+    if(P.dashTimer<=0){
+      P.dashing=false; P.dashCooldown=20; P.dashPhase=false;
+      const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
+      if(getTile(P.chamber,cx,cy)===MAGICAL_WALL){
+        P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0;
+        P.jumps=0; P.dashCharge=0; P.onGround=true; P.coyoteTime=8;
+        showMessage("The barrier consumes you...", 90);
+      }
+    }
+  }
+  if(P.dashCooldown>0) P.dashCooldown--;
+
+  /* ── Gravity (only when airborne) ── */
+  if(P.dashCharge > 0){
+    P.vy *= 0.1;
+  } else if(!P.onGround){
+    P.vy += 0.28;
+  }
+  if(P.vy>5) P.vy=5;
+
+  /* ── Coyote time countdown ── */
+  if(P.coyoteTime>0) P.coyoteTime--;
+
+  /* ── Move X + collide (tiles first, then push-block entity) ── */
+  P.pushing = false;
+  const prevX = P.x;
+  P.x += P.vx;
+
+  /* 1. Resolve against static tiles */
+  {
+    const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
+    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
+    const colFn = P.dashPhase ? collidesDash : collidesNoPlat;
+    if(colFn(gx1,gy1,gx2,gy2,P.chamber,null)){
+      if(P.dashPhase){
+        const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
+        if(getTile(P.chamber,fcx,fcy)===CRACKED && P.canBreak){
+          setTile(P.chamber,fcx,fcy,AIR);
+          shatterBlock((fcx+0.5)*T,(fcy+0.5)*T);
+          P.dashing=false; P.dashTimer=0; P.dashCooldown=20; P.dashPhase=false;
+          P.vx=0;
+        } else {
+          if(P.vx>0){ P.x=gx2*T-P.w; }
+          else if(P.vx<0){ P.x=(gx1+1)*T; }
+          else { P.x=prevX; }
+          P.vx=0;
+        }
+      } else {
+        if(P.vx>0){ P.x=gx2*T-P.w; }
+        else if(P.vx<0){ P.x=(gx1+1)*T; }
+        else { P.x=prevX; }
+        P.vx=0;
+      }
+    }
+  }
+
+  /* 2. Resolve against push-block entity */
+  resolvePushBlockCollision();
+
+ /* ── Move Y + collide (platforms = one-way) ── */
+  const prevY = P.y;
+  P.y += P.vy;
+  {
+    const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
+    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
+    const colFn = P.dashPhase ? collidesDash : collides;
+  if(colFn(gx1,gy1,gx2,gy2,P.chamber,prevY,P.y)){
+      if(P.vy>0){
+        P.y=gy2*T-P.h;
+        P.vy=0;
+        P.onGround=true;
+        P.jumps=0;
+        P.coyoteTime=8;
+        if(prevY+P.h < gy2*T - 4)
+          spawnParticles(P.x+P.w/2, P.y+P.h, '#8a7d6b', 4);
+      } else if(P.vy<0){
+        P.y=(gy1+1)*T;
+        P.vy=0;
+      }
+    } else {
+      P.onGround = false;
+    }
+    /* Push block Y collision — land on top */
+    if(PB.active){
+      if(aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h) && P.vy >= 0){
+        if(prevY + P.h <= PB.y + 4){
+          P.y = PB.y - P.h;
+          P.vy = 0;
+          P.onGround = true;
+          P.jumps = 0;
+          P.coyoteTime = 8;
+        }
+      }
+    }
+  }
+
+  /* ── Jump buffer countdown ── */
+  if(P.jumpBuffer>0 && !P.onGround) P.jumpBuffer--;
+
+  /* ── Jump (fresh press only, variable height, buffered) ── */
+  const jumpPressed = fresh('ArrowUp')||fresh('KeyW')||fresh('Space');
+  const jumpHeld = keys['ArrowUp']||keys['KeyW']||keys['Space'];
+
+  if(P.onGround && P.jumpBuffer>0 && P.jumps<P.maxJumps){
+    P.vy = P.jumps===0 ? -10 : -13;
+    P.jumps++;
+    P.onGround=false;
+    P.coyoteTime=0;
+    P.jumpBuffer=0;
+    spawnParticles(P.x+P.w/2, P.y+P.h, '#8a7d6b', 5);
+  }
+  else if(jumpPressed && P.jumps===0 && P.coyoteTime>0){
+    P.vy = -10;
+    P.jumps++;
+    P.onGround=false;
+    P.coyoteTime=0;
+    P.jumpBuffer=0;
+    spawnParticles(P.x+P.w/2, P.y+P.h, '#8a7d6b', 5);
+  }
+  else if(jumpPressed && P.jumps < P.maxJumps && P.jumps>0){
+    P.vy = -13;
+    P.jumps++;
+    P.jumpBuffer=0;
+    spawnParticles(P.x+P.w/2, P.y+P.h, '#d4a84b', 8);
+  }
+  else if(jumpPressed && P.jumps < P.maxJumps){
+    P.jumpBuffer = 8;
+  }
+
+  /* ── Pit / out-of-bounds death ── */
+  if(inPit(P.x+P.w/2, P.y+P.h) || P.y > chambers[P.chamber].h*T){
+    P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0;
+    P.jumps=0; P.dashing=false; P.dashTimer=0; P.dashCharge=0;
+    P.onGround=false; P.coyoteTime=8;
+    resetPushBlock();
+    showMessage("The void claims clay...", 90);
+  }
+
+  /* ── Update push block ── */
+  updatePushBlock();
+
+  checkDoors();
+  checkGlyphs();
+  updateParticles();
+
+  for(const k in keys) prevKeys[k]=keys[k];
+  for(const k in prevKeys) { if(!keys[k] && k in prevKeys) delete prevKeys[k]; }
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════ */
+const COLORS = {
+  bg:'#0d0d1a', wall:'#4a4035', wallTop:'#6b5d4f',
+  platform:'#5a4d3a', pit:'#000000', door:'#2a5a3a',
+  glyph:'#c8a84e', glyphGlow:'#f0d060',
+  block:'#7a6d5d', cracked:'#8a5040',
+  golem:'#8a7d6b', golemDark:'#5a5040', golemEye:'#d4a84b',
+  text:'#d4a84b', pushBlock:'#a08868', pushBlockTop:'#b8a080'
+};
+
+function render(){
+  const ch=P.chamber, c=chambers[ch];
+
+  X.fillStyle=COLORS.bg; X.fillRect(0,0,W,H);
+
+  /* Subtle starfield */
+  X.fillStyle='#1a1a2e';
+  for(let i=0;i<40;i++) X.fillRect((i*137+ch*50)%W,(i*97+ch*30)%H,1,1);
+
+  /* Center chamber on screen */
+  const ox=Math.floor((W-c.w*T)/2);
+  const oy=Math.floor((H-c.h*T)/2);
+
+  /* ── Tiles ── */
+  for(let y=0;y<c.h;y++) for(let x=0;x<c.w;x++){
+    const t=c.tiles[y][x], px=ox+x*T, py=oy+y*T;
+
+    if(t===WALL){
+      X.fillStyle=COLORS.wall; X.fillRect(px,py,T,T);
+      X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
+      X.fillStyle='#3a302a';
+      if((x+y)%2===0) X.fillRect(px+T/2-1,py,2,T);
+      X.fillRect(px,py+T/2-1,T,2);
+      const ch2=P.chamber, c2=chambers[ch2];
+      let adjPit=false;
+      if(y+1<c.h && c2.tiles[y+1]&&c2.tiles[y+1][x]===PIT) adjPit=true;
+      if(y-1>=0 && c2.tiles[y-1]&&c2.tiles[y-1][x]===PIT) adjPit=true;
+      if(x-1>=0 && c2.tiles[y]&&c2.tiles[y][x-1]===PIT) adjPit=true;
+      if(x+1<c.w && c2.tiles[y]&&c2.tiles[y][x+1]===PIT) adjPit=true;
+      if(adjPit){
+        X.fillStyle='rgba(180,40,20,0.25)';
+        X.fillRect(px,py,T,T);
+      }
+
+    } else if(t===PLATFORM){
+      X.fillStyle=COLORS.platform; X.fillRect(px+2,py+4,T-4,T-4);
+      X.fillStyle='#4a3d2a'; X.fillRect(px+2,py+2,T-4,2);
+
+    } else if(t===PIT){
+      X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
+      const glow=Math.sin(Date.now()/600+x)*0.3+0.3;
+      X.fillStyle='rgba(180,40,20,'+glow+')'; X.fillRect(px,py,T,2);
+      X.fillStyle='rgba(100,20,10,'+glow*0.5+')'; X.fillRect(px,py,T,4);
+      X.fillStyle='rgba(180,40,20,0.15)'; X.fillRect(px,py,2,T);
+      X.fillRect(px+T-2,py,2,T);
+
+    } else if(t===DOOR_R||t===DOOR_D){
+      const locked = !collectedGlyphs[ch];
+      if(locked){
+        const pulse=Math.sin(Date.now()/500)*0.2+0.7;
+        X.fillStyle='#1a1520'; X.fillRect(px,py,T,T);
+        X.fillStyle='rgba(160,30,30,'+pulse+')'; X.fillRect(px+1,py+1,T-2,T-2);
+        X.fillStyle='rgba(120,20,20,'+(pulse*0.6)+')'; X.fillRect(px+3,py+3,T-6,T-6);
+        X.fillStyle='rgba(180,50,50,'+(pulse*0.5)+')'; X.fillRect(px+5,py+5,T-10,T-10);
+        X.strokeStyle='#6a2020'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
+        X.fillStyle='#8a3030'; X.font='16px serif';
+        X.textAlign='center'; X.textBaseline='middle';
+        X.fillText('\u{1F512}', px+T/2, py+T/2);
+      } else {
+        const pulse=Math.sin(Date.now()/500)*0.15+0.85;
+        X.fillStyle='rgba(42,90,58,'+pulse+')'; X.fillRect(px,py,T,T);
+        X.fillStyle='#3a7a4a'; X.fillRect(px+1,py+1,T-2,T-2);
+        X.fillStyle='#5aaa6a'; X.fillRect(px+3,py+3,T-6,T-6);
+        X.fillStyle='rgba(90,170,106,0.5)'; X.fillRect(px+5,py+5,T-10,T-10);
+        X.fillStyle='#fff'; X.font='14px serif';
+        X.textAlign='center'; X.textBaseline='middle';
+        X.fillText('\u279C', px+T/2, py+T/2);
+      }
+
+    } else if(t===END_PORTAL){
+      const pulse=Math.sin(Date.now()/400)*0.2+0.8;
+      const pulse2=Math.sin(Date.now()/300)*0.3+0.5;
+      X.fillStyle='rgba(20,10,40,'+pulse+')'; X.fillRect(px,py,T,T);
+      X.fillStyle='rgba(180,140,60,'+pulse+')'; X.fillRect(px+1,py+1,T-2,T-2);
+      X.fillStyle='rgba(240,200,100,'+pulse2+')'; X.fillRect(px+3,py+3,T-6,T-6);
+      X.fillStyle='rgba(255,240,200,'+(pulse*0.6)+')'; X.fillRect(px+5,py+5,T-10,T-10);
+      X.fillStyle='rgba(255,255,255,'+(pulse*0.4)+')'; X.fillRect(px+8,py+8,T-16,T-16);
+      X.strokeStyle='rgba(240,200,100,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+1,py+1,T-2,T-2);
+      X.fillStyle='#fff'; X.font='14px serif';
+      X.textAlign='center'; X.textBaseline='middle';
+      X.fillText('\u2605', px+T/2, py+T/2);
+
+    } else if(t===GLYPH){
+      const bob=Math.sin(Date.now()/400)*3;
+      const pulse=Math.sin(Date.now()/300)*0.3+0.7;
+      X.fillStyle='rgba(200,168,78,'+(pulse*0.3)+')';
+      X.beginPath(); X.arc(px+T/2,py+T/2+bob,T,0,Math.PI*2); X.fill();
+      X.fillStyle=COLORS.glyphGlow;
+      X.fillRect(px+12,py+4+bob,8,20); X.fillRect(px+8,py+10+bob,16,8);
+      X.fillStyle=COLORS.glyph;
+      X.fillRect(px+13,py+5+bob,6,16); X.fillRect(px+10,py+12+bob,12,4);
+
+    } else if(t===BLOCK){
+      X.fillStyle=COLORS.block; X.fillRect(px+1,py+1,T-2,T-2);
+      X.fillStyle='#9a8d7d'; X.fillRect(px+2,py+2,T-4,3);
+      X.fillStyle='#5a4d3d'; X.fillRect(px+2,py+T-5,T-4,3);
+      if(P.canPush){ X.fillStyle='rgba(255,255,255,0.15)'; X.fillRect(px+4,py+4,T-8,T-8); }
+
+    } else if(t===CRACKED){
+      X.fillStyle=COLORS.cracked; X.fillRect(px,py,T,T);
+      X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
+      X.strokeStyle='#2a1010'; X.lineWidth=2;
+      X.beginPath();
+      X.moveTo(px+4,py+4); X.lineTo(px+T/2,py+T/2);
+      X.lineTo(px+T-4,py+6);
+      X.moveTo(px+T/2,py+T/2); X.lineTo(px+8,py+T-4);
+      X.stroke();
+      if(P.canBreak){ X.fillStyle='rgba(255,100,50,0.2)'; X.fillRect(px,py,T,T); }
+
+    } else if(t===MAGICAL_WALL){
+      const pulse=Math.sin(Date.now()/300+x*0.7+y*0.5)*0.3+0.5;
+      const phaseAlpha = P.dashPhase ? 0.2 : 0.6;
+      X.fillStyle='rgba(60,20,80,'+phaseAlpha+')'; X.fillRect(px,py,T,T);
+      X.strokeStyle='rgba(180,80,255,'+(pulse*phaseAlpha)+')'; X.lineWidth=2;
+      X.strokeRect(px+3,py+3,T-6,T-6);
+      X.fillStyle='rgba(220,120,255,'+(pulse*phaseAlpha*0.7)+')';
+      X.fillRect(px+10,py+6,12,20); X.fillRect(px+6,py+12,20,8);
+      for(let i=0;i<3;i++){
+        const sparkY=(Date.now()/200+i*11)%T;
+        X.fillStyle='rgba(255,200,255,'+(pulse*0.5)+')';
+        X.fillRect(px+8+i*7, sparkY, 2, 2);
+      }
+    }
+  }
+
+  /* ── Push block entity ── */
+  if(PB.active){
+    const bpx=ox+PB.x, bpy=oy+PB.y;
+    X.fillStyle=PB.inSlot ? '#7a6a58' : COLORS.pushBlock;
+    X.fillRect(bpx,bpy,PB.w,PB.h);
+    X.fillStyle=PB.inSlot ? '#8a7a68' : COLORS.pushBlockTop;
+    X.fillRect(bpx+1,bpy+1,PB.w-2,3);
+    X.fillStyle='#6a5a4a';
+    X.fillRect(bpx+1,bpy+PB.h-4,PB.w-2,3);
+    /* Hint glow only when pushable (not in slot) */
+    if(P.canPush && !PB.inSlot){
+      const hintPulse=Math.sin(Date.now()/400)*0.2+0.3;
+      X.fillStyle='rgba(212,168,75,'+hintPulse+')';
+      X.fillRect(bpx+3,bpy+3,PB.w-6,PB.h-6);
+    }
+  }
+
+  /* ── Particles (behind player) ── */
+  for(const p of particles){
+    const a=p.life/p.maxLife;
+    X.fillStyle=p.color+(a>0.7?'':'');
+    if(a<0.7) X.globalAlpha=a;
+    X.fillRect(ox+p.x-p.size/2, oy+p.y-p.size/2, p.size, p.size);
+    X.globalAlpha=1;
+  }
+
+ /* ── Player (squash & stretch) ── */
+  let pw=P.w, ph=P.h, poffX=0, poffY=0;
+  const fallingFast = P.vy > 3;
+  if(!P.onGround && P.vy<0){ pw=P.w-3; ph=P.h+4; poffY=-4; }
+  else if(P.onGround && Math.abs(P.vx)>1){ pw=P.w+3; ph=P.h-2; poffY=2; }
+  else if(fallingFast){ pw=P.w-2; ph=P.h+6; poffY=-2; }
+
+  const px=ox+P.x+(P.w-pw)/2, py=oy+P.y+poffY;
+
+  X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
+  X.fillStyle=COLORS.golem;
+  X.fillRect(px+2,py+4,pw-4,ph-4);
+  X.fillRect(px+4,py,pw-8,10);
+  X.fillStyle=COLORS.golemEye;
+  X.fillRect(P.facing>0?px+14:px+6, py+3, 4, 3);
+  X.fillStyle=COLORS.golemDark;
+  X.fillRect(px+3,py+ph-4,7,4); X.fillRect(px+pw-10,py+ph-4,7,4);
+  X.fillStyle=COLORS.golem;
+  X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
+
+  /* Glyph lines on body */
+  X.fillStyle='rgba(212,168,75,'+(0.3+Math.sin(Date.now()/500)*0.15)+')';
+  for(let i=0;i<glyphsCollected;i++){
+    X.fillRect(px+8, py+12+i*4, 8, 1);
+  }
+
+  /* Falling motion lines */
+  if(fallingFast){
+    X.fillStyle='rgba(200,168,78,0.4)';
+    const drop = (Date.now()/100)%12;
+    for(let i=0;i<3;i++){
+      const ly = py + ph + 4 + drop + i*8;
+      X.fillRect(px+4+i*7, ly, 2, 4);
+    }
+  }
+
+  /* ── HUD ── */
+  X.fillStyle=COLORS.text; X.font='14px monospace'; X.textAlign='left';
+  X.fillText('Glyphs: '+glyphsCollected+'/4', 10, 20);
+
+  const abilities = [
+    ['[1] Double Jump', 1], ['[2] Dash (Shift)', 2],
+    ['[3] Push Blocks', 3], ['[4] Break Cracked', 4]
+  ];
+  X.font='11px monospace';
+  let ay=36;
+  for(const [name,req] of abilities){
+    X.fillStyle=glyphsCollected>=req?'#8f8':'#444';
+    X.fillText(name, 10, ay); ay+=14;
+  }
+
+  /* Chamber name + portal status */
+  const names=['Awakening','The Library','The Hall of Echoes','The Weight of Wisdom','The Ibis Chamber'];
+  X.fillStyle='#665a4a'; X.font='12px monospace'; X.textAlign='center';
+  if(ch<4){
+    const locked = !collectedGlyphs[ch];
+    const portalStatus = locked ? ' \u{1F512} Portal Sealed' : ' Portal Open \u2714';
+    X.fillText(names[ch] + portalStatus, W/2, H-10);
+  } else {
+    X.fillText(names[ch] + ' \u2605 Path of Wisdom', W/2, H-10);
+  }
+
+  /* Message */
+  if(messageTimer>0 && messageText){
+    const alpha=Math.min(1, messageTimer/30);
+    X.fillStyle='rgba(212,168,75,'+alpha+')';
+    X.font='bold 18px serif'; X.textAlign='center';
+    X.fillText(messageText, W/2, H/2-60);
+  }
+
+  /* Screen fade overlay */
+  if(screenAlpha>0){
+    X.fillStyle='rgba(0,0,0,'+screenAlpha+')';
+    X.fillRect(0,0,W,H);
+  }
+
+  /* ── Ending screen ── */
+  if(gameState==='ending'){
+    X.fillStyle='rgba(0,0,0,0.92)'; X.fillRect(0,0,W,H);
+    X.fillStyle=COLORS.text; X.font='bold 28px serif'; X.textAlign='center';
+    X.fillText('Awakening of the Golem', W/2, H/2-50);
+    X.strokeStyle=COLORS.text; X.lineWidth=1;
+    X.beginPath(); X.moveTo(W/2-100,H/2-35); X.lineTo(W/2+100,H/2-35); X.stroke();
+    X.font='italic 20px serif';
+    X.fillText("The Ibis speaks:", W/2, H/2-5);
+    X.font='italic 22px serif';
+    X.fillText("'You were clay. Now you are Wisdom.'", W/2, H/2+25);
+    X.fillStyle='#555'; X.font='14px monospace';
+    X.fillText('Refresh to play again', W/2, H/2+70);
+  }
+
+  if(ch===0 && glyphsCollected===0 && messageTimer<=0){
+    X.fillStyle='#665a4a'; X.font='14px serif'; X.textAlign='center';
+    X.fillText('I awaken...', W/2, 60);
+  }
+}
+
+/* ── Init ── */
+collectedGlyphs = new Array(chambers.length).fill(false);
+P.x=chambers[0].px; P.y=11*T;
+P.respawnX=chambers[0].px; P.respawnY=11*T;
+P.coyoteTime=0; P.onGround=false;
+showMessage('I awaken...', 150);
+
+/* ── Game loop ── */
+function loop(){ update(); render(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
