@@ -4,7 +4,7 @@
 
 ### Core Game Implementation
 - [x] Physics engine: gravity, acceleration, collision (X/Y separated), platform one-way logic
-- [x] Jump system: coyote time (8 frames), input buffering (8 frames), variable height
+- [x] Jump system: coyote time (12 frames), input buffering (12 frames), variable jump height (cut-on-release)
 - [x] Player entity: squash-and-stretch, facing, velocity caps
 - [x] Dash system: hold-to-charge (up to 3s/180 frames), linear distance scaling (60-267px), release-to-fire, HUD charge bar, ring indicator, cooldown
 - [x] Push block: free-moving physics entity with slot detection
@@ -25,6 +25,16 @@
 - [x] Chamber template spec (`chamber-template.md`)
 - [x] Project bootstrap: governance docs, file structure reference, constraints
 - [x] AGENTS.md — project-scoped governance (safety, quality, RIPER, constraints)
+
+### Physics Tuning (May 2026)
+- [x] Human reaction time alignment: horizontal speed halved (2.5 px/frame), gravity quartered (0.07)
+- [x] Jump tuning: first jump -5 vy (same 179px peak, 2x float time), double jump -4.33 vy (134px, 75% of first)
+- [x] Variable jump height: cut-on-release at -2 vy for short hops and mid-air control
+- [x] Forgiveness mechanics: coyote time 12 frames (200ms), jump buffer 12 frames (200ms)
+- [x] Dash charge gravity updated to 0.007 (1/10th of new 0.07 gravity)
+- [x] Terminal velocity matched to horizontal speed (2.5 px/frame)
+- [x] Research report: `docs/Physics-Research-Report.md`
+- [x] Review: approved with zero critical/high findings
 
 ### Dash Rewrite (May 2026)
 - [x] Hold-to-charge dash: Shift held accumulates charge (1-180 frames, max 3s)
@@ -72,7 +82,7 @@
 - [ ] Remove dead `pushBlock()` function (line 350) and unused `BLOCK` tile references
 
 #### Medium Priority
-- [ ] Equalize jump velocities (first: -10, second: -13 -> make equal)
+- [ ] Equalize jump velocities (first: -5, second: -4.33 -> consider adjusting double jump feel)
 - [ ] Add pause toggle (Escape key)
 - [ ] Fix redundant chamber lookup in wall render loop (use `c` instead of `c2`)
 
@@ -84,6 +94,7 @@
 |-------|--------|----------|
 | Core game | Complete | `golem.html` playable, state audit verified |
 | Dash rewrite | Complete | 20/20 tests, zero JS errors, hold-to-charge + ring indicator + HUD bar |
+| Physics tuning | Complete | All 5 milestones verified, review approved, docs updated |
 | Governance docs | Complete | `docs/`, `README.md`, `ROADMAP.md` created |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
 | Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |
