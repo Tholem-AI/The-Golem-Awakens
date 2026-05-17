@@ -109,6 +109,17 @@
 - [x] Validation: JS syntax valid, all 29 functions present, all entities verified
 - [ ] Browser testing: verify full playthrough end-to-end (requires browser)
 
+#### Code Optimization Implementation (May 2026)
+- [x] Slice 1: Logic duplication elimination — killAndRespawn(), endDash(), land(), snapToTileX(), jump coords, dash color constants, glyph cache
+- [x] Slice 2: Performance — Date.now() cached (15→1), ABILITIES/CHAMBER_NAMES hoisted
+- [x] Slice 3: Input normalization — 5 input helper functions replacing all raw key checks
+- [x] Slice 4: Structural prep — 15 physics constants extracted, starfield precomputed, prevKeys simplified
+- [x] Slice 5: File size — BLOCK dead code removed (constant, solid(), render, COLORS)
+- [x] Slice 6: Modularity — Particle system IIFE (Particles.spawn/shatter/update), tileCollidesRect consolidation
+- [x] JS syntax: OK (Node new Function())
+- [x] Review: zero critical/high findings, READY FOR BROWSER TESTING
+- [ ] Browser testing: verify full playthrough end-to-end (requires browser)
+
 #### High Priority
 - [ ] Add responsive canvas scaling (CSS or JS viewport fit)
 - [ ] Remove dead `pushBlock()` function (line 350) and unused `BLOCK` tile references
@@ -131,5 +142,6 @@
 | Pushblock standing | Complete | Review approved, zero critical/high findings, browser verified |
 | Pushblock mechanics | Complete | Smooth push, animation, gap gravity — review approved, awaiting browser verification |
 | Code refactor | Complete | 11-section reorganization, dead code removed, redundancy fixed — review passed, awaiting browser test |
+| Code optimization | Complete | 6 slices implemented, JS syntax OK, review zero critical — awaiting browser test |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
 | Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |

@@ -24,6 +24,8 @@ GOLEM_GAME/
     review-push-block-overhaul.md  # Review report for push overhaul
     beyond-scope-simplifications.md  # Simplification opportunities beyond refactor scope
     refactor-execution-plan.md       # Code refactor execution plan and innovate checkpoint
+    code-optimization-analysis.md    # Research findings: 6-slice code optimization analysis
+    code-optimization-proposals.md   # Optimization proposals report (32 proposals, P0-P3)
 ```
 
 ## Key files
