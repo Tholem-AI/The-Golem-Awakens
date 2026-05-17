@@ -42,7 +42,17 @@
 - [x] Fix: Y-overlap guard in `resolvePushBlockCollision()` — skip X separation when player is on top of pushblock
 - [x] Guard: `isOnTop = P.y < PB.y && P.y+P.h >= PB.y-8 && P.y+P.h <= PB.y+P.h/2`
 - [x] Preserved: horizontal push (P.y < PB.y is false at same ground level), slot detection, Chamber 3 mechanics
-- [ ] Review: approved with zero critical/high findings — awaiting user browser verification
+- [x] Review: approved with zero critical/high findings
+
+### Pushblock Mechanics Overhaul (May 2026)
+- [x] Smooth velocity-based push: replaced instant 32px tile-step with PB.vx = dir * PUSH_SPEED (1.25 px/frame, half walk speed)
+- [x] Push animation: P.pushing flag sets forward-leaning squash (w-3, h-1, 3px lean offset) + pulsing golden arm/shoulder lines
+- [x] Gap gravity: smooth push allows existing gravity (PB.vy += 0.3) to act naturally when block moves over pit
+- [x] Airborne guard: P.onGround required for push; airborne golem separates from block without pushing
+- [x] Death respawn: resetPushBlock() called on pit/OOB death (preserved from existing code)
+- [x] Wall blocking: tileCollides in updatePushBlock() stops block against solid; golem free to walk away
+- [x] Test chamber enhanced: 3-tile pit at cols 4-6, wall at col 20 rows 9-12 for comprehensive testing
+- [x] Review: approved READY FOR BROWSER TESTING, zero critical/high findings
 
 ### Dash Rewrite (May 2026)
 - [x] Hold-to-charge dash: Shift held accumulates charge (1-180 frames, max 3s)
@@ -104,6 +114,7 @@
 | Dash rewrite | Complete | 20/20 tests, zero JS errors, hold-to-charge + ring indicator + HUD bar |
 | Physics tuning | Complete | All 5 milestones verified, review approved, docs updated |
 | Governance docs | Complete | `docs/`, `README.md`, `ROADMAP.md` created |
-| Pushblock standing | Complete | Review approved, zero critical/high findings, awaiting browser verification |
+| Pushblock standing | Complete | Review approved, zero critical/high findings, browser verified |
+| Pushblock mechanics | Complete | Smooth push, animation, gap gravity — review approved, awaiting browser verification |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
 | Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |

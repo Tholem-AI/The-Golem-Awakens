@@ -161,16 +161,16 @@ Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
 |06 #.......................# |
 |07 #.......................# |
 |08 #.......................# |
-|09 #.......................# |
-|10 #.......................# |
-|11 #.......................# |
-|12 #.......................# |
-|13 #.......................# |
+|09 #......................# |
+|10 #......................# |
+|11 #......................# |
+|12 #...........S..........# |
+|13 ############~~~######### |
 |14 ######################### |
 +-----------------------------+
 ```
 
-Spawn: (12,10) | No glyph | Empty box with border walls only
+Spawn: (12,10) | No glyph | PUSH_SPAWN at (12,12) | pit at cols 4-6 row 13 | wall at col 20 rows 9-12
 **Entry:** Press `T` (KeyT) from any chamber — saves source chamber in `testChamberSrc`,
 sets `glyphsCollected = 4` and unlocks all abilities (Double Jump, Dash, Push, Break).
 **Exit:** Press `T` again — returns to source chamber via `testChamberSrc`.

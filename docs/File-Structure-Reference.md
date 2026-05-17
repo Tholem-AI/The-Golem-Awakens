@@ -18,6 +18,10 @@ GOLEM_GAME/
   docs/
     File-Structure-Reference.md  # This file
     Project-Constraints.md       # Inferred stack and constraints
+    Physics-Research-Report.md   # Human reaction time alignment research
+    Pushblock-Standing-Bug-Execution-Plan.md  # Standing bug fix plan
+    push-block-mechanics-plan.md  # Smooth push mechanics overhaul plan
+    review-push-block-overhaul.md  # Review report for push overhaul
 ```
 
 ## Key files

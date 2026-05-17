@@ -28,6 +28,7 @@ const DASH_DURATION = 10;          // frames — how long dash executes
 const DASH_COOLDOWN = 20;          // frames after dash before next charge
 const DASH_CHARGE_RING_MIN = 8;    // px — minimum indicator radius
 const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
+const PUSH_SPEED = 1.25;           // px/frame — half of walk speed 2.5
 
 /* ── Level data ── */
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
@@ -127,14 +128,20 @@ const chambers = [];
   chambers.push({w,h,tiles:g,px:2*T,py:11*T,glyphs:[]});
 })();
 
-// Ch.T: Test chamber — push block spawn test, entered by pressing KeyT
+// Ch.T: Test chamber — push block mechanics test, entered by pressing KeyT
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  g[13][12]=PUSH_SPAWN;
+  /* Floor at row 13 with a 3-tile pit at columns 4-6 */
+  for(let x=1;x<w-1;x++) g[13][x]=WALL;
+  g[13][4]=PIT; g[13][5]=PIT; g[13][6]=PIT;  // gap for requirement 4 testing
+  /* Wall on right side (row 9-12, column 20) for requirement 7 testing */
+  for(let y=9;y<=12;y++) g[y][20]=WALL;
+  /* Push block spawn at row 12 (one tile above floor) */
+  g[12][12]=PUSH_SPAWN;
   chambers.push({w,h,tiles:g,px:12*T,py:10*T,glyphs:[],
-    pushSpawn:{x:12,y:13}});
+    pushSpawn:{x:12,y:12}});
 })();
 
 /* ── Player state ── */
@@ -177,7 +184,7 @@ function resetPushBlock(){
 }
 
 /* Push block: resolve AFTER normal X movement + tile collision.
-   Treat as a post-move overlap response — push or separate cleanly. */
+   Detect push overlap and apply velocity-based movement (not instant teleport). */
 function resolvePushBlockCollision(){
   if(!P.canPush || !PB.active || PB.inSlot) return;
   if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
@@ -194,20 +201,29 @@ function resolvePushBlockCollision(){
                  && P.y + P.h <= PB.y + P.h / 2;
 
   if(P.onGround && movingToward){
-    const tileStep = dir * T;
-    if(!tileCollides(P.chamber, PB.x + tileStep, PB.y, PB.w, PB.h)){
-      PB.x += tileStep;
-      if(dir > 0) P.x = PB.x - P.w;
-      else        P.x = PB.x + PB.w;
-      P.vx = 0;
-      spawnParticles(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 8);
-    } else {
-      if(dir > 0) P.x = PB.x - P.w;
-      else        P.x = PB.x + PB.w;
-      P.vx = 0;
-    }
+    // ── Active push: velocity-based ──
+    P.pushing = true;
+
+    // Apply push velocity to the block (half walk speed)
+    PB.vx = dir * PUSH_SPEED;
+
+    // Clamp golem to same push speed (don't zero, just limit)
+    if(Math.abs(P.vx) > PUSH_SPEED) P.vx = dir * PUSH_SPEED;
+
+    // Keep golem glued to block side (smooth, no snap)
+    if(dir > 0) P.x = Math.min(P.x, PB.x - P.w + 1);
+    else        P.x = Math.max(P.x, PB.x + PB.w - 1);
+
+    spawnParticles(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
+
+  } else if(movingToward && !P.onGround){
+    // Requirement 5: no push while airborne — separate
+    if(dir > 0) P.x = PB.x - P.w;
+    else        P.x = PB.x + PB.w;
+
   } else {
-    if(isOnTop) return; // let Y landing check (lines 689-698) handle this
+    // Not pushing — static separation (walking past, standing against)
+    if(isOnTop) return; // let Y landing check (lines 689-704) handle this
     if(centerP < centerB) P.x = PB.x - P.w;
     else                  P.x = PB.x + PB.w;
   }
@@ -258,9 +274,11 @@ function updatePushBlock(){
     PB.vy = 0;
   }
 
-  /* Friction */
-  PB.vx *= 0.85;
-  if(Math.abs(PB.vx)<0.1) PB.vx=0;
+ /* Friction (skip when player is actively pushing) */
+  if(!P.pushing){
+    PB.vx *= 0.85;
+    if(Math.abs(PB.vx)<0.1) PB.vx=0;
+  }
 
   /* Check if block fell into slot — settle visibly in the hole */
   const cx=Math.floor((PB.x+PB.w/2)/T);
@@ -665,8 +683,11 @@ function update(){
     }
   }
 
-  /* 2. Resolve against push-block entity */
+/* 2. Resolve against push-block entity */
   resolvePushBlockCollision();
+
+  /* Update push block physics while P.pushing flag is still valid */
+  updatePushBlock();
 
  /* ── Move Y + collide (platforms = one-way) ── */
   const prevY = P.y;
@@ -746,12 +767,9 @@ function update(){
     P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0;
     P.jumps=0; P.dashing=false; P.dashTimer=0; P.dashCharge=0;
     P.onGround=false; P.coyoteTime=12;
-    resetPushBlock();
+resetPushBlock();
     showMessage("The void claims clay...", 90);
   }
-
-  /* ── Update push block ── */
-  updatePushBlock();
 
   checkDoors();
   checkGlyphs();
@@ -968,14 +986,21 @@ function render(){
     X.restore();
   }
 
- /* ── Player (squash & stretch) ── */
+/* ── Player (squash & stretch) ── */
   let pw=P.w, ph=P.h, poffX=0, poffY=0;
   const fallingFast = P.vy > 3;
-  if(!P.onGround && P.vy<0){ pw=P.w-3; ph=P.h+4; poffY=-4; }
+  if(P.pushing){
+    // Push animation: forward-leaning squash (narrower, slightly compressed)
+    pw = P.w - 3;
+    ph = P.h - 1;
+    poffX = P.facing * 3;  // lean toward push direction
+    poffY = 1;
+  }
+  else if(!P.onGround && P.vy<0){ pw=P.w-3; ph=P.h+4; poffY=-4; }
   else if(P.onGround && Math.abs(P.vx)>1){ pw=P.w+3; ph=P.h-2; poffY=2; }
   else if(fallingFast){ pw=P.w-2; ph=P.h+6; poffY=-2; }
 
-  const px=ox+P.x+(P.w-pw)/2, py=oy+P.y+poffY;
+  const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
   X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
   X.fillStyle=COLORS.golem;
@@ -986,7 +1011,17 @@ function render(){
   X.fillStyle=COLORS.golemDark;
   X.fillRect(px+3,py+ph-4,7,4); X.fillRect(px+pw-10,py+ph-4,7,4);
   X.fillStyle=COLORS.golem;
-  X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
+ X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
+
+  /* Push effort: arms press into block */
+  if(P.pushing){
+    const effortPulse = Math.sin(Date.now()/150)*0.15+0.3;
+    X.fillStyle='rgba(212,168,75,'+effortPulse+')';
+    // Arm/shoulder lines toward push direction
+    const armX = P.facing > 0 ? px+pw-2 : px-3;
+    X.fillRect(armX, py+8, 5, 3);
+    X.fillRect(armX+(P.facing>0?2:-2), py+12, 5, 3);
+  }
 
   /* Glyph lines on body */
   X.fillStyle='rgba(212,168,75,'+(0.3+Math.sin(Date.now()/500)*0.15)+')';

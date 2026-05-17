@@ -23,6 +23,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px, release-to-fire | `golem.html` lines 22-27 (constants) |
 | Dash charge state | Input blocked (X frozen, facing aims), 1/10th gravity + velocity carryover | `golem.html` lines 545-566 |
 | Dash visual feedback | Ring indicator (8-40px radius, pulsates at max), HUD charge bar with MAX | `golem.html` render block |
+| Push block mechanics | Velocity-based push at PUSH_SPEED (1.25 px/frame, half walk speed). P.pushing flag gates animation. Gravity acts naturally over gaps. Airborne guard prevents push. Friction 0.85 multiplier. | `golem.html` lines 31, 180-224, 984-990, 1009-1017 |
 | Deployment | Single HTML file, served by any HTTP server or opened locally | No dependencies |
 
 ## Design Constraints
