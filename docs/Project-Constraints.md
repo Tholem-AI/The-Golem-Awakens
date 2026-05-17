@@ -7,7 +7,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Category | Technology | Source |
 |----------|-----------|--------|
 | Language | Vanilla JavaScript (ES6+) | `golem.html` |
-| Rendering | HTML5 Canvas 2D | `golem.html` line 16-18 |
+| Rendering | HTML5 Canvas 2D | `golem.html` line 21-23 |
 | Framework | None | No external dependencies |
 | Build | None — single-file deployment | `golem.html` is self-contained |
 | Package manager | None | No `package.json` |
@@ -16,26 +16,25 @@ Inferred from `golem.html` source code and design artifacts.
 
 | Constraint | Value | Source |
 |-----------|-------|--------|
-| Canvas resolution | 800 x 480 pixels | `golem.html` line 17 |
-| Tile size | 32 x 32 pixels | `golem.html` line 17 (T=32) |
+| Canvas resolution | 800 x 480 pixels | `golem.html` line 22 |
+| Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-| Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px, release-to-fire | `golem.html` lines 22-27 (constants) |
-| Dash charge state | Input blocked (X frozen, facing aims), 1/10th gravity + velocity carryover | `golem.html` lines 545-566 |
-| Dash visual feedback | Ring indicator (8-40px radius, pulsates at max), HUD charge bar with MAX | `golem.html` render block |
-| Push block mechanics | Velocity-based push at PUSH_SPEED (1.25 px/frame, half walk speed). P.pushing flag gates animation. Gravity acts naturally over gaps. Airborne guard prevents push. Friction 0.85 multiplier. | `golem.html` lines 31, 180-224, 984-990, 1009-1017 |
-| Deployment | Single HTML file, served by any HTTP server or opened locally | No dependencies |
+|| File size | ~1230 lines, ~43 KB | Single-file constraint |
+| Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
+| Push block | Velocity-based push at PUSH_SPEED (1.25 px/frame) | Sections 1, 6 |
+| Deployment | Single HTML file, no external dependencies | — |
 
 ## Design Constraints
 
 | Constraint | Detail | Source |
 |-----------|--------|--------|
 | Single-file architecture | All game code in one HTML file | `golem.html` |
-| 12 tile types | AIR through PUSH_SPAWN (values 0-11) | `golem.html` line 21 |
-| 4 glyphs, sequential | Each grants one ability; must collect in order | `golem.html` lines 468-488 |
+| 12 tile types | AIR through PUSH_SPAWN (values 0-11) | `golem.html` line 26 |
+| 4 glyphs, sequential | Each grants one ability; must collect in order | Section 8 game flow |
 | 5 canonical chambers + 1 test | Progressive difficulty chain | `chamber-data.md` |
 | Grant-then-use ability chain | Chamber N grants ability for Chamber N+1 | `chamber-proposal.md` |
-| Chamber proposals scope | Chamber-proposal.md guidelines apply to current chambers only — new chambers may use different layouts | `chamber-proposal.md` Guiding Principles |
+| Chamber proposals scope | chamber-proposal.md guidelines apply to current chambers only | `chamber-proposal.md` Guiding Principles |
 
 ## Assumptions (labeled)
 

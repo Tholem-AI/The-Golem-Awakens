@@ -245,6 +245,7 @@ let portalLockMsg = 0;             // cooldown for locked-portal message
 let particles = [];
 let testChamberSrc = -1;           // remembers which chamber we came from for test exit
 let _testMode = false;             // set by test harness for instant transitions
+let _c;                            // cached chambers[P.chamber] for getTile optimization
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -282,7 +283,22 @@ function getTile(ch,x,y){
 }
 function setTile(ch,x,y,v){
   const c=chambers[ch];
-  if(x>=0&&x<c.w&&y>=0&&y<c.h) c.tiles[y][x]=v;
+  if(x>=0&&x<c.w&&y>=0&&y<c.h){
+    const old=c.tiles[y][x];
+    c.tiles[y][x]=v;
+    if(old!==AIR && v===AIR){
+      const idx=c.solidTiles.findIndex(t=>t.x===x&&t.y===y);
+      if(idx>=0) c.solidTiles.splice(idx,1);
+    } else if(old===AIR && v!==AIR){
+      c.solidTiles.push({x,y});
+    }
+  }
+}
+
+/* Fast tile access — uses pre-cached _c (set at update/render entry) */
+function _getTile(x,y){
+  if(x<0||x>=_c.w||y<0||y>=_c.h) return WALL;
+  return _c.tiles[y][x];
 }
 
 /* Solid for walls/blocks/doors/end-portal (not one-way platforms) */
@@ -329,7 +345,7 @@ function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
 }
 
 function inPit(px,py){
-  return getTile(P.chamber, Math.floor(px/T), Math.floor(py/T))===PIT;
+  return _getTile(Math.floor(px/T), Math.floor(py/T))===PIT;
 }
 
 /* AABB overlap test */
@@ -558,7 +574,7 @@ function checkDoors(){
   const px=P.x+P.w/2, py=P.y+P.h/2;
   const gx=Math.floor(px/T), gy=Math.floor(py/T);
   for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
-    const t=getTile(ch,gx+dx,gy+dy);
+    const t=_getTile(gx+dx,gy+dy);
     if(t===DOOR_R||t===DOOR_D){
       /* Return from test chamber */
       if(ch === chambers.length - 1 && testChamberSrc >= 0){
@@ -589,7 +605,7 @@ function checkGlyphs(){
   const gx=Math.floor(px/T), gy=Math.floor(py/T);
   for(let i=0;i<c.glyphs.length;i++){
     const gl=c.glyphs[i];
-    if(getTile(ch,gl.x,gl.y)!==GLYPH) continue;
+    if(_getTile(gl.x,gl.y)!==GLYPH) continue;
     if(Math.abs(gx-gl.x)<=1 && Math.abs(gy-gl.y)<=1){
       if(glyphsCollected!==ch) continue;
       setTile(ch,gl.x,gl.y,AIR);
@@ -618,6 +634,7 @@ function transitionEnding(){
    ══════════════════════════════════════════════════ */
 function update(){
   if(gameState==='ending') return;
+  _c=chambers[P.chamber]; // cache chamber ref for fast getTile
 
   /* Test chamber entry/exit — press T */
   if(fresh('KeyT')){
@@ -712,7 +729,7 @@ function update(){
     if(P.dashTimer<=0){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
-      if(getTile(P.chamber,cx,cy)===MAGICAL_WALL){
+      if(_getTile(cx,cy)===MAGICAL_WALL){
         killAndRespawn(true, "The barrier consumes you...", 90);
       }
     }
@@ -741,7 +758,7 @@ function update(){
     if(colFn(gx1,gy1,gx2,gy2,P.chamber,null)){
       if(P.dashPhase){
         const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
-        if(getTile(P.chamber,fcx,fcy)===CRACKED && P.canBreak){
+        if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
           setTile(P.chamber,fcx,fcy,AIR);
           Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
           endDash();
@@ -863,6 +880,7 @@ const COLORS = {
 function render(){
   const now=Date.now(); // B1: cache time once per frame
   const ch=P.chamber, c=chambers[ch];
+  _c=c; // cache for fast getTile
   const glyphCollected=collectedGlyphs[ch]; // A8: cache lookup
 
   X.fillStyle=COLORS.bg; X.fillRect(0,0,W,H);
@@ -875,9 +893,9 @@ function render(){
   const ox=Math.floor((W-c.w*T)/2);
   const oy=Math.floor((H-c.h*T)/2);
 
-  /* ── Tiles ── */
-  for(let y=0;y<c.h;y++) for(let x=0;x<c.w;x++){
-    const t=c.tiles[y][x], px=ox+x*T, py=oy+y*T;
+  /* ── Tiles (sparse: only non-AIR) ── */
+  for(const s of c.solidTiles){
+    const x=s.x, y=s.y, t=c.tiles[y][x], px=ox+x*T, py=oy+y*T;
 
     if(t===WALL){
       X.fillStyle=COLORS.wall; X.fillRect(px,py,T,T);
@@ -1188,6 +1206,14 @@ chambers.forEach((c, i) => {
   c.stars = [];
   for(let j=0; j<40; j++)
     c.stars.push([(j*137+i*50)%W, (j*97+i*30)%H]);
+});
+
+/* B5: Build sparse render list — only non-AIR tiles need drawing */
+chambers.forEach(c => {
+  c.solidTiles = [];
+  for(let y=0; y<c.h; y++)
+    for(let x=0; x<c.w; x++)
+      if(c.tiles[y][x] !== AIR) c.solidTiles.push({x, y});
 });
 
 P.x=chambers[0].px; P.y=11*T;

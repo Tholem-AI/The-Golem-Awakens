@@ -13,7 +13,6 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 | `>` | DOOR_R     | 3     | Right-side exit door (glyph-locked)          |
 | `v` | DOOR_D     | 4     | Down-side exit door (glyph-locked)           |
 | `*` | GLYPH      | 5     | Collectible knowledge glyph                  |
-| `B` | BLOCK      | 6     | Pushable block (static tile)                 |
 | `X` | CRACKED    | 7     | Breakable wall (requires Glyph 4)            |
 | `=` | PLATFORM   | 8     | One-way platform (passable from below)       |
 | `@` | END_PORTAL | 9     | Final portal — triggers ending              |
@@ -208,7 +207,7 @@ To convert an ASCII grid back to JS automatically, use this:
 ```python
 CHAR_TO_CONST = {
     '.': 'AIR', '#': 'WALL', '~': 'PIT', '>': 'DOOR_R',
-    'v': 'DOOR_D', '*': 'GLYPH', 'B': 'BLOCK', 'X': 'CRACKED',
+    'v': 'DOOR_D', '*': 'GLYPH', 'X': 'CRACKED',
     '=': 'PLATFORM', '@': 'END_PORTAL', 'M': 'MAGICAL_WALL',
     'S': 'PUSH_SPAWN'
 }
