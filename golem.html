@@ -23,7 +23,7 @@ const W = 800, H = 480, T = 32;
 C.width = W; C.height = H;
 
 /* ── Tile types ── */
-const AIR=0, WALL=1, PIT=2, DOOR_R=3, DOOR_D=4, GLYPH=5, CRACKED=7, PLATFORM=8, END_PORTAL=9, MAGICAL_WALL=10, PUSH_SPAWN=11;
+const AIR=0, WALL=1, PIT=2, GOLEM_SPAWN=3, DOOR_D=4, GLYPH=5, CRACKED=7, PLATFORM=8, END_PORTAL=9, MAGICAL_WALL=10, PUSH_SPAWN=11;
 
 /* ── Dash constants ── */
 const DASH_CHARGE_MAX = 180;       // frames (3 seconds at 60fps)
@@ -113,7 +113,8 @@ const chambers = [];
   g[12][6]=WALL;g[12][7]=WALL; g[11][7]=WALL;g[11][8]=WALL;
   g[10][8]=WALL;g[10][9]=WALL; g[9][9]=WALL;g[9][10]=WALL;
   g[8][10]=GLYPH;
-  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:10,y:8}]});
+  g[11][3]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[{x:10,y:8}]});
 })();
 
 // Chamber 1: Need double jump, get Glyph 2 (Dash)
@@ -129,7 +130,8 @@ const chambers = [];
   g[6][17]=GLYPH;
   for(let y=4;y<13;y++) g[y][9]=WALL;
   for(let y=6;y<13;y++) g[y][14]=WALL;
-  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:17,y:6}]});
+  g[11][3]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}]});
 })();
 
 // Chamber 2: Need dash — vertical magical wall, only passable by dashing through
@@ -144,7 +146,8 @@ const chambers = [];
   for(let y=1;y<13;y++) g[y][10]=MAGICAL_WALL;
   for(let x=1;x<10;x++) g[1][x]=WALL;
   g[6][17]=GLYPH;
-  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[{x:17,y:6}]});
+  g[11][3]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}]});
 })();
 
 // Chamber 3: The Weight of Wisdom — push block down slot to open path
@@ -167,7 +170,8 @@ const chambers = [];
   for(let x=14;x<23;x++) g[10][x]=PLATFORM;
   g[9][16]=PLATFORM; g[9][17]=PLATFORM;
   g[8][17]=GLYPH;
-  chambers.push({w,h,tiles:g,px:3*T,py:10*T,glyphs:[{x:17,y:8}],
+  g[10][3]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:8}],
     pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}});
 })();
 
@@ -192,7 +196,8 @@ const chambers = [];
   for(let x=4;x<8;x++) g[12][x]=PLATFORM;
   for(let x=17;x<22;x++) g[12][x]=PLATFORM;
   for(let x=11;x<14;x++) g[10][x]=PLATFORM;
-  chambers.push({w,h,tiles:g,px:2*T,py:11*T,glyphs:[]});
+  g[11][2]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[]});
 })();
 
 // Ch.T: Test chamber — push block mechanics test, entered by pressing KeyT
@@ -207,7 +212,8 @@ const chambers = [];
   for(let y=9;y<=12;y++) g[y][20]=WALL;
   /* Push block spawn at row 12 (one tile above floor) */
   g[12][12]=PUSH_SPAWN;
-  chambers.push({w,h,tiles:g,px:12*T,py:10*T,glyphs:[],
+  g[10][12]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[],
     pushSpawn:{x:12,y:12}});
 })();
 
@@ -246,6 +252,7 @@ let particles = [];
 let testChamberSrc = -1;           // remembers which chamber we came from for test exit
 let _testMode = false;             // set by test harness for instant transitions
 let _c;                            // cached chambers[P.chamber] for getTile optimization
+let _transitionTarget = -1;        // stores target chamber during async fade cycle
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -302,7 +309,7 @@ function _getTile(x,y){
 }
 
 /* Solid for walls/blocks/doors/end-portal (not one-way platforms) */
-function solid(t){ return t===WALL||t===CRACKED||t===DOOR_R||t===DOOR_D||t===END_PORTAL||t===MAGICAL_WALL; }
+function solid(t){ return t===WALL||t===CRACKED||t===DOOR_D||t===END_PORTAL||t===MAGICAL_WALL; }
 
 /* Platform is solid ONLY when landing from above (falling through) */
 function platSolid(t, prevY, curY){
@@ -546,16 +553,8 @@ function showMessage(txt,dur){ messageText=txt; messageTimer=dur||120; }
 function _doTransition(toChamber){
   P.chamber = toChamber;
   const nc = chambers[toChamber];
-  P.x=nc.px;
-  /* Find floor row for this chamber (last WALL row at spawn x) */
-  const spawnGx=Math.floor(nc.px/T);
-  let floorRow=14;
-  for(let ry=nc.h-1;ry>=0;ry--){
-    const t=nc.tiles[ry]&&nc.tiles[ry][spawnGx];
-    if(t===WALL){floorRow=ry;break;}
-  }
-  P.y=(floorRow-2)*T;  /* Start 2 tiles above floor — golem height fits cleanly */
-  P.respawnX=nc.px; P.respawnY=P.y;
+  P.x = nc.spawnPx; P.y = nc.spawnPy;
+  P.respawnX = nc.spawnPx; P.respawnY = nc.spawnPy;
   P.vx=0; P.vy=0; P.jumps=0;
   P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
   P.onGround=false; P.coyoteTime=0;
@@ -564,9 +563,9 @@ function _doTransition(toChamber){
 }
 function transition(toChamber){
   if(_testMode){ _doTransition(toChamber); return; }
+  _transitionTarget = toChamber;
   screenFade = 1;
   screenAlpha = 0;
-  setTimeout(function(){ _doTransition(toChamber); screenFade=-1; }, 300);
 }
 
 function checkDoors(){
@@ -575,7 +574,7 @@ function checkDoors(){
   const gx=Math.floor(px/T), gy=Math.floor(py/T);
   for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
     const t=_getTile(gx+dx,gy+dy);
-    if(t===DOOR_R||t===DOOR_D){
+    if(t===DOOR_D){
       /* Return from test chamber */
       if(ch === chambers.length - 1 && testChamberSrc >= 0){
         transition(testChamberSrc);
@@ -657,9 +656,9 @@ function update(){
   }
 
   /* Screen fade */
-  if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1;screenFade=-1;} }
+  if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1; if(_transitionTarget>=0){_doTransition(_transitionTarget);_transitionTarget=-1;} screenFade=-1;} }
   if(screenFade===-1){ screenAlpha-=0.06; if(screenAlpha<=0){screenAlpha=0;screenFade=0;} }
-  if(screenFade!==0) return;
+  if(screenFade===1) return;
 
   if(messageTimer>0) messageTimer--;
   if(portalLockMsg>0) portalLockMsg--;
@@ -925,7 +924,7 @@ function render(){
       X.fillStyle='rgba(180,40,20,0.15)'; X.fillRect(px,py,2,T);
       X.fillRect(px+T-2,py,2,T);
 
-    } else if(t===DOOR_R||t===DOOR_D){
+    } else if(t===DOOR_D){
       const locked = !glyphCollected;
       if(locked){
         const pulse=Math.sin(now/500)*0.2+0.7;
@@ -1212,12 +1211,14 @@ chambers.forEach((c, i) => {
 chambers.forEach(c => {
   c.solidTiles = [];
   for(let y=0; y<c.h; y++)
-    for(let x=0; x<c.w; x++)
+    for(let x=0; x<c.w; x++){
       if(c.tiles[y][x] !== AIR) c.solidTiles.push({x, y});
+      if(c.tiles[y][x] === GOLEM_SPAWN){ c.spawnPx = x*T; c.spawnPy = y*T; }
+    }
 });
 
-P.x=chambers[0].px; P.y=11*T;
-P.respawnX=chambers[0].px; P.respawnY=11*T;
+P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy;
+P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
 P.coyoteTime=0; P.onGround=false;
 showMessage('I awaken...', 150);
 

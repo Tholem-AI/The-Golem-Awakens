@@ -6,7 +6,7 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, and
 
 ## Architecture
 
-Single HTML file (1204 lines, ~42 KB) organized into 11 sections with delimiter comments.
+Single HTML file (1240 lines, ~45 KB) organized into 11 sections with delimiter comments.
 
 ### Section Map
 
@@ -162,7 +162,7 @@ isOnTop = P.y < PB.y                    // player top above push block
 | `AIR` | 0 | Empty space |
 | `WALL` | 1 | Solid wall |
 | `PIT` | 2 | Death void |
-| `DOOR_R` | 3 | Right-side exit (unused — reserved for GOLEM_SPAWN) |
+| `GOLEM_SPAWN` | 3 | Player spawn marker (invisible, determines golem position) |
 | `DOOR_D` | 4 | Down-side exit (glyph-locked) |
 | `GLYPH` | 5 | Collectible |
 | `CRACKED` | 7 | Breakable (dash + Glyph 4) |
@@ -177,6 +177,7 @@ Note: `BLOCK` (value 6) was removed during optimization. Value gap is preserved 
 
 - `solid(t)` — WALL, CRACKED, DOOR_D, END_PORTAL, MAGICAL_WALL
 - `platSolid(t, prevY, curY)` — PLATFORM is solid ONLY when landing from above
+- `GOLEM_SPAWN` (3) is NOT solid — invisible pass-through tile
 - Push block entity (`PB`) has its own collision via `resolvePushBlockCollision()`
 
 ---

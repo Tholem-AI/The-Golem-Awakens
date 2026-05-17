@@ -10,7 +10,7 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 | `.` | AIR        | 0     | Empty space                                  |
 | `#` | WALL       | 1     | Solid wall (floor, ceiling, boundaries)      |
 | `~` | PIT        | 2     | Death void — touching respawns player       |
-| `>` | DOOR_R     | 3     | Right-side exit door (glyph-locked)          |
+| `^` | GOLEM_SPAWN | 3     | Player spawn marker (invisible, determines golem position) |
 | `v` | DOOR_D     | 4     | Down-side exit door (glyph-locked)           |
 | `*` | GLYPH      | 5     | Collectible knowledge glyph                  |
 | `X` | CRACKED    | 7     | Breakable wall (requires Glyph 4)            |
@@ -63,21 +63,27 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 3. **Locate platforms** — `=` (PLATFORM) are one-way: walkable from above, passable
    from below.
 4. **Identify hazards** — `~` (PIT) tiles kill and respawn the player.
-5. **Find objectives** — `*` (GLYPH) to collect, `v` or `>` (DOOR) to exit,
+5. **Find spawn point** — `^` (GOLEM_SPAWN) marks where the golem enters the chamber.
+   Each chamber has exactly one spawn tile.
+6. **Find objectives** — `*` (GLYPH) to collect, `v` (DOOR_D) to exit,
    `S` (PUSH_SPAWN) for push blocks, `@` (END_PORTAL) for the finale.
-6. **Note spawn point** — listed in the annotation below each grid.
+7. **Note spawn coordinates** — listed in the annotation below each grid.
 
 ## Modifying a Chamber
 
 1. Copy the blank template. Keep exactly 25 characters per row and 15 rows total.
 2. Replace `.` with any tile character from the legend.
-3. After editing, verify:
+3. **Place spawn marker** — each chamber must have exactly one `^` (GOLEM_SPAWN) tile
+   at the player spawn position.
+4. After editing, verify:
    - Spawn area has walkable `.` tiles beneath it.
-   - Exit doors (`v`, `>`) are reachable from walkable space.
+   - The `^` (GOLEM_SPAWN) tile has a solid floor tile (`#`) directly below it.
+   - Each chamber has exactly one `^` tile.
+   - Exit doors (`v`) are reachable from walkable space.
    - Pits (`~`) are surrounded by barriers so they act as hazards.
    - Push block spawns (`S`) have empty space ahead for movement.
    - The grid still has exactly 25 chars per row and 15 rows.
-4. To convert back to JavaScript, replace each character with its tile constant value
+5. To convert back to JavaScript, replace each character with its tile constant value
    and assign via `g[row][col] = VALUE` or build row arrays.
 
 ## Extracting Chamber Data from golem.html
@@ -92,7 +98,7 @@ Find the IIFE in the `SECTION 2: CHAMBER DATA` area. Each block looks like:
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   // ... tile assignments ...
-  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[...]});
+  chambers.push({w,h,tiles:g,glyphs:[...]});
 })();
 ```
 
@@ -129,6 +135,11 @@ This sets row 8, column 10 to GLYPH.
 Apply all statements in order to a 25x15 grid initialized to AIR (0).
 Later assignments overwrite earlier ones. The final state is the chamber.
 
+**Note:** Place `^` (GOLEM_SPAWN) at the player spawn position. This tile is
+invisible at runtime but determines where the golem spawns. Each chamber must
+have exactly one `^` tile, and there must be a solid floor tile (`#`) directly
+below it to support the golem on entry.
+
 **Key parsing rules:**
 
 - `g[y][x]` means `g[row][col]` — first index is row (y), second is column (x).
@@ -140,7 +151,7 @@ Later assignments overwrite earlier ones. The final state is the chamber.
 
 After extraction, verify the grid matches the game by checking:
 
-- Spawn position from the `chambers.push()` call (`px`, `py` divided by T=32 gives tile coords).
+- GOLEM_SPAWN (^) tile position matches the player spawn position.
 - Glyph positions from the `glyphs` array.
 - Special properties like `pushSpawn`, `pushSlot`.
 
@@ -206,7 +217,7 @@ To convert an ASCII grid back to JS automatically, use this:
 
 ```python
 CHAR_TO_CONST = {
-    '.': 'AIR', '#': 'WALL', '~': 'PIT', '>': 'DOOR_R',
+    '.': 'AIR', '#': 'WALL', '~': 'PIT', '^': 'GOLEM_SPAWN',
     'v': 'DOOR_D', '*': 'GLYPH', 'X': 'CRACKED',
     '=': 'PLATFORM', '@': 'END_PORTAL', 'M': 'MAGICAL_WALL',
     'S': 'PUSH_SPAWN'
@@ -231,7 +242,7 @@ def ascii_grid_to_js(grid_lines, chamber_name):
                 const = CHAR_TO_CONST[tile]
                 lines.append(f"  g[{y}][{x}]={const};")
 
-    lines.append("  chambers.push({w,h,tiles:g,px:3*T,py:11*T,glyphs:[]});")
+    lines.append("  chambers.push({w,h,tiles:g,glyphs:[]});")
     lines.append("})();")
     return "\n".join(lines)
 ```

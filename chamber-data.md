@@ -20,14 +20,14 @@ legend, format spec, and extraction/conversion instructions.
 |08 #.........*.............# |
 |09 #........##.............# |
 |10 #.......##..............# |
-|11 #......##...............# |
+|11 #^.....##...............# |
 |12 #.....##................v |
 |13 ############~~~########## |
 |14 ############~~~########## |
 +-----------------------------+
 ```
 
-Spawn: (3,11) | Glyph 1 at (10,8) — Double Jump | DOOR_D at (24,12) | Pit (12-14, 13-14)
+Spawn: ^ at (3,11) | Glyph 1 at (10,8) — Double Jump | DOOR_D at (24,12) | Pit (12-14, 13-14)
 Diagonal staircase walls ascend from (12,12) up to (9,10). Right wall is open above row 12.
 
 ## Chamber 1 — The Library
@@ -47,14 +47,14 @@ Diagonal staircase walls ascend from (12,12) up to (9,10). Right wall is open ab
 |08 #........#....#.........# |
 |09 #........#===.#.........# |
 |10 #........#....#.........# |
-|11 #...===..#....#.........# |
+|11 #^..===..#....#.........# |
 |12 #........#....#.........# |
 |13 ########~~~~~~~~~######## |
 |14 ########~~~~~~~~~######## |
 +-----------------------------+
 ```
 
-Spawn: (3,11) | Glyph 2 at (17,6) — Dash | DOOR_D at (12,1)
+Spawn: ^ at (3,11) | Glyph 2 at (17,6) — Dash | DOOR_D at (12,1)
 Platforms: row 11 cols 4-6, row 9 cols 10-12, row 7 cols 16-18
 Vertical walls at col 9 (rows 4-12) and col 14 (rows 6-12)
 Pit cols 8-16 rows 13-14
@@ -76,14 +76,14 @@ Pit cols 8-16 rows 13-14
 |08 #.........M.............# |
 |09 #.........M.............# |
 |10 #.........M.............# |
-|11 #...==....M......==.....# |
+|11 #^..==....M......==.....# |
 |12 #.........M.............# |
 |13 #######~~~~~~~~~~~####### |
 |14 #######~~~~~~~~~~~####### |
 +-----------------------------+
 ```
 
-Spawn: (3,11) | Glyph at (17,6) | DOOR_D at (12,1)
+Spawn: ^ at (3,11) | Glyph at (17,6) | DOOR_D at (12,1)
 Magical wall at col 10, rows 1-12. Top-left blocked by walls at row 1 cols 1-9.
 Platforms row 11: cols 4-5 (left), cols 17-18 (right)
 Pit cols 7-17 rows 13-14
@@ -104,7 +104,7 @@ Pit cols 7-17 rows 13-14
 |07 #.......................# |
 |08 #................*......# |
 |09 ######..........==......# |
-|10 #...##########=========.# |
+|10 #^..##########=========.# |
 |11 #.........S.............# |
 |12 #.#########.###########.# |
 |13 ###########.############# |
@@ -112,7 +112,7 @@ Pit cols 7-17 rows 13-14
 +-----------------------------+
 ```
 
-Spawn: (3,10) | Glyph 3 at (17,8) — Push + Break | DOOR_D at (12,1)
+Spawn: ^ at (3,10) | Glyph 3 at (17,8) — Push + Break | DOOR_D at (12,1)
 PUSH_SPAWN at (10,11) | Floor at row 12 cols 2-22 (slot opening at col 11)
 Wall at row 10 cols 4-13 blocks passage | Wall at row 9 cols 1-5
 Platforms row 10 cols 14-22, row 9 cols 16-17
@@ -134,14 +134,14 @@ Platforms row 10 cols 14-22, row 9 cols 16-17
 |08 #........X.XXXX.........# |
 |09 #.........XX.XX.........# |
 |10 #..........===..........# |
-|11 #...........X...........# |
+|11 #^.........X...........# |
 |12 #...====.........=====..# |
 |13 ######################### |
 |14 ######################### |
 +-----------------------------+
 ```
 
-Spawn: (2,11) | No glyph needed | END_PORTAL at (12,7)
+Spawn: ^ at (2,11) | No glyph needed | END_PORTAL at (12,7)
 Inner 3x3 CRACKED box around portal (rows 6-8, cols 11-13)
 Outer diamond ring of CRACKED tiles (rows 3-11)
 Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
@@ -162,7 +162,7 @@ Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
 |07 #.......................# |
 |08 #.......................# |
 |09 #.......................# |
-|10 #.......................# |
+|10 #...........^...........# |
 |11 #.......................# |
 |12 #...........S...........# |
 |13 ############~~~########## |
@@ -170,10 +170,10 @@ Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
 +-----------------------------+
 ```
 
-Spawn: (12,10) | No glyph | PUSH_SPAWN at (12,12) | pit at cols 4-6 row 13 | wall at col 20 rows 9-12
+Spawn: ^ at (12,10) | No glyph | PUSH_SPAWN at (12,12) | pit at cols 4-6 row 13 | wall at col 20 rows 9-12
 **Entry:** Press `T` (KeyT) from any chamber — saves source chamber in `testChamberSrc`,
 sets `glyphsCollected = 4` and unlocks all abilities (Double Jump, Dash, Push, Break).
 **Exit:** Press `T` again — returns to source chamber via `testChamberSrc`.
-Also returns via DOOR_R/DOOR_D if placed in the chamber.
+Also returns via DOOR_D if placed in the chamber.
 Does not affect original chambers or game flow.
 

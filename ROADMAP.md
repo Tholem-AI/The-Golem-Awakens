@@ -46,21 +46,25 @@
 - [x] Sparse tile rendering: solidTiles list per chamber (~67-124 tiles vs 375), setTile() maintains list
 - [x] getTile closure optimization: _c cached at update/render entry, _getTile() avoids chambers[] lookup
 
+### Golem Spawn System (May 2026)
+- [x] GOLEM_SPAWN tile constant (value 3, reuses unused DOOR_R)
+- [x] DOOR_R removed from solid(), checkDoors(), and render()
+- [x] GOLEM_SPAWN (^) tile placed in all 6 chamber grids
+- [x] px/py removed from chambers.push() — spawn read from tile grid
+- [x] _doTransition() simplified: pre-computed spawnPx/spawnPy, no floor search
+- [x] Init pre-computes spawn positions in single-pass forEach (O(1) lookup)
+- [x] chamber-data.md and chamber-template.md updated with ^ marker and GOLEM_SPAWN spec
+
+### Transition Snap-Back Fix (May 2026)
+- [x] Replaced setTimeout-based transition with fade-driven synchronous staging via `_transitionTarget`
+- [x] Input/physics frozen only during fade-in (screenFade===1), not during fade-out (screenFade===-1)
+- [x] Guard added: `_doTransition` only called when `_transitionTarget>=0` (prevents transitionEnding crash)
+- [x] Eliminated ~580ms total freeze during chamber transitions
+- [x] Validation: JS syntax OK, zero setTimeout in transition path, _transitionTarget in all 3 locations
+
 ---
 
 ## Remaining Work
-
-### Golem Spawn System (Not Started)
-
-Replace ad-hoc `px`/`py` spawn coordinates with an invisible GOLEM_SPAWN tile placed in chamber data.
-
-- [ ] Add GOLEM_SPAWN tile constant (reuse DOOR_R value 3, since DOOR_R is unused)
-- [ ] Remove DOOR_R from solid() and collision logic
-- [ ] Insert GOLEM_SPAWN tile into each existing chamber grid at current spawn positions
-- [ ] Update chamber initialization: read GOLEM_SPAWN position for both initial spawn and death respawn
-- [ ] Clean up portal transition spawn logic (snap-to-floor is unnecessary — spawn tile is the floor position)
-- [ ] Update `chamber-data.md`: add `^` character for GOLEM_SPAWN in legend, annotate spawn tile in each chamber
-- [ ] Update `chamber-template.md`: add GOLEM_SPAWN to tile legend, conversion script, and format spec
 
 ### Bug Fixes (Not Started)
 
@@ -150,8 +154,9 @@ Prepare the project for public repository sharing.
 | Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
-| Golem spawn system | Not Started | — |
-| Bug fixes (gap skip, displacement) | Not Started | — |
+|| Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
+|| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
+|| Bug fixes (gap skip, displacement) | Not Started | — |
 | Platform visual rework + drop-down | Not Started | — |
 | Message display improvement | Not Started | — |
 | Pause toggle | Not Started | — |
