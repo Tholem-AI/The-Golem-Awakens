@@ -7,7 +7,7 @@ Generated from observed repository structure.
 ```
 GOLEM_GAME/
   AGENTS.md                # Project-scoped governance (Tholem Hermes Kit)
-  golem.html              # Single-file HTML5 game (~1098 lines, ~39 KB)
+  golem.html              # Single-file HTML5 game (~1153 lines, 11 sections, ~42 KB)
   README.md               # Project overview, controls, abilities, chambers
   ROADMAP.md              # Active development checkpoints
   chamber-data.md          # Chamber layouts extracted from golem.html (5 chambers + test)
@@ -22,6 +22,8 @@ GOLEM_GAME/
     Pushblock-Standing-Bug-Execution-Plan.md  # Standing bug fix plan
     push-block-mechanics-plan.md  # Smooth push mechanics overhaul plan
     review-push-block-overhaul.md  # Review report for push overhaul
+    beyond-scope-simplifications.md  # Simplification opportunities beyond refactor scope
+    refactor-execution-plan.md       # Code refactor execution plan and innovate checkpoint
 ```
 
 ## Key files
@@ -29,7 +31,7 @@ GOLEM_GAME/
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | Project governance: safety, quality, lifecycle, constraints |
-| `golem.html` | Complete game source. Single-file HTML5 platformer. |
+| `golem.html` | Complete game source. Single-file HTML5 platformer. 11-section structure: Setup/Constants, Chamber Data, Entities, Input, Tile Helpers/Collision, Push Block System, Particle System, Game Flow, Update, Render, Init/Game Loop. |
 | `README.md` | Project overview, controls, abilities, chambers |
 | `ROADMAP.md` | Active development checkpoints |
 | `chamber-data.md` | ASCII grid exports of all 6 chambers with annotations. |

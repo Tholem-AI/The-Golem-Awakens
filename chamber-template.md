@@ -87,7 +87,7 @@ The game source builds each chamber inside an IIFE block. The process is:
 
 ### Step 1 — Locate the chamber block
 
-Find the IIFE in the `/* Level data */` section. Each block looks like:
+Find the IIFE in the `SECTION 2: CHAMBER DATA` area. Each block looks like:
 
 ```js
 (function(){
@@ -239,9 +239,34 @@ def ascii_grid_to_js(grid_lines, chamber_name):
 
 ### Where the JS goes in golem.html
 
-Insert the new chamber block in alpahnumerical order (Ch.N) with the existing chambers
-and before `/* Player state */`. Then increment any code that references the
-chamber count if applicable.
+Insert the new chamber IIFE in `SECTION 2: CHAMBER DATA`, in numerical order
+(Ch.N) with the existing chambers. The section is bounded by delimiter comments:
+
+```
+/* ══════════════════════════════════════════════════
+   2. CHAMBER DATA (Level data)
+   ══════════════════════════════════════════════════ */
+```
+
+Place your IIFE after the last existing chamber and before the closing of the
+section (before `SECTION 3: ENTITIES`). Then increment any code that references
+the chamber count if applicable.
+
+### golem.html Section Map (after refactor)
+
+| Section | Contents |
+|---------|----------|
+| 1. SETUP & CONSTANTS | Canvas, context, dimensions, tile types, dash constants |
+| 2. CHAMBER DATA | mkGrid(), chambers[], all chamber IIFEs |
+| 3. ENTITIES | P (player), PB (push block), game state globals |
+| 4. INPUT | Key listeners, fresh(), shiftHeld() |
+| 5. TILE HELPERS & COLLISION | getTile, setTile, solid, platSolid, collides*, inPit, aabb, tileCollides |
+| 6. PUSH BLOCK SYSTEM | resetPushBlock, resolvePushBlockCollision, updatePushBlock |
+| 7. PARTICLE SYSTEM | shatterBlock, spawnParticles, updateParticles |
+| 8. GAME FLOW | showMessage, _doTransition, transition, checkDoors, checkGlyphs, transitionEnding |
+| 9. UPDATE | update() — main physics/input/game logic loop |
+| 10. RENDER | COLORS, render() — all drawing |
+| 11. INIT & GAME LOOP | Init code, loop(), requestAnimationFrame |
 
 ## Existing Chambers
 

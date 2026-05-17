@@ -38,7 +38,7 @@ Each chamber grants a glyph that unlocks the next chamber's core mechanic:
 
 | File | Purpose |
 |------|---------|
-| `golem.html` | Complete game (~1087 lines, single file) |
+| `golem.html` | Complete game (~1153 lines, single file, 11-section structure) |
 | `chamber-data.md` | Chamber layouts (ASCII grids) |
 | `chamber-proposal.md` | Proposed chamber improvements |
 | `chamber-template.md` | Tile legend and conversion spec |

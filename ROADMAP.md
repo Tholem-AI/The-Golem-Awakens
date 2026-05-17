@@ -94,6 +94,20 @@
 #### Resolved
 - [x] Reduce dash charge time or switch to hold-to-charge — done: full hold-to-charge rewrite
 - [x] Add dash charge HUD indicator — done: bar + MAX pulse indicator
+- [x] Fix redundant ch2/c2 lookup in render loop — done: replaced with existing `c` variable
+- [x] Remove dead `pushBlock()` function — done: confirmed never called, removed
+
+#### Code Refactor (May 2026)
+- [x] Reorganized golem.html into 11 logical sections with clear delimiter comments
+- [x] Section structure: Setup/Constants, Chamber Data, Entities, Input, Tile Helpers/Collision, Push Block System, Particle System, Game Flow, Update, Render, Init/Game Loop
+- [x] Removed dead pushBlock() function (old tile-based push, never called)
+- [x] Fixed redundant ch2/c2 lookup in render loop (used existing `c` variable)
+- [x] Updated chamber-template.md with new section map and extraction instructions
+- [x] Beyond-scope simplifications report: `docs/beyond-scope-simplifications.md` (10 items, P0-P5)
+- [x] Execution plan: `docs/refactor-execution-plan.md`
+- [x] Review: passed, zero critical/high findings
+- [x] Validation: JS syntax valid, all 29 functions present, all entities verified
+- [ ] Browser testing: verify full playthrough end-to-end (requires browser)
 
 #### High Priority
 - [ ] Add responsive canvas scaling (CSS or JS viewport fit)
@@ -116,5 +130,6 @@
 | Governance docs | Complete | `docs/`, `README.md`, `ROADMAP.md` created |
 | Pushblock standing | Complete | Review approved, zero critical/high findings, browser verified |
 | Pushblock mechanics | Complete | Smooth push, animation, gap gravity — review approved, awaiting browser verification |
+| Code refactor | Complete | 11-section reorganization, dead code removed, redundancy fixed — review passed, awaiting browser test |
 | Chamber improvements | Pending | Awaiting approval from `chamber-proposal.md` |
 | Code quality | In Progress | Dash charge items resolved; scaling, cleanup, pause remaining |

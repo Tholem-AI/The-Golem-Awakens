@@ -12,6 +12,11 @@ canvas { display: block; image-rendering: pixelated; }
 <body>
 <canvas id="c"></canvas>
 <script>
+
+/* ══════════════════════════════════════════════════
+   1. SETUP & CONSTANTS
+   ══════════════════════════════════════════════════ */
+
 const C = document.getElementById('c');
 const X = C.getContext('2d');
 const W = 800, H = 480, T = 32;
@@ -30,7 +35,10 @@ const DASH_CHARGE_RING_MIN = 8;    // px — minimum indicator radius
 const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
 const PUSH_SPEED = 1.25;           // px/frame — half of walk speed 2.5
 
-/* ── Level data ── */
+/* ══════════════════════════════════════════════════
+   2. CHAMBER DATA (Level data)
+   ══════════════════════════════════════════════════ */
+
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
 
 const chambers = [];
@@ -144,6 +152,10 @@ const chambers = [];
     pushSpawn:{x:12,y:12}});
 })();
 
+/* ══════════════════════════════════════════════════
+   3. ENTITIES
+   ══════════════════════════════════════════════════ */
+
 /* ── Player state ── */
 const P = {
   x:0, y:0, vx:0, vy:0, w:24, h:28,
@@ -155,17 +167,6 @@ const P = {
   pushing:false
 };
 
-let glyphsCollected = 0;
-let collectedGlyphs = [];          // per-chamber boolean
-let gameState = 'playing';
-let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
-let screenAlpha = 0;
-let messageText = '';
-let messageTimer = 0;
-let portalLockMsg = 0;     // cooldown for locked-portal message
-let particles = [];
-let testChamberSrc = -1;   // remembers which chamber we came from for test exit
-
 /* ── Push block entity (free-moving physics object) ── */
 const PB = {
   x:0, y:0, w:T, h:T,
@@ -173,134 +174,23 @@ const PB = {
   active:false, inSlot:false
 };
 
-function resetPushBlock(){
-  const c=chambers[P.chamber];
-  if(!c || !c.pushSpawn){ PB.active=false; return; }
-  PB.x = c.pushSpawn.x * T;
-  PB.y = c.pushSpawn.y * T;
-  PB.vx = 0; PB.vy = 0;
-  PB.active = true;
-  PB.inSlot = false;
-}
+/* ── Game state globals ── */
+let glyphsCollected = 0;
+let collectedGlyphs = [];          // per-chamber boolean
+let gameState = 'playing';
+let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
+let screenAlpha = 0;
+let messageText = '';
+let messageTimer = 0;
+let portalLockMsg = 0;             // cooldown for locked-portal message
+let particles = [];
+let testChamberSrc = -1;           // remembers which chamber we came from for test exit
+let _testMode = false;             // set by test harness for instant transitions
 
-/* Push block: resolve AFTER normal X movement + tile collision.
-   Detect push overlap and apply velocity-based movement (not instant teleport). */
-function resolvePushBlockCollision(){
-  if(!P.canPush || !PB.active || PB.inSlot) return;
-  if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
+/* ══════════════════════════════════════════════════
+   4. INPUT
+   ══════════════════════════════════════════════════ */
 
-  const centerP = P.x + P.w / 2;
-  const centerB = PB.x + PB.w / 2;
-  const dir = (centerP < centerB) ? 1 : -1;
-
-  const movingToward = (P.vx * dir > 0.1);
-
-  // Y-overlap guard: skip X separation when player is landing on top
-  const isOnTop = P.y < PB.y
-                 && P.y + P.h >= PB.y - 8
-                 && P.y + P.h <= PB.y + P.h / 2;
-
-  if(P.onGround && movingToward){
-    // ── Active push: velocity-based ──
-    P.pushing = true;
-
-    // Apply push velocity to the block (half walk speed)
-    PB.vx = dir * PUSH_SPEED;
-
-    // Clamp golem to same push speed (don't zero, just limit)
-    if(Math.abs(P.vx) > PUSH_SPEED) P.vx = dir * PUSH_SPEED;
-
-    // Keep golem glued to block side (smooth, no snap)
-    if(dir > 0) P.x = Math.min(P.x, PB.x - P.w + 1);
-    else        P.x = Math.max(P.x, PB.x + PB.w - 1);
-
-    spawnParticles(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
-
-  } else if(movingToward && !P.onGround){
-    // Requirement 5: no push while airborne — separate
-    if(dir > 0) P.x = PB.x - P.w;
-    else        P.x = PB.x + PB.w;
-
-  } else {
-    // Not pushing — static separation (walking past, standing against)
-    if(isOnTop) return; // let Y landing check (lines 689-704) handle this
-    if(centerP < centerB) P.x = PB.x - P.w;
-    else                  P.x = PB.x + PB.w;
-  }
-}
-
-/* AABB overlap test */
-function aabb(ax,ay,aw,ah, bx,by,bw,bh){
-  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
-}
-
-/* Check if AABB overlaps any solid tile */
-function tileCollides(ch, x, y, w, h){
-  const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
-  const y1=Math.floor(y/T), y2=Math.floor((y+h-1)/T);
-  for(let gy=y1;gy<=y2;gy++)
-    for(let gx=x1;gx<=x2;gx++)
-      if(solid(getTile(ch,gx,gy))) return true;
-  return false;
-}
-
-/* Push block: separate X then Y with gravity */
-function updatePushBlock(){
-  const ch=P.chamber;
-  const c=chambers[ch];
-  if(!c || !c.pushSpawn) return;
-  if(PB.inSlot) return;           // frozen in slot (still visible + rendered)
-
-  if(!PB.active){
-    resetPushBlock();
-    return;
-  }
-
-  /* Move X */
-  PB.x += PB.vx;
-  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
-    if(PB.vx>0) PB.x = Math.floor((PB.x+PB.w)/T)*T - PB.w;
-    else        PB.x = (Math.floor(PB.x/T)+1)*T;
-    PB.vx = 0;
-  }
-
-  /* Move Y (gravity) */
-  PB.vy += 0.3;
-  if(PB.vy>4) PB.vy=4;
-  PB.y += PB.vy;
-  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
-    if(PB.vy>0) PB.y = Math.floor((PB.y+PB.h)/T)*T - PB.h;
-    else        PB.y = (Math.floor(PB.y/T)+1)*T;
-    PB.vy = 0;
-  }
-
- /* Friction (skip when player is actively pushing) */
-  if(!P.pushing){
-    PB.vx *= 0.85;
-    if(Math.abs(PB.vx)<0.1) PB.vx=0;
-  }
-
-  /* Check if block fell into slot — settle visibly in the hole */
-  const cx=Math.floor((PB.x+PB.w/2)/T);
-  const cy=Math.floor((PB.y+PB.h/2)/T);
-  if(c.pushSlot && cx===c.pushSlot.gx && cy===c.pushSlot.gy){
-    PB.x = c.pushSlot.gx * T;
-    PB.y = c.pushSlot.gy * T;
-    PB.vx = 0;
-    PB.vy = 0;
-    PB.inSlot = true;
-    spawnParticles((c.pushSlot.gx + 0.5)*T, PB.y + PB.h/2, '#d4a84b', 12);
-    showMessage("The weight settles.",80);
-  }
-
-  /* Reset if fallen past bottom */
-  if(PB.y > c.h*T){
-    PB.x = c.pushSpawn.x*T; PB.y = c.pushSpawn.y*T;
-    PB.vx=0; PB.vy=0; PB.inSlot=false;
-  }
-}
-
-/* ── Input (prev-frame tracking prevents repeat-on-hold) ── */
 let keys = {};
 let prevKeys = {};
 
@@ -315,7 +205,10 @@ function fresh(code){ return keys[code] && !prevKeys[code]; }
 
 function shiftHeld(){ return keys['ShiftLeft']||keys['ShiftRight']; }
 
-/* ── Tile helpers ── */
+/* ══════════════════════════════════════════════════
+   5. TILE HELPERS & COLLISION
+   ══════════════════════════════════════════════════ */
+
 function getTile(ch,x,y){
   const c=chambers[ch];
   if(x<0||x>=c.w||y<0||y>=c.h) return WALL;
@@ -383,21 +276,141 @@ function inPit(px,py){
   return getTile(P.chamber, Math.floor(px/T), Math.floor(py/T))===PIT;
 }
 
-/* ── Abilities ── */
-function pushBlock(){
-  if(!P.canPush || !P.onGround || P.pushing) return;
-  const ch=P.chamber, dir=P.facing;
-  const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
-  const bx=cx+dir, by=cy;
-  if(getTile(ch,bx,by)===BLOCK && getTile(ch,bx+dir,by)===AIR){
-    setTile(ch,bx,by,AIR);
-    setTile(ch,bx+dir,by,BLOCK);
+/* AABB overlap test */
+function aabb(ax,ay,aw,ah, bx,by,bw,bh){
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+/* Check if AABB overlaps any solid tile */
+function tileCollides(ch, x, y, w, h){
+  const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
+  const y1=Math.floor(y/T), y2=Math.floor((y+h-1)/T);
+  for(let gy=y1;gy<=y2;gy++)
+    for(let gx=x1;gx<=x2;gx++)
+      if(solid(getTile(ch,gx,gy))) return true;
+  return false;
+}
+
+/* ══════════════════════════════════════════════════
+   6. PUSH BLOCK SYSTEM
+   ══════════════════════════════════════════════════ */
+
+function resetPushBlock(){
+  const c=chambers[P.chamber];
+  if(!c || !c.pushSpawn){ PB.active=false; return; }
+  PB.x = c.pushSpawn.x * T;
+  PB.y = c.pushSpawn.y * T;
+  PB.vx = 0; PB.vy = 0;
+  PB.active = true;
+  PB.inSlot = false;
+}
+
+/* Push block: resolve AFTER normal X movement + tile collision.
+   Detect push overlap and apply velocity-based movement (not instant teleport). */
+function resolvePushBlockCollision(){
+  if(!P.canPush || !PB.active || PB.inSlot) return;
+  if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
+
+  const centerP = P.x + P.w / 2;
+  const centerB = PB.x + PB.w / 2;
+  const dir = (centerP < centerB) ? 1 : -1;
+
+  const movingToward = (P.vx * dir > 0.1);
+
+  // Y-overlap guard: skip X separation when player is landing on top
+  const isOnTop = P.y < PB.y
+                 && P.y + P.h >= PB.y - 8
+                 && P.y + P.h <= PB.y + P.h / 2;
+
+  if(P.onGround && movingToward){
+    // ── Active push: velocity-based ──
     P.pushing = true;
-    spawnParticles((bx+0.5)*T, (by+0.5)*T, '#9a8d7d', 6);
+
+    // Apply push velocity to the block (half walk speed)
+    PB.vx = dir * PUSH_SPEED;
+
+    // Clamp golem to same push speed (don't zero, just limit)
+    if(Math.abs(P.vx) > PUSH_SPEED) P.vx = dir * PUSH_SPEED;
+
+    // Keep golem glued to block side (smooth, no snap)
+    if(dir > 0) P.x = Math.min(P.x, PB.x - P.w + 1);
+    else        P.x = Math.max(P.x, PB.x + PB.w - 1);
+
+    spawnParticles(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
+
+  } else if(movingToward && !P.onGround){
+    // Requirement 5: no push while airborne — separate
+    if(dir > 0) P.x = PB.x - P.w;
+    else        P.x = PB.x + PB.w;
+
+  } else {
+    // Not pushing — static separation (walking past, standing against)
+    if(isOnTop) return; // let Y landing check handle this
+    if(centerP < centerB) P.x = PB.x - P.w;
+    else                  P.x = PB.x + PB.w;
   }
 }
 
-/* ── Particles ── */
+/* Push block: separate X then Y with gravity */
+function updatePushBlock(){
+  const ch=P.chamber;
+  const c=chambers[ch];
+  if(!c || !c.pushSpawn) return;
+  if(PB.inSlot) return;           // frozen in slot (still visible + rendered)
+
+  if(!PB.active){
+    resetPushBlock();
+    return;
+  }
+
+  /* Move X */
+  PB.x += PB.vx;
+  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
+    if(PB.vx>0) PB.x = Math.floor((PB.x+PB.w)/T)*T - PB.w;
+    else        PB.x = (Math.floor(PB.x/T)+1)*T;
+    PB.vx = 0;
+  }
+
+  /* Move Y (gravity) */
+  PB.vy += 0.3;
+  if(PB.vy>4) PB.vy=4;
+  PB.y += PB.vy;
+  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
+    if(PB.vy>0) PB.y = Math.floor((PB.y+PB.h)/T)*T - PB.h;
+    else        PB.y = (Math.floor(PB.y/T)+1)*T;
+    PB.vy = 0;
+  }
+
+ /* Friction (skip when player is actively pushing) */
+  if(!P.pushing){
+    PB.vx *= 0.85;
+    if(Math.abs(PB.vx)<0.1) PB.vx=0;
+  }
+
+  /* Check if block fell into slot — settle visibly in the hole */
+  const cx=Math.floor((PB.x+PB.w/2)/T);
+  const cy=Math.floor((PB.y+PB.h/2)/T);
+  if(c.pushSlot && cx===c.pushSlot.gx && cy===c.pushSlot.gy){
+    PB.x = c.pushSlot.gx * T;
+    PB.y = c.pushSlot.gy * T;
+    PB.vx = 0;
+    PB.vy = 0;
+    PB.inSlot = true;
+    spawnParticles((c.pushSlot.gx + 0.5)*T, PB.y + PB.h/2, '#d4a84b', 12);
+    showMessage("The weight settles.",80);
+  }
+
+  /* Reset if fallen past bottom */
+  if(PB.y > c.h*T){
+    PB.x = c.pushSpawn.x*T; PB.y = c.pushSpawn.y*T;
+    PB.vx=0; PB.vy=0; PB.inSlot=false;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   7. PARTICLE SYSTEM
+   ══════════════════════════════════════════════════ */
+
 function shatterBlock(x,y){
   /* Chunky debris — fast, heavy */
   for(let i=0;i<12;i++)
@@ -442,11 +455,14 @@ function updateParticles(){
   }
 }
 
+/* ══════════════════════════════════════════════════
+   8. GAME FLOW (transitions, doors, glyphs)
+   ══════════════════════════════════════════════════ */
+
 /* ── Message ── */
 function showMessage(txt,dur){ messageText=txt; messageTimer=dur||120; }
 
 /* ── Transition with screen fade ── */
-let _testMode = false;  // set by test harness for instant transitions
 function _doTransition(toChamber){
   P.chamber = toChamber;
   const nc = chambers[toChamber];
@@ -534,7 +550,7 @@ function transitionEnding(){
 }
 
 /* ══════════════════════════════════════════════════
-   UPDATE — physics, input, game logic
+   9. UPDATE — physics, input, game logic
    ══════════════════════════════════════════════════ */
 function update(){
   if(gameState==='ending') return;
@@ -780,7 +796,7 @@ resetPushBlock();
 }
 
 /* ══════════════════════════════════════════════════
-   RENDER
+   10. RENDER
    ══════════════════════════════════════════════════ */
 const COLORS = {
   bg:'#0d0d1a', wall:'#4a4035', wallTop:'#6b5d4f',
@@ -814,12 +830,11 @@ function render(){
       X.fillStyle='#3a302a';
       if((x+y)%2===0) X.fillRect(px+T/2-1,py,2,T);
       X.fillRect(px,py+T/2-1,T,2);
-      const ch2=P.chamber, c2=chambers[ch2];
       let adjPit=false;
-      if(y+1<c.h && c2.tiles[y+1]&&c2.tiles[y+1][x]===PIT) adjPit=true;
-      if(y-1>=0 && c2.tiles[y-1]&&c2.tiles[y-1][x]===PIT) adjPit=true;
-      if(x-1>=0 && c2.tiles[y]&&c2.tiles[y][x-1]===PIT) adjPit=true;
-      if(x+1<c.w && c2.tiles[y]&&c2.tiles[y][x+1]===PIT) adjPit=true;
+      if(y+1<c.h && c.tiles[y+1]&&c.tiles[y+1][x]===PIT) adjPit=true;
+      if(y-1>=0 && c.tiles[y-1]&&c.tiles[y-1][x]===PIT) adjPit=true;
+      if(x-1>=0 && c.tiles[y]&&c.tiles[y][x-1]===PIT) adjPit=true;
+      if(x+1<c.w && c.tiles[y]&&c.tiles[y][x+1]===PIT) adjPit=true;
       if(adjPit){
         X.fillStyle='rgba(180,40,20,0.25)';
         X.fillRect(px,py,T,T);
@@ -1116,6 +1131,10 @@ function render(){
     X.fillText('I awaken...', W/2, 60);
   }
 }
+
+/* ══════════════════════════════════════════════════
+   11. INIT & GAME LOOP
+   ══════════════════════════════════════════════════ */
 
 /* ── Init ── */
 collectedGlyphs = new Array(chambers.length).fill(false);
