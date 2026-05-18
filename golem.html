@@ -278,6 +278,7 @@ function inputRight()        { return keys['ArrowRight'] || keys['KeyD']; }
 function inputJumpPressed()  { return fresh('ArrowUp')||fresh('KeyW')||fresh('Space'); }
 function inputJumpHeld()     { return keys['ArrowUp'] || keys['KeyW'] || keys['Space']; }
 function inputShiftPressed() { return fresh('ShiftLeft')||fresh('ShiftRight'); }
+function inputDown()         { return keys['ArrowDown']  || keys['KeyS']; }
 
 /* ══════════════════════════════════════════════════
    5. TILE HELPERS & COLLISION
@@ -315,7 +316,8 @@ function solid(t){ return t===WALL||t===CRACKED||t===DOOR_D||t===END_PORTAL||t==
    prevFeet = previous feet bottom (prevY+P.h). gy = platform tile row. */
 function platSolid(t, prevFeet, gy){
   if(t!==PLATFORM) return false;
-  return prevFeet <= gy * T;
+  if(inputDown()) return false;
+  return prevFeet <= gy * T + 2;
 }
 
 /* Unified tile collision checker — grid-space iteration with configurable options.
@@ -785,7 +787,7 @@ function update(){
   P.y += P.vy;
   {
     const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
-    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
+    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h)/T);
     const colFn = P.dashPhase ? collidesDash : collides;
   if(colFn(gx1,gy1,gx2,gy2,P.chamber,prevY,P.y)){
       if(P.vy>0){
@@ -914,8 +916,8 @@ function render(){
       }
 
     } else if(t===PLATFORM){
-      X.fillStyle=COLORS.platform; X.fillRect(px+2,py+4,T-4,T-4);
-      X.fillStyle='#4a3d2a'; X.fillRect(px+2,py+2,T-4,2);
+      X.fillStyle=COLORS.platform; X.fillRect(px+2,py+T-5,T-4,3);
+      X.fillStyle='#4a3d2a'; X.fillRect(px+2,py+T-7,T-4,2);
 
     } else if(t===PIT){
       X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
