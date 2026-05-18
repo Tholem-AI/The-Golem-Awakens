@@ -77,11 +77,14 @@
 #### Pushblock gap skip
 - [ ] Fix: when pushing pushblock over a 1-tile gap at high speed, gravity check is skipped and block floats across. Pushblock should fall into 1-tile gap as intended. Likely needs per-frame gravity enforcement regardless of horizontal velocity.
 
-### Platform Visual Rework (Not Started)
+### Platform Visual Rework (May 2026) — COMPLETED
 
-- [ ] Redraw platforms as narrow ledges at the top of the tile (match hitbox, preserve landing-on-top behavior)
-- [ ] Create `inputDown()` helper for ArrowDown/KeyS (consistent with existing input helpers)
-- [ ] When Down is pressed/held, allow golem to phase through platform from above (drop-down mechanic)
+- [x] Redraw platforms as narrow ledges at the top of the tile (match hitbox, preserve landing-on-top behavior)
+- [x] Create `inputDown()` helper for ArrowDown/KeyS (consistent with existing input helpers)
+- [x] When Down is pressed/held, allow golem to phase through platform from above (drop-down mechanic)
+- [x] Fixed gy2 off-by-one in Y collision: `(P.y+P.h-1)` → `(P.y+P.h)` inclusive boundary
+- [x] Added +2px tolerance to `platSolid()` for edge stability
+- [x] Validation: JS syntax OK, RIPER process (research→plan→execute→review), reviewer-agent approved
 
 ### Message Display Improvement (Not Started)
 
@@ -161,7 +164,7 @@ Prepare the project for public repository sharing.
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 || Bug fixes (gap skip) | Not Started | — |
-| Platform visual rework + drop-down | Not Started | — |
+|| Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
 | Message display improvement | Not Started | — |
 | Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
