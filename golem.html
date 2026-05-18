@@ -311,10 +311,11 @@ function _getTile(x,y){
 /* Solid for walls/blocks/doors/end-portal (not one-way platforms) */
 function solid(t){ return t===WALL||t===CRACKED||t===DOOR_D||t===END_PORTAL||t===MAGICAL_WALL; }
 
-/* Platform is solid ONLY when landing from above (falling through) */
-function platSolid(t, prevY, curY){
+/* Platform is solid ONLY when player feet were at/above platform top (true one-way).
+   prevFeet = previous feet bottom (prevY+P.h). gy = platform tile row. */
+function platSolid(t, prevFeet, gy){
   if(t!==PLATFORM) return false;
-  return prevY + P.h <= curY + P.h;
+  return prevFeet <= gy * T;
 }
 
 /* Unified tile collision checker — grid-space iteration with configurable options.
@@ -325,7 +326,7 @@ function tileCollidesRect(ch, gx1, gy1, gx2, gy2, opts) {
       const t=getTile(ch,gx,gy);
       if(opts.skipTileType && t===opts.skipTileType) continue;
       if(solid(t)) return true;
-      if(opts.includePlatforms && platSolid(t, opts.prevY, opts.curY)) return true;
+      if(opts.includePlatforms && platSolid(t, opts.prevY + P.h, gy)) return true;
     }
   return false;
 }
@@ -754,7 +755,7 @@ function update(){
     const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
     const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
     const colFn = P.dashPhase ? collidesDash : collidesNoPlat;
-    if(colFn(gx1,gy1,gx2,gy2,P.chamber,null)){
+    if(colFn(gx1,gy1,gx2,gy2,P.chamber,P.y)){
       if(P.dashPhase){
         const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
         if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
@@ -802,8 +803,8 @@ function update(){
     }
     /* Push block Y collision — land on top */
     if(PB.active){
-      if(aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h) && P.vy >= 0){
-        if(prevY + P.h <= PB.y + 4){
+     if(aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h) && P.vy > 0 && Math.abs(P.vx) < 3){
+        if(prevY + P.h <= PB.y + 2){
           P.y = PB.y - P.h;
           P.vy = 0;
           land();

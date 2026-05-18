@@ -62,6 +62,12 @@
 - [x] Eliminated ~580ms total freeze during chamber transitions
 - [x] Validation: JS syntax OK, zero setTimeout in transition path, _transitionTarget in all 3 locations
 
+### Dash Teleport Collision Fix (May 2026)
+- [x] Fixed platSolid(): replaced direction-based predicate (prevY<=curY) with absolute-position one-way check (prevFeet <= gy*T)
+- [x] Fixed X-phase null prevY: collidesDash now receives P.y instead of null (push-block AABB geometry corrected)
+- [x] Fixed push-block landing: tightened vy>=0 to vy>0, added Math.abs(P.vx)<3 guard, reduced tolerance from +4 to +2
+- [x] Validation: JS syntax OK, RIPER process (research->plan->execute->review), reviewer-agent approved
+
 ---
 
 ## Remaining Work
@@ -70,9 +76,6 @@
 
 #### Pushblock gap skip
 - [ ] Fix: when pushing pushblock over a 1-tile gap at high speed, gravity check is skipped and block floats across. Pushblock should fall into 1-tile gap as intended. Likely needs per-frame gravity enforcement regardless of horizontal velocity.
-
-#### High-velocity collision displacement
-- [ ] Fix: running/dashing into pushblock or platform displaces golem to top of block. Pushblock should stop movement like a wall does. Investigate why wall tiles don't exhibit this but pushblock/platform tiles do — likely a condition in broader collision logic where horizontal velocity isn't zeroed on blocked contact.
 
 ### Platform Visual Rework (Not Started)
 
@@ -155,8 +158,9 @@ Prepare the project for public repository sharing.
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
-|| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
-|| Bug fixes (gap skip, displacement) | Not Started | — |
+||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
+||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
+|| Bug fixes (gap skip) | Not Started | — |
 | Platform visual rework + drop-down | Not Started | — |
 | Message display improvement | Not Started | — |
 | Pause toggle | Not Started | — |
