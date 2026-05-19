@@ -86,10 +86,17 @@
 - [x] Added +2px tolerance to `platSolid()` for edge stability
 - [x] Validation: JS syntax OK, RIPER process (research→plan→execute→review), reviewer-agent approved
 
-### Message Display Improvement (Not Started)
+### Message Display Improvement (May 2026) — COMPLETED
 
-- [ ] Increase `showMessage()` display duration to ~3 seconds with smooth fade-in/fade-out
-- [ ] Handle queueing: when a new message appears while one is still showing, transition elegantly (queue or interrupt with fade)
+- [x] Replace single-slot message system (messageText/messageTimer) with FIFO queue
+- [x] 3-second fade-in (180 frames) + auto-calculated display hold + 3-second fade-out per message
+- [x] Auto-duration based on text length (MSG_CHARS_PER_FRAME=0.35, clamped to 90-360 frames)
+- [x] Queue max depth of 5 with silent overflow drop
+- [x] Message dedup: skips identical text already at queue front
+- [x] "Forever" messages (dur>=99999): clear queue, immediate display
+- [x] Text shadow for readability on busy backgrounds
+- [x] Updated guard at render: messageTimer<=0 → messageQueue.length===0
+- [x] Validation: JS syntax OK, 10 browser tests passed, RIPER process (research→plan→execute→review), reviewer-agent approved
 
 ### Pause Toggle (Not Started)
 
@@ -165,7 +172,7 @@ Prepare the project for public repository sharing.
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 || Bug fixes (gap skip) | Not Started | — |
 || Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
-| Message display improvement | Not Started | — |
+|| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
 | Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |

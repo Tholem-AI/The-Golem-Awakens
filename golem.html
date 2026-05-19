@@ -58,6 +58,15 @@ const PB_TERMINAL_VEL = 4;      // push block terminal velocity
 const PB_FRICTION = 0.85;       // push block friction
 const PB_STOP_THRESH = 0.1;     // push block velocity threshold to stop
 
+/* ── Message system constants ── */
+const MSG_FADE_IN_FRAMES   = 180;
+const MSG_FADE_OUT_FRAMES  = 180;
+const MSG_MAX_QUEUE_DEPTH  = 5;
+const MSG_CHARS_PER_FRAME  = 0.35;
+const MSG_MIN_HOLD         = 90;
+const MSG_MAX_HOLD         = 360;
+const MSG_FOREVER_THRESHOLD = 99999;
+
 /* ── Static UI arrays (hoisted from render, B2+B3) ── */
 const ABILITIES = [
   ['[1] Double Jump', 1], ['[2] Dash (Shift)', 2],
@@ -245,8 +254,7 @@ let collectedGlyphs = [];          // per-chamber boolean
 let gameState = 'playing';
 let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
 let screenAlpha = 0;
-let messageText = '';
-let messageTimer = 0;
+let messageQueue = [];
 let portalLockMsg = 0;             // cooldown for locked-portal message
 let particles = [];
 let testChamberSrc = -1;           // remembers which chamber we came from for test exit
@@ -549,8 +557,23 @@ const Particles = (function(){
    8. GAME FLOW (transitions, doors, glyphs)
    ══════════════════════════════════════════════════ */
 
-/* ── Message ── */
-function showMessage(txt,dur){ messageText=txt; messageTimer=dur||120; }
+/* ── Message queue system ── */
+function calcDisplayDuration(text, providedDur) {
+    const auto = Math.floor(text.length / MSG_CHARS_PER_FRAME);
+    const dur = providedDur || MSG_MIN_HOLD;
+    return Math.min(MSG_MAX_HOLD, Math.max(dur, auto));
+}
+function showMessage(txt, dur) {
+    const isForever = (dur || 0) >= MSG_FOREVER_THRESHOLD;
+    if (isForever) {
+        messageQueue = [{ text: txt, hold: dur || MSG_FOREVER_THRESHOLD, phase: 'display', elapsed: 0 }];
+        return;
+    }
+    if (messageQueue.length > 0 && messageQueue[0].text === txt) return;
+    if (messageQueue.length < MSG_MAX_QUEUE_DEPTH) {
+        messageQueue.push({ text: txt, hold: calcDisplayDuration(txt, dur), phase: 'fadeIn', elapsed: 0 });
+    }
+}
 
 /* ── Transition with screen fade ── */
 function _doTransition(toChamber){
@@ -663,7 +686,7 @@ function update(){
   if(screenFade===-1){ screenAlpha-=0.06; if(screenAlpha<=0){screenAlpha=0;screenFade=0;} }
   if(screenFade===1) return;
 
-  if(messageTimer>0) messageTimer--;
+  if(messageQueue.length>0){const m=messageQueue[0];m.elapsed++;if(m.phase==='fadeIn'&&m.elapsed>=MSG_FADE_IN_FRAMES){m.phase='display';m.elapsed=0;}else if(m.phase==='display'&&m.elapsed>=m.hold){m.phase='fadeOut';m.elapsed=0;}else if(m.phase==='fadeOut'&&m.elapsed>=MSG_FADE_OUT_FRAMES){messageQueue.shift();}}
   if(portalLockMsg>0) portalLockMsg--;
 
   /* ── Dash: charge on hold, execute on release ── */
@@ -1161,12 +1184,17 @@ function render(){
     X.fillText(CHAMBER_NAMES[ch] + ' \u2605 Path of Wisdom', W/2, H-10);
   }
 
-  /* Message */
-  if(messageTimer>0 && messageText){
-    const alpha=Math.min(1, messageTimer/30);
+ /* Message */
+  if(messageQueue.length>0){
+    const m=messageQueue[0];
+    let alpha=1;
+    if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_FRAMES;
+    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_FRAMES);
     X.fillStyle='rgba(212,168,75,'+alpha+')';
     X.font='bold 18px serif'; X.textAlign='center';
-    X.fillText(messageText, W/2, H/2-60);
+    X.shadowColor='rgba(0,0,0,0.7)'; X.shadowBlur=4;
+    X.fillText(m.text, W/2, H/2-60);
+    X.shadowBlur=0;
   }
 
   /* Screen fade overlay */
@@ -1190,7 +1218,7 @@ function render(){
     X.fillText('Refresh to play again', W/2, H/2+70);
   }
 
-  if(ch===0 && glyphsCollected===0 && messageTimer<=0){
+  if(ch===0 && glyphsCollected===0 && messageQueue.length===0){
     X.fillStyle='#665a4a'; X.font='14px serif'; X.textAlign='center';
     X.fillText('I awaken...', W/2, 60);
   }
