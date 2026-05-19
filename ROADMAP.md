@@ -68,6 +68,18 @@
 - [x] Fixed push-block landing: tightened vy>=0 to vy>0, added Math.abs(P.vx)<3 guard, reduced tolerance from +4 to +2
 - [x] Validation: JS syntax OK, RIPER process (research->plan->execute->review), reviewer-agent approved
 
+### Death & Respawn Animations (May 2026)
+- [x] Death animation: golem collapses into clay over 1.5s (90 frames) with body parts spreading outward, alpha fade, clay particles
+- [x] Respawn animation: golem constructs from clay bottom-up (legs->arms->torso->head->eye->glyphs) over 1.5s (90 frames)
+- [x] Respawn animation plays at game start ("I awaken...") and after death
+- [x] State machine: idle -> dying (90f) -> respawning (90f) -> idle
+- [x] Easing functions: easeOutCubic, easeInOutCubic, easeOutBack
+- [x] Animation freezes physics/input during death/respawn (updateAnim replaces update)
+- [x] Double-trigger guard in killAndRespawn prevents stack overflow
+- [x] Transition guards prevent chamber transitions during animation
+- [x] Clay particles spawn during both death (outward burst) and respawn (upward convergence)
+- [x] Validation: JS syntax OK, zero console errors, RIPER process (research->plan->execute->review), reviewer-agent approved
+
 ---
 
 ## Remaining Work
@@ -170,7 +182,8 @@ Prepare the project for public repository sharing.
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
-|| Bug fixes (gap skip) | Not Started | — |
+||| Death & respawn animations | Complete | 1.5s collapse/construct, state machine, easing, particles, RIPER reviewed |
+||| Bug fixes (gap skip) | Not Started | — |
 || Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
 || Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
 | Pause toggle | Not Started | — |

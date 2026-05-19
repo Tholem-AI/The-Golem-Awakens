@@ -95,11 +95,16 @@ function land() {
   P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES;
 }
 
+/* ── Easing functions for death/respawn animations ── */
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+function easeOutBack(t) { const c1=1.70158; const c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
 /* A3: Kill and respawn player at checkpoint */
 function killAndRespawn(onGround, msg, duration) {
-  P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0;
-  P.jumps=0; P.dashCharge=0;
-  if(onGround) { P.onGround=true; P.coyoteTime=COYOTE_FRAMES; }
+  if(animState!=='idle') return; // prevent double-trigger
+  P.dashing=false; P.dashTimer=0;
+  animState='dying'; animFrame=0;
   showMessage(msg, duration);
 }
 
@@ -261,6 +266,9 @@ let testChamberSrc = -1;           // remembers which chamber we came from for t
 let _testMode = false;             // set by test harness for instant transitions
 let _c;                            // cached chambers[P.chamber] for getTile optimization
 let _transitionTarget = -1;        // stores target chamber during async fade cycle
+let animState = 'idle';            // 'idle' | 'dying' | 'respawning'
+let animFrame = 0;
+const ANIM_TOTAL_FRAMES = 90;      // 1.5s at 60fps
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -588,6 +596,7 @@ function _doTransition(toChamber){
   resetPushBlock();
 }
 function transition(toChamber){
+  if(animState!=='idle') return; // don't interrupt death/respawn
   if(_testMode){ _doTransition(toChamber); return; }
   _transitionTarget = toChamber;
   screenFade = 1;
@@ -646,6 +655,7 @@ function checkGlyphs(){
 }
 
 function transitionEnding(){
+  if(animState!=='idle') return;
   if(_testMode){ gameState='ending'; showMessage("The Ibis speaks: 'You were clay. Now you are Wisdom.'",99999); return; }
   screenFade=1; screenAlpha=0;
   setTimeout(function(){
@@ -659,6 +669,7 @@ function transitionEnding(){
    ══════════════════════════════════════════════════ */
 function update(){
   if(gameState==='ending') return;
+  if(animState!=='idle'){ updateAnim(); return; }
   _c=chambers[P.chamber]; // cache chamber ref for fast getTile
 
   /* Test chamber entry/exit — press T */
@@ -886,6 +897,46 @@ function update(){
   checkGlyphs();
   Particles.update();
 
+ for(const k in keys) prevKeys[k]=keys[k];
+  for(const k in prevKeys) if(!keys[k]) delete prevKeys[k];
+}
+
+/* ══════════════════════════════════════════════════
+   ANIM UPDATE — runs during death/respawn animations
+   ══════════════════════════════════════════════════ */
+function updateAnim(){
+  _c = chambers[P.chamber]; // keep chamber cache valid for render
+  // Advance message queue
+  if(messageQueue.length>0){
+    const m=messageQueue[0];
+    m.elapsed++;
+    if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_FRAMES){
+      m.phase='display'; m.elapsed=0;
+    } else if(m.phase==='display' && m.elapsed>=m.hold){
+      m.phase='fadeOut'; m.elapsed=0;
+    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_FRAMES){
+      messageQueue.shift();
+    }
+  }
+  if(portalLockMsg>0) portalLockMsg--;
+  Particles.update();
+  animFrame++;
+  const progress = animFrame / ANIM_TOTAL_FRAMES;
+  // Dying -> transition to respawning
+  if(animState==='dying' && animFrame>=ANIM_TOTAL_FRAMES){
+    P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
+    animState='respawning'; animFrame=0;
+    showMessage('Clay reforms...', 60);
+  }
+  // Respawning -> transition back to idle
+  if(animState==='respawning' && animFrame>=ANIM_TOTAL_FRAMES){
+    P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
+    P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
+    P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false;
+    resetPushBlock();
+    animState='idle'; animFrame=0;
+  }
+  // Copy prevKeys
   for(const k in keys) prevKeys[k]=keys[k];
   for(const k in prevKeys) if(!keys[k]) delete prevKeys[k];
 }
@@ -899,8 +950,152 @@ const COLORS = {
   glyph:'#c8a84e', glyphGlow:'#f0d060',
   cracked:'#8a5040',
   golem:'#8a7d6b', golemDark:'#5a5040', golemEye:'#d4a84b',
-  text:'#d4a84b', pushBlock:'#a08868', pushBlockTop:'#b8a080'
+ text:'#d4a84b', pushBlock:'#a08868', pushBlockTop:'#b8a080'
 };
+
+/* ── Death/Respawn animation renderer ── */
+function renderDeathRespawnAnimation(ox, oy){
+  const now = Date.now();
+  const progress = animFrame / ANIM_TOTAL_FRAMES;
+  const cx = ox + P.respawnX + P.w/2;
+  const cy = oy + P.respawnY + P.h/2;
+  const pw = P.w, ph = P.h;
+
+  if(animState === 'dying'){
+    // ── DEATH: parts spread outward with gravity, alpha fades, clay particles ──
+    const p = easeOutCubic(progress);
+    const alpha = 1 - progress;
+    const spread = p * 80;
+
+    // Spawn clay particles during first half
+    if(animFrame % 4 === 0 && progress < 0.6){
+      Particles.spawn(P.x + P.w/2, P.y + P.h/2, '#8a7d6b', 2);
+    }
+
+    X.save();
+    X.globalAlpha = Math.max(0, alpha);
+
+    // Head (spreads up)
+    const headY = cy - ph/2 - spread * 0.8;
+    X.fillStyle = COLORS.golem;
+    X.fillRect(cx - pw/4 + Math.sin(animFrame*0.3)*spread*0.2, headY - 5, pw/2, 10);
+    // Eye on head
+    X.fillStyle = COLORS.golemEye;
+    X.fillRect(cx + 2 + Math.sin(animFrame*0.3)*spread*0.2, headY - 2, 4, 3);
+
+    // Torso (spreads center, slight rotation wobble)
+    const torsoY = cy + spread * 0.1;
+    const torsoOffX = Math.cos(animFrame*0.4)*spread*0.15;
+    X.fillStyle = COLORS.golemDark;
+    X.fillRect(cx - pw/3 + torsoOffX, torsoY - ph/3, pw*2/3, ph*2/3);
+    X.fillStyle = COLORS.golem;
+    X.fillRect(cx - pw/4 + torsoOffX, torsoY - ph/3 + 2, pw/2, ph*2/3 - 4);
+
+    // Left arm (spreads left)
+    const armY = cy + spread * 0.3 + Math.sin(animFrame*0.5)*spread*0.2;
+    X.fillStyle = COLORS.golem;
+    X.fillRect(cx - spread - 3, armY, 3, 10);
+
+    // Right arm (spreads right)
+    const arm2Y = cy + spread * 0.3 - Math.sin(animFrame*0.5)*spread*0.2;
+    X.fillRect(cx + spread, arm2Y, 3, 10);
+
+    // Legs (spread outward and down with gravity)
+    const legY = cy + ph/2 + spread * 0.5;
+    X.fillStyle = COLORS.golemDark;
+    X.fillRect(cx - spread*0.7, legY, 7, 4);
+    X.fillRect(cx + spread*0.7 - 7, legY, 7, 4);
+
+    X.restore();
+
+  } else if(animState === 'respawning'){
+    // ── RESPAWN: parts materialize bottom-up (legs->arms->torso->head->eye->glyphs) ──
+    const p = progress;
+    const flash = p > 0.9 ? (p - 0.9) / 0.1 : 0; // final activation flash
+
+    // Spawn reforming particles during first 60%
+    if(animFrame % 3 === 0 && progress < 0.6){
+      Particles.spawn(P.respawnX + P.w/2 + (Math.random()-0.5)*30,
+                       P.respawnY + P.h + (Math.random()-0.5)*20, '#8a7d6b', 2);
+    }
+
+    // Clay pile at feet — shrinks as golem forms
+    const pileSize = (1 - easeOutCubic(Math.min(1, p * 2))) * 15;
+    if(pileSize > 1){
+      X.fillStyle = 'rgba(138,125,107,' + (1 - p) * 0.5 + ')';
+      X.beginPath();
+      X.ellipse(cx, oy + P.respawnY + P.h + 2, pileSize + 5, pileSize/2, 0, 0, Math.PI*2);
+      X.fill();
+    }
+
+    X.save();
+
+    // Legs appear first (0-15%)
+    if(p > 0.05){
+      const legAlpha = Math.min(1, (p - 0.05) / 0.15);
+      X.globalAlpha = legAlpha;
+      X.fillStyle = COLORS.golemDark;
+      X.fillRect(cx - pw/2 + 3, oy + P.respawnY + ph - 4, 7, 4);
+      X.fillRect(cx + pw/2 - 10, oy + P.respawnY + ph - 4, 7, 4);
+    }
+
+    // Arms appear next (15-30%)
+    if(p > 0.2){
+      const armAlpha = Math.min(1, (p - 0.2) / 0.15);
+      X.globalAlpha = armAlpha;
+      X.fillStyle = COLORS.golem;
+      X.fillRect(cx - pw/2 - 1, oy + P.respawnY + 10, 3, 10);
+      X.fillRect(cx + pw/2 - 2, oy + P.respawnY + 10, 3, 10);
+    }
+
+    // Torso (30-50%)
+    if(p > 0.35){
+      const torsoAlpha = Math.min(1, (p - 0.35) / 0.15);
+      X.globalAlpha = torsoAlpha;
+      X.fillStyle = COLORS.golemDark;
+      X.fillRect(cx - pw/2 + 4, oy + P.respawnY + 6, pw - 8, ph - 10);
+      X.fillStyle = COLORS.golem;
+      X.fillRect(cx - pw/2 + 2, oy + P.respawnY + 4, pw - 4, ph - 4);
+    }
+
+    // Head (50-65%)
+    if(p > 0.5){
+      const headAlpha = Math.min(1, (p - 0.5) / 0.15);
+      X.globalAlpha = headAlpha;
+      X.fillStyle = COLORS.golem;
+      X.fillRect(cx - pw/4, oy + P.respawnY, pw/2, 10);
+    }
+
+    // Eye (65-75%)
+    if(p > 0.65){
+      const eyeAlpha = Math.min(1, (p - 0.65) / 0.1);
+      X.globalAlpha = eyeAlpha;
+      X.fillStyle = COLORS.golemEye;
+      X.fillRect(cx + 2, oy + P.respawnY + 3, 4, 3);
+    }
+
+    // Glyph lines (75-90%)
+    if(p > 0.75){
+      const glyphAlpha = Math.min(1, (p - 0.75) / 0.15);
+      X.globalAlpha = glyphAlpha * (0.3 + Math.sin(now/500)*0.15);
+      X.fillStyle = COLORS.golemEye;
+      for(let i = 0; i < glyphsCollected; i++){
+        X.fillRect(cx - pw/2 + 8, oy + P.respawnY + 12 + i*4, 8, 1);
+      }
+    }
+
+    // Final activation flash (90-100%)
+    if(flash > 0){
+      X.globalAlpha = flash * 0.3;
+      X.fillStyle = '#f0d060';
+      X.beginPath();
+      X.arc(cx, cy, (pw + ph) * flash * 0.8, 0, Math.PI*2);
+      X.fill();
+    }
+
+    X.restore();
+  }
+}
 
 function render(){
   const now=Date.now(); // B1: cache time once per frame
@@ -1094,6 +1289,9 @@ function render(){
   }
 
 /* ── Player (squash & stretch) ── */
+  if(animState==='dying'||animState==='respawning'){
+    renderDeathRespawnAnimation(ox, oy);
+  } else {
   let pw=P.w, ph=P.h, poffX=0, poffY=0;
   const fallingFast = P.vy > 3;
   if(P.pushing){
@@ -1144,6 +1342,7 @@ function render(){
       const ly = py + ph + 4 + drop + i*8;
       X.fillRect(px+4+i*7, ly, 2, 4);
     }
+  }
   }
 
   /* ── HUD ── */
@@ -1251,6 +1450,7 @@ chambers.forEach(c => {
 P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy;
 P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
 P.coyoteTime=0; P.onGround=false;
+animState='respawning'; animFrame=0;
 showMessage('I awaken...', 150);
 
 /* ── Game loop ── */
