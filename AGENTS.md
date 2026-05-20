@@ -41,8 +41,9 @@ This file defines always-on governance, execution lifecycle, safety, quality, an
 2. Current architecture: single-file (`golem.html`). Splitting into modules or adding external dependencies requires approval via governance rule 1.
 3. Current canvas: 800x480 pixels, 32x32 tiles. Existing chambers use a 25x15 grid — new chambers or UI overlays may differ.
 4. Current tile set: 12 types (AIR through PUSH_SPAWN). Adding new tile types requires approval via governance rule 1.
-5. Existing progression: 4-glyph grant-then-use chain across chambers 0-4. New chambers or abilities should maintain or extend this pattern — do not break existing chambers.
-6. See `docs/Project-Constraints.md` for full constraint documentation.
+5. Chamber flow system: `CHAMBER_FLOW` array defines progression order. Each main chamber has a `flowId` property. DOOR_D follows flow. Test chamber has no flowId.
+6. Existing progression: 4-glyph grant-then-use chain across chambers 0-4. New chambers or abilities should maintain or extend this pattern — do not break existing chambers.
+7. See `docs/Project-Constraints.md` for full constraint documentation.
 
 ## Kit skills
 

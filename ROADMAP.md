@@ -80,6 +80,18 @@
 - [x] Clay particles spawn during both death (outward burst) and respawn (upward convergence)
 - [x] Validation: JS syntax OK, zero console errors, RIPER process (research->plan->execute->review), reviewer-agent approved
 
+### Chamber Flow System (May 2026)
+- [x] CHAMBER_FLOW array and flowId properties on all main chambers
+- [x] checkDoors() rewritten: DOOR_D follows CHAMBER_FLOW instead of array index+1
+- [x] Test chamber entry/exit: uses `!c.flowId` discriminator instead of `chambers.length-1`
+- [x] HUD chamber name display: uses flow position instead of hardcoded `ch<4`
+- [x] Chamber T grid updated: comprehensive sandbox (pit, MAGICAL_WALL, CRACKED, platforms, push block, DOOR_D)
+- [x] chamber-template.md: added flow system documentation section with add/replace/insert/special chamber guides
+- [x] chamber-proposal.md: replaced legacy content with clean reusable template
+- [x] chamber-data.md: updated Chamber T grid and annotations
+- [x] ROADMAP.md, File-Structure-Reference.md, Project-Constraints.md, README.md updated
+- [x] Validation: JS syntax OK, flow system verified in code inspection
+
 ---
 
 ## Remaining Work
@@ -183,6 +195,7 @@ Prepare the project for public repository sharing.
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 ||| Death & respawn animations | Complete | 1.5s collapse/construct, state machine, easing, particles, RIPER reviewed |
+||| Chamber flow system | Complete | CHAMBER_FLOW + flowId, DOOR_D follows flow, !c.flowId test detection, flow-based HUD |
 ||| Bug fixes (gap skip) | Not Started | — |
 || Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
 || Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |

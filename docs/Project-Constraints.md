@@ -20,7 +20,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-|| File size | ~1230 lines, ~43 KB | Single-file constraint |
+| File size | ~1495 lines, ~56 KB | Single-file constraint |
 | Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
 | Push block | Velocity-based push at PUSH_SPEED (1.25 px/frame) | Sections 1, 6 |
 | Deployment | Single HTML file, no external dependencies | — |
@@ -32,9 +32,10 @@ Inferred from `golem.html` source code and design artifacts.
 | Single-file architecture | All game code in one HTML file | `golem.html` |
 | 12 tile types | AIR through PUSH_SPAWN (values 0-11) | `golem.html` line 26 |
 | 4 glyphs, sequential | Each grants one ability; must collect in order | Section 8 game flow |
-| 5 canonical chambers + 1 test | Progressive difficulty chain | `chamber-data.md` |
+| 5 canonical chambers + 1 test | Progressive difficulty chain via flow. Test chamber accessible by pressing T. | `chamber-data.md` |
+| Chamber flow system | Chambers ordered by CHAMBER_FLOW array, not array index. Each main chamber has flowId property. DOOR_D follows flow. Test chamber has no flowId (identified by !c.flowId). | golem.html Section 1 |
 | Grant-then-use ability chain | Chamber N grants ability for Chamber N+1 | `chamber-proposal.md` |
-| Chamber proposals scope | chamber-proposal.md guidelines apply to current chambers only | `chamber-proposal.md` Guiding Principles |
+| Chamber proposals | chamber-proposal.md is a reusable template. Copy and fill for each new proposal. | `chamber-proposal.md` |
 
 ## Assumptions (labeled)
 

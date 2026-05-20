@@ -11,7 +11,7 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 | `#` | WALL       | 1     | Solid wall (floor, ceiling, boundaries)      |
 | `~` | PIT        | 2     | Death void — touching respawns player       |
 | `^` | GOLEM_SPAWN | 3     | Player spawn marker (invisible, determines golem position) |
-| `v` | DOOR_D     | 4     | Down-side exit door (glyph-locked)           |
+| `v` | DOOR_D     | 4     | Down-side exit door (glyph-locked). Test chamber uses `^` at row 2.           |
 | `*` | GLYPH      | 5     | Collectible knowledge glyph                  |
 | `X` | CRACKED    | 7     | Breakable wall (requires Glyph 4)            |
 | `=` | PLATFORM   | 8     | One-way platform (passable from below)       |
@@ -55,6 +55,68 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 - Position is (column, row) — column first, matching the JS `g[row][col]` access.
 - Row numbers are shown on the left. To find tile at (col=10, row=8), read row `|08`
   and count 10 characters from the left (after `|08 `).
+
+## Chamber Flow System
+
+Chambers are ordered by the `CHAMBER_FLOW` array (defined after
+`CHAMBER_NAMES` in Section 1 of `golem.html`), **not** by position in the
+`chambers[]` array. This decouples level ordering from file structure.
+
+### How it works
+
+1. Each main chamber has a `flowId` property: `'ch0'`, `'ch1'`, etc.
+2. `CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4']` defines progression order.
+3. `checkDoors()` finds the current chamber's position in `CHAMBER_FLOW` and
+   transitions to the next flowId — the DOOR_D always leads to the next level
+   in the flow.
+4. Chambers **without** a `flowId` (e.g. the test chamber) are not part of the
+   flow. They are identified by `!c.flowId`.
+5. The test chamber's DOOR_D returns to the source chamber (`testChamberSrc`).
+
+### Adding a new main chamber
+
+1. Choose a `flowId` (e.g. `'ch5'`) and insert it into `CHAMBER_FLOW` at the
+   desired position (e.g. between `'ch2'` and `'ch3'` to insert between
+   Chambers 2 and 3).
+2. Add a `CHAMBER_NAMES` entry at the matching index.
+3. Create the chamber IIFE with `flowId` in the push object:
+   ```js
+   chambers.push({w,h,tiles:g,glyphs:[...],flowId:'ch5'});
+   ```
+4. The IIFE can be placed **anywhere** in Section 2 — the flow system handles ordering.
+
+### Replacing an existing chamber
+
+1. Keep the same `flowId` (e.g. `'ch2'`).
+2. Replace the grid tiles in the IIFE.
+3. Update `chamber-data.md` with the new ASCII grid.
+4. No changes to `CHAMBER_FLOW` or `CHAMBER_NAMES`.
+
+### Appending after the final chamber
+
+1. Add a new flowId (e.g. `'ch5'`) to the end of `CHAMBER_FLOW`.
+2. Add the chamber name to `CHAMBER_NAMES`.
+3. The current last chamber's DOOR_D will now lead to the new chamber.
+4. If the current last chamber has an END_PORTAL, change it to DOOR_D
+   (or add a DOOR_D alongside the portal).
+
+### Adding a special chamber (test, bonus, secret)
+
+1. Do **NOT** add a `flowId` — omit it from the push object entirely.
+2. The chamber is identified by absence of flowId (`!c.flowId`).
+3. The test chamber has its own entry/exit logic (press T, tracked via
+   `testChamberSrc`). Custom entry logic is needed for other special types.
+4. Place the IIFE anywhere in Section 2.
+
+### Important rules
+
+- Every main chamber **MUST** have a unique `flowId` present in `CHAMBER_FLOW`.
+- `CHAMBER_FLOW` length must match `CHAMBER_NAMES` length.
+- The test chamber **MUST NOT** have a `flowId` — it is the discriminator.
+- `collectedGlyphs` is sized to `chambers.length` at init, so it adapts
+  automatically to any number of chambers.
+- Numbers for main progression (Ch.0, Ch.1, ...). Letters for special
+  chambers (Ch.T for test, Ch.A/B/C for bonus, etc.).
 
 ## Reading a Chamber
 
@@ -242,15 +304,19 @@ def ascii_grid_to_js(grid_lines, chamber_name):
                 const = CHAR_TO_CONST[tile]
                 lines.append(f"  g[{y}][{x}]={const};")
 
-    lines.append("  chambers.push({w,h,tiles:g,glyphs:[]});")
+    lines.append("  chambers.push({w,h,tiles:g,glyphs:[],flowId:'chN'});")
     lines.append("})();")
     return "\n".join(lines)
 ```
 
+Replace `'chN'` with the actual flowId and adjust `glyphs` array for main
+chambers. Omit `flowId` for special chambers (test, bonus, etc.).
+
 ### Where the JS goes in golem.html
 
-Insert the new chamber IIFE in `SECTION 2: CHAMBER DATA`, in numerical order
-(Ch.N) with the existing chambers. The section is bounded by delimiter comments:
+Insert the new chamber IIFE in `SECTION 2: CHAMBER DATA`. The IIFE can be
+placed anywhere in this section — the `CHAMBER_FLOW` array controls the
+playable order, not the file position. The section is bounded by delimiter comments:
 
 ```
 /* ══════════════════════════════════════════════════
@@ -259,8 +325,8 @@ Insert the new chamber IIFE in `SECTION 2: CHAMBER DATA`, in numerical order
 ```
 
 Place your IIFE after the last existing chamber and before the closing of the
-section (before `SECTION 3: ENTITIES`). Then increment any code that references
-the chamber count if applicable.
+before `SECTION 3: ENTITIES`. Update `CHAMBER_FLOW` and `CHAMBER_NAMES`
+in Section 1 to include the new chamber.
 
 ### golem.html Section Map (after refactor)
 

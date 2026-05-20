@@ -73,6 +73,7 @@ const ABILITIES = [
   ['[3] Push Blocks', 3], ['[4] Break Cracked', 4]
 ];
 const CHAMBER_NAMES = ['Awakening','The Library','The Hall of Echoes','The Weight of Wisdom','The Ibis Chamber'];
+const CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4'];
 
 /* ══════════════════════════════════════════════════
    HELPER FUNCTIONS (extracted from duplicated patterns)
@@ -128,7 +129,7 @@ const chambers = [];
   g[10][8]=WALL;g[10][9]=WALL; g[9][9]=WALL;g[9][10]=WALL;
   g[8][10]=GLYPH;
   g[11][3]=GOLEM_SPAWN;
-  chambers.push({w,h,tiles:g,glyphs:[{x:10,y:8}]});
+ chambers.push({w,h,tiles:g,glyphs:[{x:10,y:8}],flowId:'ch0'});
 })();
 
 // Chamber 1: Need double jump, get Glyph 2 (Dash)
@@ -145,7 +146,7 @@ const chambers = [];
   for(let y=4;y<13;y++) g[y][9]=WALL;
   for(let y=6;y<13;y++) g[y][14]=WALL;
   g[11][3]=GOLEM_SPAWN;
-  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}]});
+chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch1'});
 })();
 
 // Chamber 2: Need dash — vertical magical wall, only passable by dashing through
@@ -161,7 +162,7 @@ const chambers = [];
   for(let x=1;x<10;x++) g[1][x]=WALL;
   g[6][17]=GLYPH;
   g[11][3]=GOLEM_SPAWN;
-  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}]});
+chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch2'});
 })();
 
 // Chamber 3: The Weight of Wisdom — push block down slot to open path
@@ -185,8 +186,8 @@ const chambers = [];
   g[9][16]=PLATFORM; g[9][17]=PLATFORM;
   g[8][17]=GLYPH;
   g[10][3]=GOLEM_SPAWN;
-  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:8}],
-    pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}});
+ chambers.push({w,h,tiles:g,glyphs:[{x:17,y:8}],
+    pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}, flowId:'ch3'});
 })();
 
 // Chamber 4: The Ibis speaks — final chamber, no glyph needed, END_PORTAL triggers ending
@@ -211,24 +212,40 @@ const chambers = [];
   for(let x=17;x<22;x++) g[12][x]=PLATFORM;
   for(let x=11;x<14;x++) g[10][x]=PLATFORM;
   g[11][2]=GOLEM_SPAWN;
-  chambers.push({w,h,tiles:g,glyphs:[]});
+chambers.push({w,h,tiles:g,glyphs:[],flowId:'ch4'});
 })();
 
-// Ch.T: Test chamber — push block mechanics test, entered by pressing KeyT
+// Ch.T: Test chamber — entered by pressing KeyT (no flowId)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  /* Floor at row 13 with a 3-tile pit at columns 4-6 */
-  for(let x=1;x<w-1;x++) g[13][x]=WALL;
-  g[13][4]=PIT; g[13][5]=PIT; g[13][6]=PIT;  // gap for requirement 4 testing
-  /* Wall on right side (row 9-12, column 20) for requirement 7 testing */
-  for(let y=9;y<=12;y++) g[y][20]=WALL;
-  /* Push block spawn at row 12 (one tile above floor) */
-  g[12][12]=PUSH_SPAWN;
-  g[10][12]=GOLEM_SPAWN;
+  /* DOOR_D — exit door at row 2 */
+  g[2][12]=DOOR_D;
+  /* Push block spawn */
+  g[4][11]=PUSH_SPAWN;
+  /* Wall barrier row 5 cols 9-15 */
+  for(let x=9;x<=15;x++) g[5][x]=WALL;
+  /* Platform column rows 6-7 col 12 (X) */
+  g[6][12]=PLATFORM;
+  g[7][12]=PLATFORM;
+  /* Platform rows 8 cols 1-2, 10-11, 14-15 (==) */
+  g[8][1]=PLATFORM;g[8][2]=PLATFORM;
+  g[8][10]=PLATFORM;g[8][11]=PLATFORM;
+  g[8][14]=PLATFORM;g[8][15]=PLATFORM;
+  /* Wall divider col 12 rows 8-12 (#) */
+  for(let y=8;y<=12;y++) g[y][12]=WALL;
+  /* M column rows 10-12 col 11 */
+  g[10][11]=PLATFORM;
+  g[11][11]=PLATFORM;
+  g[12][11]=PLATFORM;
+  /* Floor row 13 — PIT at col 1, WALL cols 2-21, air gap at col 22 */
+  g[13][1]=PIT;
+  for(let x=2;x<=21;x++) g[13][x]=WALL;
+  /* Golem spawn — beside the floor gap */
+  g[12][22]=GOLEM_SPAWN;
   chambers.push({w,h,tiles:g,glyphs:[],
-    pushSpawn:{x:12,y:12}});
+    pushSpawn:{x:11,y:4}});
 })();
 
 /* ══════════════════════════════════════════════════
@@ -610,13 +627,21 @@ function checkDoors(){
   for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
     const t=_getTile(gx+dx,gy+dy);
     if(t===DOOR_D){
-      /* Return from test chamber */
-      if(ch === chambers.length - 1 && testChamberSrc >= 0){
+      /* Return from test chamber (no flowId) */
+      if(!c.flowId && testChamberSrc >= 0){
         transition(testChamberSrc);
         return;
       }
+      /* Follow flow for main chambers */
       if(collectedGlyphs[ch]){
-        transition(ch+1);
+        const fi = CHAMBER_FLOW.indexOf(c.flowId);
+        if(fi >= 0 && fi < CHAMBER_FLOW.length - 1){
+          /* Find chamber index by flowId of next in flow */
+          const nextFlow = CHAMBER_FLOW[fi+1];
+          for(let i=0;i<chambers.length;i++){
+            if(chambers[i].flowId === nextFlow){ transition(i); return; }
+          }
+        }
       } else {
         if(portalLockMsg<=0){
           showMessage("The seal demands Knowledge...", 70);
@@ -672,9 +697,10 @@ function update(){
   if(animState!=='idle'){ updateAnim(); return; }
   _c=chambers[P.chamber]; // cache chamber ref for fast getTile
 
-  /* Test chamber entry/exit — press T */
+ /* Test chamber entry/exit — press T */
   if(fresh('KeyT')){
-    if(P.chamber === chambers.length - 1 && testChamberSrc >= 0){
+    const c = chambers[P.chamber];
+    if(!c.flowId && testChamberSrc >= 0){
       /* Return from test chamber */
       transition(testChamberSrc);
       showMessage("Back to chamber " + testChamberSrc + ".", 60);
@@ -686,7 +712,10 @@ function update(){
       P.canDash = true;
       P.canPush = true;
       P.canBreak = true;
-      transition(chambers.length - 1);
+      /* Find test chamber by absence of flowId */
+      for(let i=0;i<chambers.length;i++){
+        if(!chambers[i].flowId){ transition(i); break; }
+      }
       showMessage("Test chamber — all abilities unlocked.", 90);
     }
     return;
@@ -1373,14 +1402,22 @@ function render(){
     }
   }
 
-  /* Chamber name + portal status */
+ /* Chamber name + portal status */
   X.fillStyle='#665a4a'; X.font='12px monospace'; X.textAlign='center';
-  if(ch<4){
-    const locked = !glyphCollected;
-    const portalStatus = locked ? ' \u{1F512} Portal Sealed' : ' Portal Open \u2714';
-    X.fillText(CHAMBER_NAMES[ch] + portalStatus, W/2, H-10);
+  if(c.flowId){
+    const fi = CHAMBER_FLOW.indexOf(c.flowId);
+    if(fi >= 0 && fi < CHAMBER_FLOW.length - 1){
+      /* Main chambers with portal (not last in flow) */
+      const locked = !glyphCollected;
+      const portalStatus = locked ? ' \u{1F512} Portal Sealed' : ' Portal Open \u2714';
+      X.fillText(CHAMBER_NAMES[fi] + portalStatus, W/2, H-10);
+    } else if(fi === CHAMBER_FLOW.length - 1){
+      /* Last chamber in flow — The Ibis Chamber */
+      X.fillText(CHAMBER_NAMES[fi] + ' \u2605 Path of Wisdom', W/2, H-10);
+    }
   } else {
-    X.fillText(CHAMBER_NAMES[ch] + ' \u2605 Path of Wisdom', W/2, H-10);
+    /* Test chamber (no flowId) */
+    X.fillText('Ch.T Test Chamber', W/2, H-10);
   }
 
  /* Message */

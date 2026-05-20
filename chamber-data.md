@@ -134,7 +134,7 @@ Platforms row 10 cols 14-22, row 9 cols 16-17
 |08 #........X.XXXX.........# |
 |09 #.........XX.XX.........# |
 |10 #..........===..........# |
-|11 #^.........X...........# |
+|11 #^..........X...........# |
 |12 #...====.........=====..# |
 |13 ######################### |
 |14 ######################### |
@@ -144,9 +144,9 @@ Platforms row 10 cols 14-22, row 9 cols 16-17
 Spawn: ^ at (2,11) | No glyph needed | END_PORTAL at (12,7)
 Inner 3x3 CRACKED box around portal (rows 6-8, cols 11-13)
 Outer diamond ring of CRACKED tiles (rows 3-11)
-Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
+Platforms row 12 cols 4-7 and 17-22 | Platforms row 10 cols 11-13
 
-## Chamber T — Test Chamber (index 5)
+## Chamber T — Test Chamber (no flowId)
 
 ```
 +-----------------------------+
@@ -154,26 +154,32 @@ Platforms row 12 cols 4-7 and 17-21 | Platforms row 10 cols 11-13
 +-----------------------------+
 |00 ######################### |
 |01 #.......................# |
-|02 #.......................# |
+|02 #...........^...........# |
 |03 #.......................# |
-|04 #.......................# |
-|05 #.......................# |
-|06 #.......................# |
-|07 #.......................# |
-|08 #.......................# |
-|09 #.......................# |
-|10 #...........^...........# |
-|11 #.......................# |
-|12 #...........S...........# |
-|13 ############~~~########## |
+|04 #...........S...........# |
+|05 #........#######........# |
+|06 #...........X...........# |
+|07 #...........X...........# |
+|08 #==.......==#==.......==# |
+|09 #...........#...........# |
+|10 #...........M...........# |
+|11 #...........M...........# |
+|12 #...........M...........# |
+|13 #~#####################.# |
 |14 ######################### |
 +-----------------------------+
 ```
 
-Spawn: ^ at (12,10) | No glyph | PUSH_SPAWN at (12,12) | pit at cols 4-6 row 13 | wall at col 20 rows 9-12
-**Entry:** Press `T` (KeyT) from any chamber — saves source chamber in `testChamberSrc`,
-sets `glyphsCollected = 4` and unlocks all abilities (Double Jump, Dash, Push, Break).
+DOOR_D at (12,2) | PUSH_SPAWN at (11,4) | GOLEM_SPAWN at (11,13)
+Wall barrier: row 5 cols 9-15 (blocks direct push block drop from above)
+Platform column: row 6-7 col 12 (X — stand/balance test)
+Platform rows: row 8 cols 1-2, 10-11, 14-15 (== — jump test)
+Solid column (M): rows 10-12 col 11 (push block target — drop onto these)
+Wall divider: col 12 rows 8-12 (separates left/right platform sections)
+Floor: row 13 cols 2-21 (WALL), with PIT (~) at col 1 and air gap at col 22
+**Entry:** Press `T` from any main chamber (identified by `!c.flowId`) — saves
+source chamber in `testChamberSrc`, sets `glyphsCollected = 4`, unlocks all
+abilities (Double Jump, Dash, Push, Break).
 **Exit:** Press `T` again — returns to source chamber via `testChamberSrc`.
-Also returns via DOOR_D if placed in the chamber.
-Does not affect original chambers or game flow.
-
+Also exits via DOOR_D (same return logic). Does not affect original chambers
+or game flow. Test chamber has no `flowId` property.

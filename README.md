@@ -38,16 +38,14 @@ Each chamber grants a glyph that unlocks the next chamber's core mechanic:
 
 | File | Purpose |
 |------|---------|
-| `golem.html` | Complete game (~1153 lines, single file, 11-section structure) |
+| `golem.html` | Complete game (~1495 lines, single file, 11-section structure with chamber flow system) |
 | `chamber-data.md` | Chamber layouts (ASCII grids) |
-| `chamber-proposal.md` | Proposed chamber improvements |
-| `chamber-template.md` | Tile legend and conversion spec |
-| `code-review.md` | Code review findings |
-| `golem-state-audit.md` | Full game architecture audit |
+| `chamber-proposal.md` | Reusable template for new chamber proposals |
+| `chamber-template.md` | Tile legend, coordinate system, chamber flow system, conversion spec |
 | `ROADMAP.md` | Active development checkpoints |
 | `docs/Project-Constraints.md` | Stack and constraints |
 | `docs/File-Structure-Reference.md` | Repository structure |
 
 ## Tech
 
-Vanilla JavaScript, HTML5 Canvas 2D, no frameworks, no dependencies. 800x480 canvas with 32x32 tiles on a 25x15 grid per chamber.
+Vanilla JavaScript, HTML5 Canvas 2D, no frameworks, no dependencies. 800x480 canvas with 32x32 tiles on a 25x15 grid per chamber. Chamber progression uses a flow system (`CHAMBER_FLOW` array) — see `chamber-template.md` for adding or reordering levels.
