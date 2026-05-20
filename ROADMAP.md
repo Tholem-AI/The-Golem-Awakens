@@ -107,6 +107,14 @@
 - [x] AGENTS.md quality gates updated with chamber_diff.py commands (5 -> 10 items)
 - [x] Validation: 0 tile mismatches, 0 strict validation errors, 0 JS errors, game loads in browser, export matches exactly, flow checks pass
 
+### Chamber 1 — The Library Implementation (May 2026)
+- [x] Replaced placeholder Chamber 1 with "The Library" complex grid from chamber-data.md
+- [x] New grid: 150 walls, 15 pits, 11 platforms, 2 MAGICAL_WALLs, 1 GLYPH, 1 DOOR_D, 1 GOLEM_SPAWN
+- [x] Spawn (2,2), Door (11,13), Glyph (23,12), MAGICAL_WALL at (20,11) and (20,12)
+- [x] Follows 9-step ordered construction convention
+- [x] tools/chamber_diff.py: added int(col_expr) fallback for numeric column literals
+- [x] Validation: 0 tile mismatches, flow check OK, JS syntax OK, browser test OK, reviewer approved
+
 ---
 
 ## Remaining Work
@@ -160,7 +168,8 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 
 - [x] Chamber 0 — Awakening: Replace staircase with platform-based jump sequence, widen pit, add scattered pits, platforms, interior walls. Door moved to (24,2), glyph at (12,5), spawn at (4,12). Validation: 0 tile mismatches, flow checks pass, JS syntax OK, browser verified.
 - [ ] Chamber 4 — The Ibis Chamber: Add pits, reposition platforms, make outer cracked walls structurally meaningful
-- [ ] Chambers 1, 2, 3: No changes (assessed as well-designed)
+- [x] Chamber 1 — The Library: Replaced placeholder with complex grid (150 walls, 15 pits, 11 platforms, 2 MAGICAL_WALLs, 1 GLYPH). Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
+- [ ] Chambers 2, 3: No changes (assessed as well-designed)
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
 ### Visual and Story Overhaul (Not Started)
@@ -218,8 +227,9 @@ Prepare the project for public repository sharing.
 || Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |
-||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
-||| Chamber redesign | Not Started | Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
+|||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
+|||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
+|||| Chamber redesign | In Progress | Chambers 0,1 done; Chambers 2,3 unchanged; Chamber 4 pending. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 | Visual/story overhaul | Not Started | — |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

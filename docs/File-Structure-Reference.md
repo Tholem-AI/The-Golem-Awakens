@@ -5,7 +5,7 @@
 ```
 GOLEM_GAME/
   AGENTS.md                  # Project-scoped governance (Tholem Hermes Kit)
- golem.html                # Single-file HTML5 game (~1545 lines, 11 sections + animation system, ~57 KB)
+ golem.html                # Single-file HTML5 game (~1574 lines, 11 sections + animation system, ~57 KB)
   README.md                 # Project overview, controls, abilities, chambers
   ROADMAP.md                # Active development checkpoints
   chamber-data.md           # Chamber grid exports extracted from golem.html (grid-only, no annotations)

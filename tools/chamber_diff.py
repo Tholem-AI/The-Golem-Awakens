@@ -354,7 +354,11 @@ def parse_js_chambers(filepath):
                 elif col_expr == 'w-1':
                     col = GRID_W - 1
                 else:
-                    continue
+                    # Try numeric literal (e.g., 24)
+                    try:
+                        col = int(col_expr)
+                    except ValueError:
+                        continue
                 for y in range(GRID_H):
                     grid[y][col] = val
 

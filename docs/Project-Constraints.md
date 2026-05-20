@@ -20,7 +20,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-|| File size | ~1545 lines, ~57 KB | Single-file constraint |
+||| File size | ~1574 lines, ~57 KB | Single-file constraint |
 | Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
 | Push block | Velocity-based push at PUSH_SPEED (1.25 px/frame) | Sections 1, 6 |
 | Deployment | Single HTML file, no external dependencies | — |

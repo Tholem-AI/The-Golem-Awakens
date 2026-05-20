@@ -161,25 +161,44 @@ const chambers = [];
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
   /* Step 2: Pits */
-  for(let x=8;x<17;x++){g[14][x]=PIT;g[13][x]=PIT;}
+  for(let y=1;y<4;y++) g[y][8]=PIT;
+  g[3][13]=PIT;
+  g[3][19]=PIT;
+  for(let x=5;x<8;x++) g[8][x]=PIT;
+  for(let x=9;x<12;x++) g[10][x]=PIT;
+  for(let x=1;x<4;x++) g[13][x]=PIT;
   /* Step 3: Door/Portal */
-  g[1][12]=DOOR_D;
+  g[13][11]=DOOR_D;
   /* Step 4: Interior walls */
-  for(let y=4;y<13;y++) g[y][9]=WALL;
-  for(let y=6;y<13;y++) g[y][14]=WALL;
+  for(let y=1;y<3;y++) g[y][4]=WALL;
+  for(let y=3;y<7;y++) g[y][12]=WALL;
+  for(let y=4;y<12;y++) g[y][8]=WALL;
+  for(let y=4;y<11;y++){g[y][19]=WALL;g[y][20]=WALL;}
+  for(let y=5;y<11;y++) g[y][15]=WALL;
+  for(let y=5;y<13;y++) g[y][17]=WALL;
+  for(let x=1;x<5;x++) g[4][x]=WALL;
+  for(let x=14;x<19;x++) g[3][x]=WALL;
+  g[3][20]=WALL;
+  for(let x=12;x<15;x++) g[10][x]=WALL;
+  for(let x=4;x<11;x++) g[13][x]=WALL;
+  for(let x=12;x<24;x++) g[13][x]=WALL;
+  g[11][20]=MAGICAL_WALL;
+  g[12][20]=MAGICAL_WALL;
   /* Step 5: Platforms */
-  for(let x=4;x<7;x++) g[11][x]=PLATFORM;
-  for(let x=10;x<13;x++) g[9][x]=PLATFORM;
-  for(let x=16;x<19;x++) g[7][x]=PLATFORM;
+  for(let x=21;x<24;x++) g[3][x]=PLATFORM;
+  for(let x=5;x<8;x++) g[4][x]=PLATFORM;
+  for(let x=9;x<12;x++) g[4][x]=PLATFORM;
+  g[5][18]=PLATFORM;
+  g[6][16]=PLATFORM;
   /* Step 6: Glyphs */
-  g[6][17]=GLYPH;
+  g[12][23]=GLYPH;
   /* Step 8: Golem spawn */
-  g[11][3]=GOLEM_SPAWN;
+  g[2][2]=GOLEM_SPAWN;
   /* Step 9: Push */
-chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch1'});
+  chambers.push({w,h,tiles:g,glyphs:[{x:23,y:12}],flowId:'ch1'});
 })();
 
 // Chamber 2: Need dash — vertical magical wall, only passable by dashing through
