@@ -158,7 +158,7 @@
 
 Redesign each chamber for better experience using `chamber-proposal.md` as staging area.
 
-- [ ] Chamber 0 — Awakening: Replace staircase with platform-based jump sequence, widen pit
+- [x] Chamber 0 — Awakening: Replace staircase with platform-based jump sequence, widen pit, add scattered pits, platforms, interior walls. Door moved to (24,2), glyph at (12,5), spawn at (4,12). Validation: 0 tile mismatches, flow checks pass, JS syntax OK, browser verified.
 - [ ] Chamber 4 — The Ibis Chamber: Add pits, reposition platforms, make outer cracked walls structurally meaningful
 - [ ] Chambers 1, 2, 3: No changes (assessed as well-designed)
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
@@ -218,7 +218,8 @@ Prepare the project for public repository sharing.
 || Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |
-| Chamber redesign | Not Started | Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
+||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
+||| Chamber redesign | Not Started | Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 | Visual/story overhaul | Not Started | — |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

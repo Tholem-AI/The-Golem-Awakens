@@ -121,23 +121,40 @@ const chambers = [];
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;}
-  for(let y=0;y<h-2;y++){g[y][w-1]=WALL;}
+  for(let y=0;y<2;y++){g[y][w-1]=WALL;}
+  for(let y=3;y<5;y++){g[y][w-1]=WALL;}
+  for(let y=8;y<15;y++){g[y][w-1]=WALL;}
   /* Step 2: Pits */
-  g[14][12]=PIT;g[14][13]=PIT;g[14][14]=PIT;
-  g[13][12]=PIT;g[13][13]=PIT;g[13][14]=PIT;
+  for(let x=9;x<=11;x++) g[13][x]=PIT;
+  for(let y=5;y<=7;y++){g[y][16]=PIT;g[y][w-1]=PIT;}
+  g[3][12]=PIT;
+  g[8][8]=PIT;g[9][8]=PIT;
   /* Step 3: Door/Portal */
-  g[h-3][w-1]=DOOR_D;
+  g[2][24]=DOOR_D;
   /* Step 4: Interior walls */
-  g[12][6]=WALL;g[12][7]=WALL; g[11][7]=WALL;g[11][8]=WALL;
-  g[10][8]=WALL;g[10][9]=WALL; g[9][9]=WALL;g[9][10]=WALL;
+  for(let x=8;x<=11;x++) g[3][x]=WALL;
+  for(let x=13;x<=16;x++) g[3][x]=WALL;
+  for(let y=4;y<=7;y++) g[y][8]=WALL;
+  g[4][16]=WALL;
+  for(let y=8;y<=9;y++) g[y][16]=WALL;
+  g[10][8]=WALL;g[10][16]=WALL;
+  g[11][8]=WALL;g[12][8]=WALL;
+  for(let x=0;x<=8;x++) g[13][x]=WALL;
+  for(let x=12;x<25;x++) g[13][x]=WALL;
+  /* Step 5: Platforms */
+  for(let x=17;x<=23;x++) g[3][x]=PLATFORM;
+  for(let x=1;x<=7;x++) g[7][x]=PLATFORM;
+  for(let x=9;x<=11;x++) g[10][x]=PLATFORM;
+  for(let x=19;x<=21;x++) g[10][x]=PLATFORM;
+  for(let x=2;x<=6;x++) g[11][x]=PLATFORM;
   /* Step 6: Glyphs */
-  g[8][10]=GLYPH;
+  g[5][12]=GLYPH;
   /* Step 8: Golem spawn */
-  g[11][3]=GOLEM_SPAWN;
+  g[12][4]=GOLEM_SPAWN;
   /* Step 9: Push */
- chambers.push({w,h,tiles:g,glyphs:[{x:10,y:8}],flowId:'ch0'});
+  chambers.push({w,h,tiles:g,glyphs:[{x:12,y:5}],flowId:'ch0'});
 })();
 
 // Chamber 1: Need double jump, get Glyph 2 (Dash)
