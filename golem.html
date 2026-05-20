@@ -120,72 +120,99 @@ const chambers = [];
 // Chamber 0: Awakening — learn movement, get Glyph 1 (Double Jump)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;}
-  for(let y=0;y<h-2;y++){g[y][w-1]=WALL;} g[h-3][w-1]=DOOR_D;
+  for(let y=0;y<h-2;y++){g[y][w-1]=WALL;}
+  /* Step 2: Pits */
   g[14][12]=PIT;g[14][13]=PIT;g[14][14]=PIT;
   g[13][12]=PIT;g[13][13]=PIT;g[13][14]=PIT;
+  /* Step 3: Door/Portal */
+  g[h-3][w-1]=DOOR_D;
+  /* Step 4: Interior walls */
   g[12][6]=WALL;g[12][7]=WALL; g[11][7]=WALL;g[11][8]=WALL;
   g[10][8]=WALL;g[10][9]=WALL; g[9][9]=WALL;g[9][10]=WALL;
+  /* Step 6: Glyphs */
   g[8][10]=GLYPH;
+  /* Step 8: Golem spawn */
   g[11][3]=GOLEM_SPAWN;
+  /* Step 9: Push */
  chambers.push({w,h,tiles:g,glyphs:[{x:10,y:8}],flowId:'ch0'});
 })();
 
 // Chamber 1: Need double jump, get Glyph 2 (Dash)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  g[1][12]=DOOR_D;
+  /* Step 2: Pits */
   for(let x=8;x<17;x++){g[14][x]=PIT;g[13][x]=PIT;}
+  /* Step 3: Door/Portal */
+  g[1][12]=DOOR_D;
+  /* Step 4: Interior walls */
+  for(let y=4;y<13;y++) g[y][9]=WALL;
+  for(let y=6;y<13;y++) g[y][14]=WALL;
+  /* Step 5: Platforms */
   for(let x=4;x<7;x++) g[11][x]=PLATFORM;
   for(let x=10;x<13;x++) g[9][x]=PLATFORM;
   for(let x=16;x<19;x++) g[7][x]=PLATFORM;
+  /* Step 6: Glyphs */
   g[6][17]=GLYPH;
-  for(let y=4;y<13;y++) g[y][9]=WALL;
-  for(let y=6;y<13;y++) g[y][14]=WALL;
+  /* Step 8: Golem spawn */
   g[11][3]=GOLEM_SPAWN;
+  /* Step 9: Push */
 chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch1'});
 })();
 
 // Chamber 2: Need dash — vertical magical wall, only passable by dashing through
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  g[1][12]=DOOR_D;
+  /* Step 2: Pits */
   for(let x=7;x<18;x++){g[14][x]=PIT;g[13][x]=PIT;}
-  g[11][4]=PLATFORM;g[11][5]=PLATFORM;
-  g[11][17]=PLATFORM;g[11][18]=PLATFORM;
+  /* Step 3: Door/Portal */
+  g[1][12]=DOOR_D;
+  /* Step 4: Interior walls */
   for(let y=1;y<13;y++) g[y][10]=MAGICAL_WALL;
   for(let x=1;x<10;x++) g[1][x]=WALL;
+  /* Step 5: Platforms */
+  g[11][4]=PLATFORM;g[11][5]=PLATFORM;
+  g[11][17]=PLATFORM;g[11][18]=PLATFORM;
+  /* Step 6: Glyphs */
   g[6][17]=GLYPH;
+  /* Step 8: Golem spawn */
   g[11][3]=GOLEM_SPAWN;
+  /* Step 9: Push */
 chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch2'});
 })();
 
 // Chamber 3: The Weight of Wisdom — push block down slot to open path
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  g[1][12]=DOOR_D;
-  /* Solid floor at row 12 — no death void */
   for(let x=2;x<23;x++) g[12][x]=WALL;
-  /* Slot opening */
-  g[12][11]=AIR;
-  g[13][11]=AIR;
-  /* Block sits on solid floor left of slot, blocking path */
-  g[11][10]=PUSH_SPAWN;
-  /* Wall across row 10 — force push block into slot to cross */
+  /* Step 3: Door/Portal */
+  g[1][12]=DOOR_D;
+  /* Step 4: Interior walls */
   for(let x=4;x<=13;x++) g[10][x]=WALL;
   for(let x=1;x<=5;x++) g[9][x]=WALL;
-  /* Right side: platforms for reaching glyph */
+  /* Step 5: Platforms */
   for(let x=14;x<23;x++) g[10][x]=PLATFORM;
   g[9][16]=PLATFORM; g[9][17]=PLATFORM;
+  /* Step 6: Glyphs */
   g[8][17]=GLYPH;
+  /* Step 7: Special tiles */
+  g[12][11]=AIR;
+  g[13][11]=AIR;
+  g[11][10]=PUSH_SPAWN;
+  /* Step 8: Golem spawn */
   g[10][3]=GOLEM_SPAWN;
+  /* Step 9: Push */
  chambers.push({w,h,tiles:g,glyphs:[{x:17,y:8}],
     pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}, flowId:'ch3'});
 })();
@@ -193,57 +220,59 @@ chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch2'});
 // Chamber 4: The Ibis speaks — final chamber, no glyph needed, END_PORTAL triggers ending
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  /* Step 3: Door/Portal */
   g[7][12]=END_PORTAL;
-  /* Inner 3x3 box — portal completely sealed */
+  /* Step 5: Platforms */
+  for(let x=4;x<8;x++) g[12][x]=PLATFORM;
+  for(let x=17;x<22;x++) g[12][x]=PLATFORM;
+  for(let x=11;x<14;x++) g[10][x]=PLATFORM;
+  /* Step 7: Special tiles */
   g[6][11]=CRACKED;g[6][12]=CRACKED;g[6][13]=CRACKED;
   g[7][11]=CRACKED;g[7][13]=CRACKED;
   g[8][11]=CRACKED;g[8][12]=CRACKED;g[8][13]=CRACKED;
-  /* Outer diamond ring — decorative, dash through to break */
   g[3][12]=CRACKED;g[11][12]=CRACKED;
   g[5][10]=CRACKED;g[5][11]=CRACKED;g[5][13]=CRACKED;g[5][14]=CRACKED;
   g[6][9]=CRACKED;g[6][14]=CRACKED;
   g[7][8]=CRACKED;g[7][16]=CRACKED;
   g[8][9]=CRACKED;g[8][14]=CRACKED;
   g[9][10]=CRACKED;g[9][11]=CRACKED;g[9][13]=CRACKED;g[9][14]=CRACKED;
-  /* Platforms to stand on */
-  for(let x=4;x<8;x++) g[12][x]=PLATFORM;
-  for(let x=17;x<22;x++) g[12][x]=PLATFORM;
-  for(let x=11;x<14;x++) g[10][x]=PLATFORM;
+  /* Step 8: Golem spawn */
   g[11][2]=GOLEM_SPAWN;
+  /* Step 9: Push */
 chambers.push({w,h,tiles:g,glyphs:[],flowId:'ch4'});
 })();
 
 // Ch.T: Test chamber — entered by pressing KeyT (no flowId)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
+  /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  /* DOOR_D — exit door at row 2 */
+  for(let x=2;x<=21;x++) g[13][x]=WALL;
+  /* Step 2: Pits */
+  g[13][1]=PIT;
+  /* Step 3: Door/Portal */
   g[2][12]=DOOR_D;
-  /* Push block spawn */
-  g[4][11]=PUSH_SPAWN;
-  /* Wall barrier row 5 cols 9-15 */
+  /* Step 4: Interior walls */
   for(let x=9;x<=15;x++) g[5][x]=WALL;
-  /* Platform column rows 6-7 col 12 (X) */
+  for(let y=8;y<=12;y++) g[y][12]=WALL;
+  /* Step 5: Platforms */
   g[6][12]=PLATFORM;
   g[7][12]=PLATFORM;
-  /* Platform rows 8 cols 1-2, 10-11, 14-15 (==) */
   g[8][1]=PLATFORM;g[8][2]=PLATFORM;
   g[8][10]=PLATFORM;g[8][11]=PLATFORM;
   g[8][14]=PLATFORM;g[8][15]=PLATFORM;
-  /* Wall divider col 12 rows 8-12 (#) */
-  for(let y=8;y<=12;y++) g[y][12]=WALL;
-  /* M column rows 10-12 col 11 */
   g[10][11]=PLATFORM;
   g[11][11]=PLATFORM;
   g[12][11]=PLATFORM;
-  /* Floor row 13 — PIT at col 1, WALL cols 2-21, air gap at col 22 */
-  g[13][1]=PIT;
-  for(let x=2;x<=21;x++) g[13][x]=WALL;
-  /* Golem spawn — beside the floor gap */
+  /* Step 7: Special tiles */
+  g[4][11]=PUSH_SPAWN;
+  /* Step 8: Golem spawn */
   g[12][22]=GOLEM_SPAWN;
+  /* Step 9: Push */
   chambers.push({w,h,tiles:g,glyphs:[],
     pushSpawn:{x:11,y:4}});
 })();

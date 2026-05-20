@@ -11,11 +11,11 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 | `#` | WALL       | 1     | Solid wall (floor, ceiling, boundaries)      |
 | `~` | PIT        | 2     | Death void — touching respawns player       |
 | `^` | GOLEM_SPAWN | 3     | Player spawn marker (invisible, determines golem position) |
-| `v` | DOOR_D     | 4     | Down-side exit door (glyph-locked). Test chamber uses `^` at row 2.           |
+| `v` | DOOR_D     | 4     | Exit door — follows CHAMBER_FLOW to next chamber. Test chamber exits to source. |
 | `*` | GLYPH      | 5     | Collectible knowledge glyph                  |
-| `X` | CRACKED    | 7     | Breakable wall (requires Glyph 4)            |
-| `=` | PLATFORM   | 8     | One-way platform (passable from below)       |
-| `@` | END_PORTAL | 9     | Final portal — triggers ending              |
+| `X` | CRACKED    | 7     | Breakable wall (dash through to destroy)     |
+| `=` | PLATFORM   | 8     | One-way platform (walkable from above, passable from below, drop through with Down/S) |
+| `@` | END_PORTAL | 9     | Final portal — triggers ending sequence      |
 | `M` | MAGICAL_W  | 10    | Destructible barrier (dash kills on contact) |
 | `S` | PUSH_SPAWN | 11    | Spawn marker for free-moving push block      |
 
@@ -48,6 +48,89 @@ Grids are rendered as compact 25-char rows with row-number labels on the left.
 - **Grid cells:** Exactly 25 characters per row, no spaces between them. Each character
   is one tile. Column index increases left to right (0-24).
 - **Border:** `+` corners, `-` horizontal lines, `|` vertical delimiters.
+
+## Rules
+
+1. **Grid-only data in `chamber-data.md`** — no annotation lines after code blocks.
+   All interpretive notes belong in `chamber-template.md` or `docs/`.
+2. **Each chamber section** contains exactly: H2 header, blank line, fenced code block.
+3. **Exactly 25 columns x 15 rows** per grid — no exceptions.
+4. **Exactly one GOLEM_SPAWN (^)** per chamber, with solid floor (#) directly beneath it.
+5. **Numbered chambers** (Ch.0, Ch.1, ...) are main flow — each has a unique `flowId` in `CHAMBER_FLOW`.
+   **Lettered chambers** (Ch.T, Ch.A, ...) are special — no `flowId`.
+6. **Tile Legend is exact** — the character-to-constant mapping above is the single source of truth.
+   No character in the grid may appear outside this legend.
+
+## Ordered Construction Convention (golem.html IIFEs)
+
+Each chamber IIFE in `golem.html` Section 2 MUST follow this construction order:
+
+| Step | Phase | Description | Comment prefix |
+|------|-------|-------------|----------------|
+| 1 | Boundaries | Ceiling (row 0), floor (rows 13-14), left wall (col 0), right wall (col w-1) | `/* Step 1: Boundaries */` |
+| 2 | Pits | Override floor tiles with PIT (~) where needed | `/* Step 2: Pits */` |
+| 3 | Door/Portal | Place DOOR_D (v) or END_PORTAL (@) | `/* Step 3: Door/Portal */` |
+| 4 | Interior walls | Solid barriers (#), magical walls (M), top/bottom wall segments | `/* Step 4: Interior walls */` |
+| 5 | Platforms | One-way platforms (=) | `/* Step 5: Platforms */` |
+| 6 | Glyphs | Collectible knowledge glyphs (*) | `/* Step 6: Glyphs */` |
+| 7 | Special tiles | PUSH_SPAWN (S), CRACKED (X), slot AIR overrides | `/* Step 7: Special tiles */` |
+| 8 | Spawn | GOLEM_SPAWN (^) — always the last tile assignment | `/* Step 8: Golem spawn */` |
+| 9 | Push | chambers.push() with grid, glyphs, flowId, properties | (no comment needed) |
+
+This order ensures:
+- Boundaries are set first (lowest priority, can be overridden by later steps)
+- Spawn is set last (highest priority, never accidentally overwritten)
+- Each phase is visually separated by a `/* Step N: ... */` comment for readability and diffability
+- The construction sequence matches the handler priority in `chamber_diff.py`
+
+## Diff Workflows
+
+### Workflow A: Verify chamber-data.md matches golem.html (production check)
+
+Run after any changes to golem.html Section 2:
+
+    python3 tools/chamber_diff.py --strict
+
+Expected: 0 mismatches. If mismatches found, either:
+  - Update chamber-data.md: `python3 tools/chamber_diff.py --export-ascii chamber-data.md`
+  - Fix golem.html if the MD is correct
+
+### Workflow B: Validate a new chamber proposal
+
+Before implementing a proposal:
+
+    python3 tools/chamber_diff.py --validate proposal.md --strict
+
+Expected: No validation errors. Checks grid structure, spawn, pit borders, properties.
+
+### Workflow C: Compare proposal against existing data
+
+After creating a proposal, see what changed:
+
+    python3 tools/chamber_diff.py --diff-proposal chamber-data.md proposal.md
+
+Shows tile-by-tile differences between proposal and current data.
+
+### Workflow D: Three-way check (proposal vs data vs code)
+
+After implementing a proposal in golem.html:
+
+    python3 tools/chamber_diff.py --diff-proposal chamber-data.md proposal.md --against-js golem.html
+    python3 tools/chamber_diff.py --strict
+
+Expected: Both show 0 mismatches. The proposal was implemented correctly.
+
+### Workflow E: Regenerate chamber-data.md from golem.html
+
+When golem.html changes and chamber-data.md needs updating:
+
+    python3 tools/chamber_diff.py --export-ascii chamber-data.md
+
+### Workflow F: Check flow consistency
+
+Verify CHAMBER_FLOW, CHAMBER_NAMES, and flowIds are consistent:
+
+    python3 tools/chamber_diff.py --check-flow
 
 ## Coordinate System
 

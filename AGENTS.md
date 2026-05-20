@@ -30,10 +30,15 @@ This file defines always-on governance, execution lifecycle, safety, quality, an
 ## Quality gates
 
 1. Run relevant quality checks before declaring work ready for review.
-2. For chamber changes: verify grid dimensions (25x15), spawn walkability, glyph/door reachability, and pit boundaries before marking complete.
-3. For code changes: verify the game loads and runs without console errors.
-4. Do not mark work complete without corresponding validation evidence.
-5. Keep implementation, `ROADMAP.md`, and key docs in sync, including `docs/File-Structure-Reference.md` and `docs/Project-Constraints.md`.
+2. For chamber changes: run `python3 tools/chamber_diff.py --strict` — must show 0 mismatches.
+3. For new chambers: validate with `python3 tools/chamber_diff.py --validate proposal.md --strict`.
+4. For proposals: diff against existing data with `python3 tools/chamber_diff.py --diff-proposal chamber-data.md proposal.md`.
+5. chamber-data.md must never contain annotation lines — grids only.
+6. All golem.html IIFEs must follow the 9-step ordered construction convention (documented in `chamber-template.md`).
+7. Verify flow consistency with `python3 tools/chamber_diff.py --check-flow`.
+8. Verify the game loads and runs without console errors.
+9. Do not mark work complete without corresponding validation evidence.
+10. Keep implementation, `ROADMAP.md`, and key docs in sync, including `docs/File-Structure-Reference.md` and `docs/Project-Constraints.md`.
 
 ## Project constraints
 

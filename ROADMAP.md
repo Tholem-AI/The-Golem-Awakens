@@ -92,6 +92,21 @@
 - [x] ROADMAP.md, File-Structure-Reference.md, Project-Constraints.md, README.md updated
 - [x] Validation: JS syntax OK, flow system verified in code inspection
 
+### Chamber Data Management (May 2026)
+- [x] tools/chamber_diff.py: diff/validation tool with 6 modes (diff, validate, strict, export-ascii, diff-proposal, check-flow)
+- [x] Fixed handler ordering bug in chamber_diff.py (parsing now robust)
+- [x] Added --export-ascii for generating ASCII grid exports from HTML
+- [x] Added --strict flag for strict tile validation against legend
+- [x] Added --check-flow for verifying CHAMBER_FLOW consistency
+- [x] Added three-way diff support for comparing multiple chamber sources
+- [x] chamber-data.md: stripped all annotation lines — now grid-only (185 -> ~120 lines)
+- [x] chamber-data.md: fixed 25 tile mismatches between grids and golem.html
+- [x] chamber-data.md: grids now match golem.html exactly (0 mismatches)
+- [x] golem.html Section 2: reordered all 6 chamber IIFEs to follow 9-step ordered construction convention with /* Step N: */ comments
+- [x] chamber-template.md: fixed Tile Legend, added Rules section, Ordered Construction Convention section, Diff Workflows section (A-F)
+- [x] AGENTS.md quality gates updated with chamber_diff.py commands (5 -> 10 items)
+- [x] Validation: 0 tile mismatches, 0 strict validation errors, 0 JS errors, game loads in browser, export matches exactly, flow checks pass
+
 ---
 
 ## Remaining Work
@@ -198,11 +213,12 @@ Prepare the project for public repository sharing.
 ||| Chamber flow system | Complete | CHAMBER_FLOW + flowId, DOOR_D follows flow, !c.flowId test detection, flow-based HUD |
 ||| Bug fixes (gap skip) | Not Started | — |
 || Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
-|| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
-| Pause toggle | Not Started | — |
+||| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
+||| Chamber data management | Complete | chamber_diff.py (6 modes), 0 mismatches, 0 strict errors, grids match exactly |
+|| Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |
-| Chamber redesign | Not Started | Proposals in `chamber-proposal.md` |
+| Chamber redesign | Not Started | Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 | Visual/story overhaul | Not Started | — |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

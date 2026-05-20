@@ -7,7 +7,7 @@ legend, format spec, and extraction/conversion instructions.
 
 ```
 +-----------------------------+
-| Ch.0 Awakening              |
+| Ch.0 Awakening            |
 +-----------------------------+
 |00 ######################### |
 |01 #.......................# |
@@ -20,21 +20,18 @@ legend, format spec, and extraction/conversion instructions.
 |08 #.........*.............# |
 |09 #........##.............# |
 |10 #.......##..............# |
-|11 #^.....##...............# |
+|11 #..^...##...............# |
 |12 #.....##................v |
 |13 ############~~~########## |
 |14 ############~~~########## |
 +-----------------------------+
 ```
 
-Spawn: ^ at (3,11) | Glyph 1 at (10,8) — Double Jump | DOOR_D at (24,12) | Pit (12-14, 13-14)
-Diagonal staircase walls ascend from (12,12) up to (9,10). Right wall is open above row 12.
-
 ## Chamber 1 — The Library
 
 ```
 +-----------------------------+
-| Ch.1 The Library            |
+| Ch.1 The Library          |
 +-----------------------------+
 |00 ######################### |
 |01 #...........v...........# |
@@ -47,23 +44,18 @@ Diagonal staircase walls ascend from (12,12) up to (9,10). Right wall is open ab
 |08 #........#....#.........# |
 |09 #........#===.#.........# |
 |10 #........#....#.........# |
-|11 #^..===..#....#.........# |
+|11 #..^===..#....#.........# |
 |12 #........#....#.........# |
 |13 ########~~~~~~~~~######## |
 |14 ########~~~~~~~~~######## |
 +-----------------------------+
 ```
 
-Spawn: ^ at (3,11) | Glyph 2 at (17,6) — Dash | DOOR_D at (12,1)
-Platforms: row 11 cols 4-6, row 9 cols 10-12, row 7 cols 16-18
-Vertical walls at col 9 (rows 4-12) and col 14 (rows 6-12)
-Pit cols 8-16 rows 13-14
-
 ## Chamber 2 — The Hall of Echoes
 
 ```
 +-----------------------------+
-| Ch.2 Hall of Echoes         |
+| Ch.2 The Hall of Echoes   |
 +-----------------------------+
 |00 ######################### |
 |01 ##########M.v...........# |
@@ -76,23 +68,18 @@ Pit cols 8-16 rows 13-14
 |08 #.........M.............# |
 |09 #.........M.............# |
 |10 #.........M.............# |
-|11 #^..==....M......==.....# |
+|11 #..^==....M......==.....# |
 |12 #.........M.............# |
 |13 #######~~~~~~~~~~~####### |
 |14 #######~~~~~~~~~~~####### |
 +-----------------------------+
 ```
 
-Spawn: ^ at (3,11) | Glyph at (17,6) | DOOR_D at (12,1)
-Magical wall at col 10, rows 1-12. Top-left blocked by walls at row 1 cols 1-9.
-Platforms row 11: cols 4-5 (left), cols 17-18 (right)
-Pit cols 7-17 rows 13-14
-
 ## Chamber 3 — The Weight of Wisdom
 
 ```
 +-----------------------------+
-| Ch.3 Weight of Wisdom       |
+| Ch.3 The Weight of Wisdom |
 +-----------------------------+
 |00 ######################### |
 |01 #...........v...........# |
@@ -104,7 +91,7 @@ Pit cols 7-17 rows 13-14
 |07 #.......................# |
 |08 #................*......# |
 |09 ######..........==......# |
-|10 #^..##########=========.# |
+|10 #..^##########=========.# |
 |11 #.........S.............# |
 |12 #.#########.###########.# |
 |13 ###########.############# |
@@ -112,16 +99,11 @@ Pit cols 7-17 rows 13-14
 +-----------------------------+
 ```
 
-Spawn: ^ at (3,10) | Glyph 3 at (17,8) — Push + Break | DOOR_D at (12,1)
-PUSH_SPAWN at (10,11) | Floor at row 12 cols 2-22 (slot opening at col 11)
-Wall at row 10 cols 4-13 blocks passage | Wall at row 9 cols 1-5
-Platforms row 10 cols 14-22, row 9 cols 16-17
-
 ## Chamber 4 — The Ibis Chamber
 
 ```
 +-----------------------------+
-| Ch.4 The Ibis Chamber       |
+| Ch.4 The Ibis Chamber     |
 +-----------------------------+
 |00 ######################### |
 |01 #.......................# |
@@ -134,23 +116,18 @@ Platforms row 10 cols 14-22, row 9 cols 16-17
 |08 #........X.XXXX.........# |
 |09 #.........XX.XX.........# |
 |10 #..........===..........# |
-|11 #^..........X...........# |
+|11 #.^.........X...........# |
 |12 #...====.........=====..# |
 |13 ######################### |
 |14 ######################### |
 +-----------------------------+
 ```
 
-Spawn: ^ at (2,11) | No glyph needed | END_PORTAL at (12,7)
-Inner 3x3 CRACKED box around portal (rows 6-8, cols 11-13)
-Outer diamond ring of CRACKED tiles (rows 3-11)
-Platforms row 12 cols 4-7 and 17-22 | Platforms row 10 cols 11-13
-
 ## Chamber T — Test Chamber (no flowId)
 
 ```
 +-----------------------------+
-| Ch.T [TEST CHAMBER]         |
+| Ch.T [TEST CHAMBER]       |
 +-----------------------------+
 |00 ######################### |
 |01 #.......................# |
@@ -169,17 +146,3 @@ Platforms row 12 cols 4-7 and 17-22 | Platforms row 10 cols 11-13
 |14 ######################### |
 +-----------------------------+
 ```
-
-DOOR_D at (12,2) | PUSH_SPAWN at (11,4) | GOLEM_SPAWN at (11,13)
-Wall barrier: row 5 cols 9-15 (blocks direct push block drop from above)
-Platform column: row 6-7 col 12 (X — stand/balance test)
-Platform rows: row 8 cols 1-2, 10-11, 14-15 (== — jump test)
-Solid column (M): rows 10-12 col 11 (push block target — drop onto these)
-Wall divider: col 12 rows 8-12 (separates left/right platform sections)
-Floor: row 13 cols 2-21 (WALL), with PIT (~) at col 1 and air gap at col 22
-**Entry:** Press `T` from any main chamber (identified by `!c.flowId`) — saves
-source chamber in `testChamberSrc`, sets `glyphsCollected = 4`, unlocks all
-abilities (Double Jump, Dash, Push, Break).
-**Exit:** Press `T` again — returns to source chamber via `testChamberSrc`.
-Also exits via DOOR_D (same return logic). Does not affect original chambers
-or game flow. Test chamber has no `flowId` property.
