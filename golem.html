@@ -251,30 +251,30 @@ chambers.push({w,h,tiles:g,glyphs:[],flowId:'ch4'});
   /* Step 1: Boundaries */
   for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
   for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  for(let x=2;x<=21;x++) g[13][x]=WALL;
+  for(let x=2;x<=22;x++) g[13][x]=WALL;
   /* Step 2: Pits */
   g[13][1]=PIT;
-  /* Step 3: Door/Portal */
-  g[2][12]=DOOR_D;
+  g[13][23]=AIR;
   /* Step 4: Interior walls */
   for(let x=9;x<=15;x++) g[5][x]=WALL;
   for(let y=8;y<=12;y++) g[y][12]=WALL;
   /* Step 5: Platforms */
-  g[6][12]=PLATFORM;
-  g[7][12]=PLATFORM;
   g[8][1]=PLATFORM;g[8][2]=PLATFORM;
   g[8][10]=PLATFORM;g[8][11]=PLATFORM;
-  g[8][14]=PLATFORM;g[8][15]=PLATFORM;
-  g[10][11]=PLATFORM;
-  g[11][11]=PLATFORM;
-  g[12][11]=PLATFORM;
+  g[8][13]=PLATFORM;g[8][14]=PLATFORM;
+  g[8][22]=PLATFORM;g[8][23]=PLATFORM;
   /* Step 7: Special tiles */
-  g[4][11]=PUSH_SPAWN;
+  g[6][12]=CRACKED;
+  g[7][12]=CRACKED;
+  g[10][12]=MAGICAL_WALL;
+  g[11][12]=MAGICAL_WALL;
+  g[12][12]=MAGICAL_WALL;
+  g[4][12]=PUSH_SPAWN;
   /* Step 8: Golem spawn */
-  g[12][22]=GOLEM_SPAWN;
+  g[2][12]=GOLEM_SPAWN;
   /* Step 9: Push */
   chambers.push({w,h,tiles:g,glyphs:[],
-    pushSpawn:{x:11,y:4}});
+    pushSpawn:{x:12,y:4}});
 })();
 
 /* ══════════════════════════════════════════════════
