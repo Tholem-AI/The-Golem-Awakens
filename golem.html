@@ -433,8 +433,18 @@ function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
   return false;
 }
 
-function inPit(px,py){
-  return _getTile(Math.floor(px/T), Math.floor(py/T))===PIT;
+function inPit(){
+  const px=P.x+P.w/2, py=P.y+P.h/2;
+  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  const thresh=1.1*T;
+  for(let dy=-1;dy<=1;dy++)
+    for(let dx=-1;dx<=1;dx++){
+      if(_getTile(gx+dx,gy+dy)!==PIT) continue;
+      const tpx=(gx+dx+0.5)*T, tpy=(gy+dy+0.5)*T;
+      const dist=Math.abs(px-tpx)+Math.abs(py-tpy);
+      if(dist<thresh) return true;
+    }
+  return false;
 }
 
 /* AABB overlap test */
@@ -962,7 +972,7 @@ function update(){
   if(!jumpHeld && P.vy < JUMP_CUT_VEL) P.vy = JUMP_CUT_VEL;
 
   /* ── Pit / out-of-bounds death ── */
-  if(inPit(P.x+P.w/2, P.y+P.h) || P.y > chambers[P.chamber].h*T){
+  if(inPit() || P.y > chambers[P.chamber].h*T){
     P.dashing=false; P.dashTimer=0;
     killAndRespawn(false, "The void claims clay...", 90);
     resetPushBlock();
