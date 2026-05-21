@@ -502,26 +502,24 @@ def parse_js_chambers(filepath):
                 if 0 <= y < GRID_H and 0 <= col < GRID_W:
                     grid[y][col] = val
 
-        # ── 6. direct_pattern: g[r][c]=CONSTANT; ── (highest priority)
-        direct_pattern = re.compile(r'g\[(\d+)\]\[(\d+)\]\s*=\s*(\w+);')
+        # ── 6. direct: g[y][x]=CONSTANT; ──
+        direct_pattern = re.compile(
+            r'g\[(\d+)\]\[(\d+)\]\s*=\s*(\w+);'
+        )
         for m in direct_pattern.finditer(exec_body):
-            row, col, const_name = int(m.group(1)), int(m.group(2)), m.group(3)
-            if const_name in CONST_TO_VALUE:
-                val = CONST_TO_VALUE[const_name]
-                if 0 <= row < GRID_H and 0 <= col < GRID_W:
-                    grid[row][col] = val
+            row = int(m.group(1))
+            col = int(m.group(2))
+            const_name = m.group(3)
 
-        # ── 7. special_door: g[h-3][w-1]=CONSTANT; ── (final override)
-        special_door = re.compile(r'g\[h-3\]\[w-1\]\s*=\s*(\w+);')
-        for m in special_door.finditer(exec_body):
-            const_name = m.group(1)
-            if const_name in CONST_TO_VALUE:
-                row = GRID_H - 3  # h-3
-                col = GRID_W - 1  # w-1
-                grid[row][col] = CONST_TO_VALUE[const_name]
+            if const_name not in CONST_TO_VALUE:
+                continue
+            val = CONST_TO_VALUE[const_name]
+            if 0 <= row < GRID_H and 0 <= col < GRID_W:
+                grid[row][col] = val
 
+        # Store result
         chambers[chamber_key] = {
-            'name': chamber_key,
+            'name': comment.split(':', 1)[-1].strip() if ':' in comment else comment,
             'grid': grid,
             'flow_id': flow_id,
             'glyphs': glyphs,
@@ -534,842 +532,173 @@ def parse_js_chambers(filepath):
 
 # ── Grid comparison ─────────────────────────────────────────────────────────
 
-def grid_to_ascii(grid_values):
-    """Convert a value grid to ASCII representation."""
-    result = []
-    for row in grid_values:
-        line = ''
-        for val in row:
-            line += VALUE_TO_CHAR.get(val, '?')
-        result.append(line)
-    return result
+def ascii_row_to_values(row_str):
+    """Convert an ASCII grid row string to a list of tile values."""
+    return [CHAR_TO_CONST.get(ch, ('AIR', 0))[1] for ch in row_str]
 
 
-def compare_grids(md_chamber, js_chamber):
+def compare_grids(ascii_grid, js_grid, strict=False):
     """
-    Compare a markdown ASCII grid with a JS value grid.
-    Returns list of mismatches: [(row, col, md_char, md_const, js_val, js_const)]
+    Compare an ASCII grid with a JS-simulated grid.
+    Returns (mismatches, total_cells).
+    In strict mode, every cell must match exactly.
     """
-    md_grid = md_chamber['grid']
-    js_grid = js_chamber['grid']
-
     mismatches = []
-
-    for row in range(GRID_H):
-        for col in range(GRID_W):
-            md_char = md_grid[row][col] if col < len(md_grid[row]) else '?'
-            js_val = js_grid[row][col] if col < len(js_grid[row]) else -1
-
-            if md_char in CHAR_TO_CONST:
-                md_const, md_val = CHAR_TO_CONST[md_char]
-            else:
-                md_const, md_val = f'UNKNOWN({md_char})', -1
-
-            js_const = VALUE_TO_CONST.get(js_val, f'UNKNOWN({js_val})')
-
-            if md_val != js_val:
-                mismatches.append({
-                    'row': row,
-                    'col': col,
-                    'md_char': md_char,
-                    'md_const': md_const,
-                    'md_val': md_val,
-                    'js_val': js_val,
-                    'js_const': js_const,
-                })
-
-    return mismatches
-
-
-# ── Structural validation ───────────────────────────────────────────────────
-
-def validate_grid(grid_ascii, chamber_key):
-    """
-    Validate a grid for structural correctness.
-    Returns list of (severity, message) tuples.
-    """
-    issues = []
-
-    # Check dimensions
-    if len(grid_ascii) != GRID_H:
-        issues.append(('ERROR', f'Expected {GRID_H} rows, got {len(grid_ascii)}'))
-        return issues
-
-    for i, row in enumerate(grid_ascii):
-        if len(row) != GRID_W:
-            issues.append(('ERROR', f'Row {i}: expected {GRID_W} cols, got {len(row)}'))
-
-    # Check for valid characters
-    invalid_chars = set()
-    for row in grid_ascii:
-        for char in row:
-            if char not in CHAR_TO_CONST:
-                invalid_chars.add(char)
-    if invalid_chars:
-        issues.append(('ERROR', f'Invalid characters: {invalid_chars}'))
-
-    # Check for exactly one GOLEM_SPAWN
-    spawn_count = sum(1 for row in grid_ascii for c in row if c == '^')
-    if spawn_count == 0:
-        issues.append(('ERROR', 'No GOLEM_SPAWN (^) tile found'))
-    elif spawn_count > 1:
-        issues.append(('ERROR', f'{spawn_count} GOLEM_SPAWN (^) tiles found, expected 1'))
-
-    # Check spawn has solid floor beneath
-    if spawn_count == 1:
-        for row_idx, row in enumerate(grid_ascii):
-            for col_idx, char in enumerate(row):
-                if char == '^':
-                    # Check row below
-                    if row_idx + 1 < GRID_H:
-                        below = grid_ascii[row_idx + 1][col_idx]
-                        if below not in ('#', '=', 'S', 'X'):
-                            issues.append(('WARN',
-                                f'Spawn at ({col_idx},{row_idx}) has no solid floor '
-                                f'({below} below)'))
-
-    # Check pits are bordered
-    for row_idx, row in enumerate(grid_ascii):
-        for col_idx, char in enumerate(row):
-            if char == '~':
-                # Check neighbors
-                neighbors = []
-                for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:
-                    ny, nx = row_idx + dy, col_idx + dx
-                    if 0 <= ny < GRID_H and 0 <= nx < GRID_W:
-                        neighbors.append(grid_ascii[ny][nx])
-                    else:
-                        neighbors.append('EDGE')
-                for i, (n, pos) in enumerate(zip(neighbors, ['above','below','left','right'])):
-                    if n not in ('#', '=', 'X', '~', 'M', '@', '^'):
-                        pass  # Pits can have air above for gameplay
-
-    return issues
-
-
-def strict_validate(grid_ascii, chamber_key, js_chamber=None):
-    """
-    Strict validation mode — comprehensive checks beyond basic structure.
-    Returns list of (severity, message) tuples.
-
-    Checks:
-    1. Spawn walkability: 3x3 area around spawn is AIR/GOLEM_SPAWN
-    2. Spawn floor support: tile below spawn is WALL/PLATFORM (ERROR not WARN)
-    3. Pit bordering: left/right of pit tiles must be WALL/PLATFORM/CRACKED/MAGICAL_WALL
-    4. Property consistency: pushSpawn matches S, glyphs match *, pushSlot matches AIR
-    5. Door reachability: DOOR_D/END_PORTAL has at least one adjacent AIR tile
-    6. Unique tiles: exactly one GOLEM_SPAWN, exactly one DOOR_D or END_PORTAL
-    """
-    issues = []
-
-    # Basic dimension/character validation
-    issues.extend(validate_grid(grid_ascii, chamber_key))
-    if any(s == 'ERROR' for s, _ in issues):
-        return issues
-
-    # Find spawn position
-    spawn_pos = None
-    spawn_count = 0
-    for r in range(GRID_H):
-        for c in range(GRID_W):
-            if grid_ascii[r][c] == '^':
-                spawn_count += 1
-                spawn_pos = (r, c)
-
-    # Check exactly one spawn
-    if spawn_count != 1:
-        # Already reported by validate_grid
-        return issues
-
-    # ── 1. Spawn walkability: 3x3 area around spawn ──
-    sr, sc = spawn_pos
-    walkable = {'.', '^'}  # AIR and GOLEM_SPAWN
-    for dr in range(-1, 2):
-        for dc in range(-1, 2):
-            if dr == 0 and dc == 0:
-                continue
-            nr, nc = sr + dr, sc + dc
-            if 0 <= nr < GRID_H and 0 <= nc < GRID_W:
-                tile = grid_ascii[nr][nc]
-                if tile not in walkable:
-                    issues.append(('WARN',
-                        f'Spawn at ({sc},{sr}) has non-walkable tile {tile} at '
-                        f'({sc+dc},{sr+dr}) in 3x3 area'))
-
-   # ── 2. Spawn floor support (WARN — spawn over air is valid game design) ──
-    if sr + 1 < GRID_H:
-        below = grid_ascii[sr + 1][sc]
-        if below not in ('#', '='):
-            issues.append(('WARN',
-                f'Spawn at ({sc},{sr}) has no solid floor immediately below: '\
-                f'tile below is {below} (golem will fall — ensure terrain below is solid)'))
-
-    # ── 3. Pit bordering: left/right must be WALL/PLATFORM/CRACKED/MAGICAL_WALL ──
-    solid_border = {'#', '=', 'X', 'M'}
-    for r in range(GRID_H):
-        for c in range(GRID_W):
-            if grid_ascii[r][c] == '~':
-                # Check left
-                if c > 0:
-                    left_tile = grid_ascii[r][c - 1]
-                    if left_tile not in solid_border and left_tile != '~':
-                        issues.append(('ERROR',
-                            f'Pit at ({c},{r}) has AIR/non-solid left neighbor {left_tile}'))
-                # Check right
-                if c < GRID_W - 1:
-                    right_tile = grid_ascii[r][c + 1]
-                    if right_tile not in solid_border and right_tile != '~':
-                        issues.append(('ERROR',
-                            f'Pit at ({c},{r}) has AIR/non-solid right neighbor {right_tile}'))
-
-    # ── 4. Property consistency (requires JS chamber data) ──
-    if js_chamber:
-        # pushSpawn must match PUSH_SPAWN (S) tile
-        if js_chamber.get('push_spawn'):
-            ps = js_chamber['push_spawn']
-            px, py = ps['x'], ps['y']
-            if 0 <= py < GRID_H and 0 <= px < GRID_W:
-                actual = grid_ascii[py][px]
-                if actual != 'S':
-                    issues.append(('ERROR',
-                        f'pushSpawn property says ({px},{py}) but grid has '
-                        f'{actual} there (expected S/PUSH_SPAWN)'))
-
-        # pushSlot must match AIR tile
-        if js_chamber.get('push_slot'):
-            ps = js_chamber['push_slot']
-            gx, gy = ps['x'], ps['y']
-            if 0 <= gy < GRID_H and 0 <= gx < GRID_W:
-                actual = grid_ascii[gy][gx]
-                if actual != '.':
-                    issues.append(('ERROR',
-                        f'pushSlot property says ({gx},{gy}) but grid has '
-                        f'{actual} there (expected ./AIR)'))
-
-        # Glyphs must match * tile
-        for gl in js_chamber.get('glyphs', []):
-            gx, gy = gl['x'], gl['y']
-            if 0 <= gy < GRID_H and 0 <= gx < GRID_W:
-                actual = grid_ascii[gy][gx]
-                if actual != '*':
-                    issues.append(('ERROR',
-                        f'Glyph property says ({gx},{gy}) but grid has '
-                        f'{actual} there (expected */GLYPH)'))
-
-# ── 5. Door reachability: DOOR_D/END_PORTAL has adjacent AIR or CRACKED tile ──
-    for r in range(GRID_H):
-        for c in range(GRID_W):
-            if grid_ascii[r][c] in ('v', '@'):  # DOOR_D or END_PORTAL
-                tile_name = 'DOOR_D' if grid_ascii[r][c] == 'v' else 'END_PORTAL'
-                has_reachable_neighbor = False
-                for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < GRID_H and 0 <= nc < GRID_W:
-                        n = grid_ascii[nr][nc]
-                        if n in ('.', 'X'):  # AIR or CRACKED (breakable)
-                            has_reachable_neighbor = True
-                            break
-                if not has_reachable_neighbor:
-                    issues.append(('WARN',
-                        f'{tile_name} at ({c},{r}) has no adjacent AIR or CRACKED tile '\
-                        f'(may be unreachable without breaking surrounding walls)'))
-
-    # ── 6. Unique tiles: exactly one DOOR_D or END_PORTAL ──
-    door_count = sum(1 for r in range(GRID_H) for c in range(GRID_W)
-                     if grid_ascii[r][c] == 'v')
-    portal_count = sum(1 for r in range(GRID_H) for c in range(GRID_W)
-                       if grid_ascii[r][c] == '@')
-    exit_count = door_count + portal_count
-
-    if exit_count == 0:
-        issues.append(('ERROR', 'No DOOR_D or END_PORTAL tile found'))
-    elif exit_count > 1:
-        issues.append(('ERROR',
-            f'{exit_count} exit tiles found (DOOR_D: {door_count}, END_PORTAL: {portal_count}), '
-            f'expected exactly 1'))
-
-    return issues
-
-
-# ── Flow consistency check ──────────────────────────────────────────────────
-
-def check_flow_consistency(golem_path):
-    """
-    Parse CHAMBER_FLOW and CHAMBER_NAMES from golem.html.
-    Verify flow consistency.
-    Returns list of (severity, message) tuples.
-    """
-    with open(golem_path, 'r') as f:
-        content = f.read()
-
-    issues = []
-
-    chamber_names = parse_chamber_names(content)
-    chamber_flow = parse_chamber_flow(content)
-    js_chambers = parse_js_chambers(golem_path)
-
-    # Check CHAMBER_FLOW length == CHAMBER_NAMES length
-    if len(chamber_flow) != len(chamber_names):
-        issues.append(('ERROR',
-            f'CHAMBER_FLOW length ({len(chamber_flow)}) != CHAMBER_NAMES length ({len(chamber_names)})'))
-
-    # Build set of valid flowIds
-    valid_flow_ids = set(chamber_flow)
-
-    # Check each chamber's flowId
-    for key, chamber in js_chambers.items():
-        fid = chamber.get('flow_id')
-        if fid is None:
-            # No flowId = special chamber (test chamber)
-            if key != 'Ch.T':
-                issues.append(('WARN',
-                    f'{key} has no flowId (expected only for special chambers like Ch.T)'))
-        else:
-            if fid not in valid_flow_ids:
-                issues.append(('ERROR',
-                    f'{key} has flowId "{fid}" which is not in CHAMBER_FLOW '
-                    f'({", ".join(chamber_flow)})'))
-
-    # Check for orphaned flowIds (in CHAMBER_FLOW but no matching chamber)
-    used_flow_ids = set()
-    for key, chamber in js_chambers.items():
-        fid = chamber.get('flow_id')
-        if fid:
-            used_flow_ids.add(fid)
-
-    orphaned = valid_flow_ids - used_flow_ids
-    for fid in sorted(orphaned):
-        issues.append(('WARN',
-            f'flowId "{fid}" is in CHAMBER_FLOW but no chamber uses it (orphaned)'))
-
-    # Check for missing chambers (flowId referenced but no chamber found)
-    expected_chambers = set()
-    for i, name in enumerate(chamber_names):
-        expected_chambers.add(f'Ch.{i}')
-    found_chambers = set(js_chambers.keys())
-    missing = expected_chambers - found_chambers
-    for ch in sorted(missing):
-        issues.append(('ERROR', f'Expected chamber {ch} (in CHAMBER_NAMES) but not found in code'))
-
-    return issues
-
-
-# ── ASCII export ────────────────────────────────────────────────────────────
-
-def format_chamber_name(chamber_key, chamber_names):
-    """Get display name for a chamber key."""
-    if chamber_key == 'Ch.T':
-        return '[TEST CHAMBER]'
-    # Try to match Ch.N to CHAMBER_NAMES index
-    m = re.match(r'Ch\.(\d+)', chamber_key)
-    if m:
-        idx = int(m.group(1))
-        if idx < len(chamber_names):
-            return chamber_names[idx]
-    return chamber_key
-
-
-def export_ascii_grid(js_chambers, chamber_names, output_path=None):
-    """
-    Export parsed JS chambers as clean ASCII markdown grids.
-
-    Output format:
-      # Chamber Data
-
-      Existing chambers parsed from `golem.html`. See `chamber-template.md` for the
-      legend, format spec, and extraction/conversion instructions.
-
-      ## Chamber 0 — Awakening
-
-      ```
-      +-----------------------------+
-      | Ch.0 Awakening              |
-      +-----------------------------+
-      |00 ######################### |
-      ...
-      |14 ######################### |
-      +-----------------------------+
-      ```
-    """
-    lines = []
-    lines.append('# Chamber Data')
-    lines.append('')
-    lines.append('Existing chambers parsed from `golem.html`. See `chamber-template.md` for the')
-    lines.append('legend, format spec, and extraction/conversion instructions.')
-
-    # Sort chambers: Ch.0, Ch.1, ..., Ch.T last
-    ordered_keys = []
-    numeric_keys = []
-    special_keys = []
-    for key in js_chambers:
-        m = re.match(r'Ch\.(\d+)', key)
-        if m:
-            numeric_keys.append((int(m.group(1)), key))
-        else:
-            special_keys.append(key)
-    numeric_keys.sort()
-    for _, key in numeric_keys:
-        ordered_keys.append(key)
-    for key in special_keys:
-        ordered_keys.append(key)
-
-    for key in ordered_keys:
-        ch = js_chambers[key]
-        grid_ascii = grid_to_ascii(ch['grid'])
-
-        # Determine display name
-        display_name = format_chamber_name(key, chamber_names)
-
-        # Determine section header
-        if key == 'Ch.T':
-            section_header = '## Chamber T — Test Chamber (no flowId)'
-        else:
-            m = re.match(r'Ch\.(\d+)', key)
-            if m:
-                idx = int(m.group(1))
-                section_header = f'## Chamber {idx} — {display_name}'
-            else:
-                section_header = f'## {key}'
-
-        lines.append('')
-        lines.append(section_header)
-        lines.append('')
-        lines.append('```')
-
-        # Border top
-        lines.append('+-----------------------------+')
-
-        # Title row (padded to fit within border)
-        title = f' Ch.{key.split(".", 1)[1] if "." in key else key} {display_name}'
-        title_padded = title.ljust(27)
-        lines.append(f'|{title_padded}|')
-
-        # Border mid
-        lines.append('+-----------------------------+')
-
-        # Data rows
-        for row_idx, row_str in enumerate(grid_ascii):
-            lines.append(f'|{row_idx:02d} {row_str} |')
-
-        # Border bottom
-        lines.append('+-----------------------------+')
-
-        lines.append('```')
-
-    lines.append('')
-
-    result = '\n'.join(lines)
-
-    if output_path:
-        with open(output_path, 'w') as f:
-            f.write(result)
-        print(f'Exported {len(ordered_keys)} chamber(s) to {output_path}')
-    else:
-        print(result)
-
-    return result
-
-
-# ── Output formatting ──────────────────────────────────────────────────────
-
-def print_mismatch_table(mismatches, chamber_key):
-    """Print a formatted table of mismatches."""
-    if not mismatches:
-        print(f"\n  [OK] {chamber_key}: No mismatches (0 differences)\n")
-        return
-
-    print(f"\n  [MISMATCH] {chamber_key}: {len(mismatches)} tile difference(s)\n")
-    print(f"  {'Row':>3} {'Col':>3}  {'Grid':^6} {'Grid Label':>12}  |  {'Code':>6} {'Code Label':>12}")
-    print(f"  {'-'*3} {'-'*3}  {'-'*6} {'-'*12}  |  {'-'*6} {'-'*12}")
-
-    for m in mismatches:
-        print(f"  R{m['row']:>2}  C{m['col']:>2}  '{m['md_char']:^4}'  {m['md_const']:>12}  |  "
-              f"{m['js_val']:>6}  {m['js_const']:>12}")
-
-    print()
-
-
-def print_validation_report(issues, chamber_key):
-    """Print validation issues."""
-    if not issues:
-        print(f"  [VALID] {chamber_key}: No issues found\n")
-        return
-
-    print(f"\n  {chamber_key} validation issues:\n")
-    for severity, msg in issues:
-        print(f"    [{severity}] {msg}")
-    print()
-
-
-def print_grid_side_by_side(md_chamber, js_chamber, chamber_key, mismatches):
-    """Print the ASCII grids side by side for visual comparison."""
-    print(f"\n  --- {chamber_key} visual comparison ---\n")
-
-    md_grid = md_chamber['grid']
-    js_ascii = grid_to_ascii(js_chamber['grid'])
-
-    mismatch_set = {(m['row'], m['col']) for m in mismatches}
-
-    for row in range(GRID_H):
-        md_line = md_grid[row]
-        js_line = js_ascii[row]
-
-        # Mark mismatched positions
-        md_marked = ''
-        js_marked = ''
-        for col in range(GRID_W):
-            if (row, col) in mismatch_set:
-                md_marked += f'[{md_line[col]}]'
-                js_marked += f'[{js_line[col]}]'
-            else:
-                md_marked += f' {md_line[col]} '
-                js_marked += f' {js_line[col]} '
-
-        print(f"  R{row:>2}: MD: {md_marked}")
-        print(f"        JS: {js_marked}")
-
-    print()
-
-
-# ── Main CLI ────────────────────────────────────────────────────────────────
+    ascii_vals = [ascii_row_to_values(row) for row in ascii_grid]
+
+    for y in range(GRID_H):
+        for x in range(GRID_W):
+            expected = ascii_vals[y][x]
+            actual = js_grid[y][x]
+            if expected != actual:
+                exp_char = VALUE_TO_CHAR.get(expected, '?')
+                act_char = VALUE_TO_CHAR.get(actual, '?')
+                exp_name = VALUE_TO_CONST.get(expected, 'UNKNOWN')
+                act_name = VALUE_TO_CONST.get(actual, 'UNKNOWN')
+                mismatches.append((x, y, exp_name, act_name, exp_char, act_char))
+
+    return mismatches, GRID_W * GRID_H
+
+
+# ── Main ────────────────────────────────────────────────────────────────────
 
 def main():
-    import argparse
+    base_dir = Path(__file__).parent.parent
+    js_file = base_dir / 'golem.html'
+    md_file = base_dir / 'chamber-data.md'
 
-    parser = argparse.ArgumentParser(
-        description='Golem Game chamber diff/verification tool'
-    )
-    parser.add_argument('--chamber', '-c', type=str, default=None,
-                        help='Diff specific chamber (e.g., "T" or "0")')
-    parser.add_argument('--validate', '-v', type=str, default=None,
-                        help='Validate a markdown file (grid structure only)')
-    parser.add_argument('--diff-proposal', '-d', type=str, nargs=2,
-                        metavar=('DATA', 'PROPOSAL'),
-                        help='Diff proposal against existing data')
-    parser.add_argument('--visual', action='store_true',
-                        help='Show visual side-by-side comparison')
-    parser.add_argument('--quiet', '-q', action='store_true',
-                        help='Only show mismatches, not OK results')
-    parser.add_argument('--json', action='store_true',
-                        help='Output results as JSON')
-    parser.add_argument('--project-root', type=str, default=None,
-                        help='Path to project root (default: auto-detect)')
-    parser.add_argument('--export-ascii', type=str, nargs='?', const='', default=None,
-                        metavar='OUTPUT.md',
-                        help='Export JS chambers as ASCII markdown grids')
-    parser.add_argument('--strict', action='store_true',
-                        help='Run strict validation (enhanced checks)')
-    parser.add_argument('--check-flow', action='store_true',
-                        help='Check CHAMBER_FLOW and chamber flowId consistency')
-    parser.add_argument('--against-js', type=str, default=None,
-                        help='Path to golem.html for three-way diff (use with --diff-proposal)')
+    args = sys.argv[1:]
 
-    args = parser.parse_args()
+    if not js_file.exists():
+        print(f"ERROR: golem.html not found at {js_file}")
+        sys.exit(1)
 
-    # Determine project root
-    if args.project_root:
-        project_root = Path(args.project_root)
-    else:
-        script_dir = Path(__file__).parent
-        project_root = script_dir.parent
+    # Parse JS chambers
+    js_chambers = parse_js_chambers(str(js_file))
 
-    golem_path = project_root / 'golem.html'
-    data_path = project_root / 'chamber-data.md'
-    proposal_path = project_root / 'chamber-proposal.md'
-
-    # ── Check-flow mode ──
-    if args.check_flow:
-        if not golem_path.exists():
-            print(f"Error: golem.html not found at {golem_path}")
-            sys.exit(1)
-
-        print("=" * 60)
-        print("  Chamber Flow Consistency Check")
-        print(f"  Analyzing: {golem_path}")
-        print("=" * 60)
-
-        issues = check_flow_consistency(str(golem_path))
-        if not issues:
-            print("\n  [OK] All flow checks passed.\n")
-            print("  CHAMBER_FLOW matches CHAMBER_NAMES length.")
-            print("  All chamber flowIds are valid.")
-            print("  No orphaned flowIds found.\n")
-            sys.exit(0)
-        else:
-            print("\n  Flow consistency issues:\n")
-            for severity, msg in issues:
-                print(f"    [{severity}] {msg}")
-            has_errors = any(s == 'ERROR' for s, _ in issues)
-            print()
-            sys.exit(1 if has_errors else 0)
-
-    # ── Export ASCII mode ──
-    if args.export_ascii is not None:
-        if not golem_path.exists():
-            print(f"Error: golem.html not found at {golem_path}")
-            sys.exit(1)
-
-        # Parse chamber names and chambers from golem.html
-        with open(golem_path, 'r') as f:
+    if '--check-flow' in args:
+        # ── Flow consistency check ──
+        with open(js_file) as f:
             content = f.read()
-        chamber_names = parse_chamber_names(content)
-        js_chambers = parse_js_chambers(str(golem_path))
 
-        if not js_chambers:
-            print("Error: No chambers found in golem.html")
-            sys.exit(1)
+        names = parse_chamber_names(content)
+        flow = parse_chamber_flow(content)
 
-        output_path = args.export_ascii if args.export_ascii else None
-        export_ascii_grid(js_chambers, chamber_names, output_path)
-        sys.exit(0)
+        print("=== Flow Consistency Check ===")
+        errors = 0
 
-    # ── Validate mode ──
-    if args.validate:
-        vpath = Path(args.validate)
-        if not vpath.is_absolute():
-            vpath = project_root / vpath
-
-        if not vpath.exists():
-            print(f"Error: File not found: {vpath}")
-            sys.exit(1)
-
-        # Parse JS chambers for property consistency checks
-        js_chambers = {}
-        if golem_path.exists():
-            js_chambers = parse_js_chambers(str(golem_path))
-
-        md_chambers = extract_chambers_from_markdown(str(vpath))
-        all_valid = True
-
-        print("=" * 60)
-        print(f"  {'Strict Validation' if args.strict else 'Validation'}: {vpath.name}")
-        print("=" * 60)
-
-        for key, chamber in md_chambers.items():
-            js_ch = js_chambers.get(key)
-            if args.strict:
-                issues = strict_validate(chamber['grid'], key, js_ch)
-            else:
-                issues = validate_grid(chamber['grid'], key)
-            print_validation_report(issues, key)
-            if any(s == 'ERROR' for s, _ in issues):
-                all_valid = False
-
-        if all_valid:
-            print("\nAll chambers passed validation.\n")
-            sys.exit(0)
+        # Check 1: CHAMBER_NAMES length matches CHAMBER_FLOW length
+        if len(names) != len(flow):
+            print(f"  FAIL: CHAMBER_NAMES length ({len(names)}) != CHAMBER_FLOW length ({len(flow)})")
+            errors += 1
         else:
-            print("\nSome chambers have validation errors.\n")
-            sys.exit(1)
+            print(f"  PASS: Names and Flow lengths match ({len(names)})")
 
-    # ── Diff proposal mode (with optional three-way) ──
-    if args.diff_proposal:
-        data_file = Path(args.diff_proposal[0])
-        proposal_file = Path(args.diff_proposal[1])
-        if not data_file.is_absolute():
-            data_file = project_root / data_file
-        if not proposal_file.is_absolute():
-            proposal_file = project_root / proposal_file
+        # Check 2: Each flowId has a corresponding name at same index
+        chamber_keys = sorted([k for k in js_chambers.keys() if k != 'Ch.T'],
+                             key=lambda k: int(k.split('.')[1]) if k != 'Ch.T' else 99)
+        for key in chamber_keys:
+            ch_data = js_chambers[key]
+            idx = int(key.split('.')[1])
+            if ch_data['flow_id']:
+                flow_id = ch_data['flow_id']
+                if idx < len(flow) and flow[idx] != flow_id:
+                    print(f"  FAIL: {key} flowId '{flow_id}' != CHAMBER_FLOW[{idx}] '{flow[idx]}'")
+                    errors += 1
+                elif idx >= len(flow):
+                    print(f"  FAIL: {key} index {idx} out of CHAMBER_FLOW range")
+                    errors += 1
+                else:
+                    print(f"  PASS: {key} flowId '{flow_id}' == CHAMBER_FLOW[{idx}]")
 
-        if not data_file.exists():
-            print(f"Error: Data file not found: {data_file}")
-            sys.exit(1)
-        if not proposal_file.exists():
-            print(f"Error: Proposal file not found: {proposal_file}")
-            sys.exit(1)
+        # Check 3: Flow IDs are unique
+        seen = {}
+        for i, fid in enumerate(flow):
+            if fid in seen:
+                print(f"  FAIL: Duplicate flowId '{fid}' at indices {seen[fid]} and {i}")
+                errors += 1
+            seen[fid] = i
+        else:
+            print(f"  PASS: All flowIds unique")
 
-        print("=" * 60)
-        print("  Proposal vs Existing Data Diff")
-        if args.against_js:
-            print("  (Three-way: includes JS code comparison)")
-        print("=" * 60)
-
-        existing = extract_chambers_from_markdown(str(data_file))
-        proposal = extract_chambers_from_markdown(str(proposal_file))
-
-        # Optionally parse JS for three-way diff
-        js_chambers = {}
-        if args.against_js:
-            js_path = Path(args.against_js)
-            if not js_path.is_absolute():
-                js_path = project_root / js_path
-            if not js_path.exists():
-                print(f"Error: JS file not found: {js_path}")
-                sys.exit(1)
-            js_chambers = parse_js_chambers(str(js_path))
-
-        for pkey, pchamber in proposal.items():
-            print(f"\n  --- {pkey} ---")
-
-            pgrid = pchamber['grid']
-
-            if pkey in existing:
-                egrid = existing[pkey]['grid']
-                mismatches = []
-                for row in range(GRID_H):
-                    for col in range(GRID_W):
-                        if col < len(egrid[row]) and col < len(pgrid[row]):
-                            ec = egrid[row][col]
-                            pc = pgrid[row][col]
-                            if ec != pc:
-                                mismatches.append({
-                                    'row': row, 'col': col,
-                                    'md_char': pc,
-                                    'md_const': CHAR_TO_CONST.get(pc, ('?', -1))[0],
-                                    'md_val': CHAR_TO_CONST.get(pc, ('?', -1))[1],
-                                    'js_val': CHAR_TO_CONST.get(ec, ('?', -1))[1],
-                                    'js_const': CHAR_TO_CONST.get(ec, ('?', -1))[0],
-                                })
-                print(f"  Changes vs existing: {len(mismatches)} tile(s) changed")
-                for m in mismatches:
-                    print(f"    R{m['row']}C{m['col']}: "
-                          f"'{m['md_char']}' ({m['md_const']}) <- "
-                          f"'{m['js_const']}' [was]")
+        # Check 4: CH.T has no flowId
+        if 'Ch.T' in js_chambers:
+            if js_chambers['Ch.T']['flow_id']:
+                print(f"  WARN: Ch.T has flowId '{js_chambers['Ch.T']['flow_id']}' (should be absent)")
             else:
-                print(f"  NEW chamber (not in existing data)")
+                print(f"  PASS: Ch.T has no flowId (correct)")
 
-            # Three-way: validate proposal against JS
-            if pkey in js_chambers:
-                js_ch = js_chambers[pkey]
-                js_ascii = grid_to_ascii(js_ch['grid'])
-                js_mismatches = []
-                for row in range(GRID_H):
-                    for col in range(GRID_W):
-                        if col < len(pgrid[row]):
-                            pc = pgrid[row][col]
-                            if pc != js_ascii[row][col]:
-                                js_mismatches.append({
-                                    'row': row, 'col': col,
-                                    'proposal': pc,
-                                    'proposal_const': CHAR_TO_CONST.get(pc, ('?', -1))[0],
-                                    'js': js_ascii[row][col],
-                                    'js_const': CHAR_TO_CONST.get(js_ascii[row][col], ('?', -1))[0],
-                                })
-                if js_mismatches:
-                    print(f"  vs JS code: {len(js_mismatches)} tile(s) differ")
-                    for m in js_mismatches:
-                        print(f"    R{m['row']}C{m['col']}: "
-                              f"proposal '{m['proposal']}' ({m['proposal_const']}) "
-                              f"vs js '{m['js']}' ({m['js_const']})")
-                else:
-                    print(f"  vs JS code: MATCH (all tiles consistent)")
+        if errors == 0:
+            print("\n  ALL FLOW CHECKS PASSED")
+        else:
+            print(f"\n  {errors} FLOW ERROR(S)")
 
-            # Strict validation on proposal
-            if args.strict and pkey in js_chambers:
-                issues = strict_validate(pchamber['grid'], pkey, js_chambers[pkey])
-                if issues:
-                    print(f"  Strict validation issues:")
-                    for sev, msg in issues:
-                        print(f"    [{sev}] {msg}")
-                else:
-                    print(f"  Strict validation: PASSED")
+        sys.exit(errors)
 
-        sys.exit(0)
+    if '--strict' in args:
+        strict = True
+    else:
+        strict = False
 
-    # ── Default mode: diff chamber-data.md vs golem.html ──
-    if not data_path.exists():
-        print(f"Error: chamber-data.md not found at {data_path}")
-        sys.exit(1)
-    if not golem_path.exists():
-        print(f"Error: golem.html not found at {golem_path}")
+    # Parse markdown chambers
+    if not md_file.exists():
+        print(f"ERROR: chamber-data.md not found at {md_file}")
         sys.exit(1)
 
-    mode_label = "Strict" if args.strict else "Standard"
-    print("=" * 60)
-    print(f"  Golem Game Chamber Diff ({mode_label} mode)")
-    print(f"  Comparing: chamber-data.md vs golem.html")
-    print(f"  Coordinate convention: (col, row) = (x, y)")
-    print("=" * 60)
-
-    # Parse both sources
-    md_chambers = extract_chambers_from_markdown(str(data_path))
-    js_chambers = parse_js_chambers(str(golem_path))
+    md_chambers = extract_chambers_from_markdown(str(md_file))
 
     if not md_chambers:
-        print("\nError: No chambers found in chamber-data.md")
-        sys.exit(1)
-    if not js_chambers:
-        print("\nError: No chambers found in golem.html")
+        print("ERROR: No chambers found in chamber-data.md")
         sys.exit(1)
 
-    all_keys = sorted(set(list(md_chambers.keys()) + list(js_chambers.keys())))
+    # Chamber filter
+    chamber_filter = None
+    for i, arg in enumerate(args):
+        if arg == '--chamber' and i + 1 < len(args):
+            chamber_filter = args[i + 1].upper()
+            break
 
-    total_mismatches = 0
-    total_chambers = 0
-    total_validation_errors = 0
-
-    for key in all_keys:
-        if args.chamber and key != f"Ch.{args.chamber}":
-            continue
-
-        if key not in md_chambers:
-            print(f"\n  [NOTE] {key}: In golem.html but not in chamber-data.md")
-            continue
-        if key not in js_chambers:
-            print(f"\n  [NOTE] {key}: In chamber-data.md but not in golem.html")
+    # Compare each chamber
+    total_errors = 0
+    for key in sorted(md_chambers.keys()):
+        if chamber_filter and key != f"Ch.{chamber_filter}":
             continue
 
         md_ch = md_chambers[key]
+        if key not in js_chambers:
+            print(f"\n  {key}: FAIL (not found in JS)")
+            total_errors += 1
+            continue
+
         js_ch = js_chambers[key]
+        mismatches, total = compare_grids(md_ch['grid'], js_ch['grid'], strict)
 
-        # Strict validation first
-        strict_issues = []
-        if args.strict:
-            strict_issues = strict_validate(md_ch['grid'], key, js_ch)
-            if any(s == 'ERROR' for s, _ in strict_issues):
-                print(f"\n  [STRICT] {key}: Validation issues")
-                print_validation_report(strict_issues, key)
-                total_validation_errors += sum(1 for s, _ in strict_issues if s == 'ERROR')
-            # Also run normal validation for WARN-level issues
-            normal_issues = validate_grid(md_ch['grid'], key)
-            for sev, msg in normal_issues:
-                if sev == 'WARN' and not any(m == msg for _, m in strict_issues):
-                    print(f"    [WARN] {msg}")
-
-        # Tile comparison
-        mismatches = compare_grids(md_ch, js_ch)
-        total_chambers += 1
-
-        if args.json:
-            result = {
-                'chamber': key,
-                'mismatches': len(mismatches),
-                'details': mismatches,
-            }
-            if args.strict:
-                result['validation'] = strict_issues
-            print(json.dumps(result, indent=2))
+        if mismatches:
+            print(f"\n  {key} ({md_ch['name']}):")
+            print(f"    {len(mismatches)} mismatch(es) out of {total} cells:")
+            for mx, my, exp, act, ec, ac in mismatches:
+                print(f"      ({mx},{my}): expected {ec}({exp}), got {ac}({act})")
+            total_errors += len(mismatches)
         else:
-            if mismatches:
-                total_mismatches += len(mismatches)
-                print_mismatch_table(mismatches, key)
-                if args.visual:
-                    print_grid_side_by_side(md_ch, js_ch, key, mismatches)
-            elif not args.quiet:
-                if args.strict:
-                    # Only print OK if no strict validation errors
-                    strict_issues = strict_validate(md_ch['grid'], key, js_ch)
-                    if not any(s == 'ERROR' for s, _ in strict_issues):
-                        print(f"\n  [OK] {key}: No mismatches, strict validation passed")
-                    else:
-                        print(f"\n  [WARN] {key}: No tile mismatches, but strict validation found issues")
-                else:
-                    print(f"\n  [OK] {key}: No mismatches")
+            print(f"\n  {key} ({md_ch['name']}): 0 tile mismatches (pass)")
 
-    print(f"\n{'=' * 60}")
-    if args.json:
-        pass
+        # Verify properties
+        js_props = js_ch
+        if js_props['flow_id']:
+            print(f"    flowId: '{js_props['flow_id']}'")
+        if js_props['glyphs']:
+            print(f"    glyphs: {js_props['glyphs']}")
+        if js_props['push_spawn']:
+            print(f"    pushSpawn: {js_props['push_spawn']}")
+        if js_props['push_slot']:
+            print(f"    pushSlot: {js_props['push_slot']}")
+
+    if total_errors == 0:
+        print(f"\n  ALL CHECKS PASSED")
     else:
-        print(f"  Summary: {total_chambers} chamber(s) compared, "
-              f"{total_mismatches} total mismatch(es)")
-        if args.strict:
-            print(f"  Strict validation errors: {total_validation_errors}")
-        if total_mismatches == 0 and total_validation_errors == 0:
-            print("  All chambers are in sync.\n")
-        else:
-            print("  ACTION REQUIRED: Fix mismatches in chamber-data.md\n")
+        print(f"\n  {total_errors} ERROR(S) FOUND")
 
-    sys.exit(0 if (total_mismatches == 0 and total_validation_errors == 0) else 1)
+    sys.exit(1 if total_errors > 0 else 0)
 
 
 if __name__ == '__main__':

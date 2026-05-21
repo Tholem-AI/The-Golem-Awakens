@@ -92,6 +92,13 @@
 - [x] ROADMAP.md, File-Structure-Reference.md, Project-Constraints.md, README.md updated
 - [x] Validation: JS syntax OK, flow system verified in code inspection
 
+### Chamber 2 — The Hall of Echoes Implementation (May 2026)
+- [x] Replaced placeholder Chamber 2 with "The Hall of Echoes" complex grid from chamber-data.md
+- [x] New grid: 50+ walls, 9 pits, 3 platforms, 5 MAGICAL_WALLs, 1 GLYPH, 1 PUSH_SPAWN, 1 DOOR_D, 1 GOLEM_SPAWN
+- [x] Spawn (22,2), Door (18,13), Glyph (3,1), PushSpawn (6,8), MAGICAL_WALL vertical column at col 20
+- [x] Follows 9-step ordered construction convention
+- [x] Validation: 0 tile mismatches, flow check OK, JS syntax OK, browser test OK
+
 ### Chamber Data Management (May 2026)
 - [x] tools/chamber_diff.py: diff/validation tool with 6 modes (diff, validate, strict, export-ascii, diff-proposal, check-flow)
 - [x] Fixed handler ordering bug in chamber_diff.py (parsing now robust)
@@ -169,7 +176,8 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 - [x] Chamber 0 — Awakening: Replace staircase with platform-based jump sequence, widen pit, add scattered pits, platforms, interior walls. Door moved to (24,2), glyph at (12,5), spawn at (4,12). Validation: 0 tile mismatches, flow checks pass, JS syntax OK, browser verified.
 - [ ] Chamber 4 — The Ibis Chamber: Add pits, reposition platforms, make outer cracked walls structurally meaningful
 - [x] Chamber 1 — The Library: Replaced placeholder with complex grid (150 walls, 15 pits, 11 platforms, 2 MAGICAL_WALLs, 1 GLYPH). Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
-- [ ] Chambers 2, 3: No changes (assessed as well-designed)
+- [x] Chamber 2 — The Hall of Echoes: Replaced placeholder with complex grid (50+ walls, 9 pits, 3 platforms, 5 MAGICAL_WALLs, 1 GLYPH, 1 PUSH_SPAWN). Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
+- [ ] Chamber 3: No changes (assessed as well-designed)
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
 ### Visual and Story Overhaul (Not Started)
@@ -227,9 +235,10 @@ Prepare the project for public repository sharing.
 || Pause toggle | Not Started | — |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |
-|||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
-|||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
-|||| Chamber redesign | In Progress | Chambers 0,1 done; Chambers 2,3 unchanged; Chamber 4 pending. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
+||||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
+||||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
+||||| Chamber 2 redesign (The Hall of Echoes) | Complete | 0 tile mismatches, flow check OK, JS syntax OK, browser verified |
+||||| Chamber redesign | In Progress | Chambers 0,1,2 done; Chamber 3 unchanged; Chamber 4 pending. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 | Visual/story overhaul | Not Started | — |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

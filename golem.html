@@ -201,28 +201,50 @@ const chambers = [];
   chambers.push({w,h,tiles:g,glyphs:[{x:23,y:12}],flowId:'ch1'});
 })();
 
-// Chamber 2: Need dash — vertical magical wall, only passable by dashing through
+// Chamber 2: The Hall of Echoes — push block and magical walls
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;}
+  for(let y=0;y<=4;y++){g[y][24]=WALL;}
+  for(let y=5;y<13;y++){g[y][24]=WALL;}
+  for(let y=13;y<h;y++){g[y][24]=WALL;}
+  for(let x=0;x<=7;x++) g[13][x]=WALL;
+  g[13][17]=WALL;
+  for(let x=19;x<=24;x++) g[13][x]=WALL;
   /* Step 2: Pits */
-  for(let x=7;x<18;x++){g[14][x]=PIT;g[13][x]=PIT;}
+  g[4][18]=PIT;
+  g[10][0]=PIT;
+  for(let x=8;x<=16;x++) g[13][x]=PIT;
   /* Step 3: Door/Portal */
-  g[1][12]=DOOR_D;
+  g[13][18]=DOOR_D;
   /* Step 4: Interior walls */
-  for(let y=1;y<13;y++) g[y][10]=MAGICAL_WALL;
-  for(let x=1;x<10;x++) g[1][x]=WALL;
+  g[1][19]=WALL;g[1][20]=WALL;
+  g[2][19]=WALL;g[2][20]=WALL;
+  for(let x=1;x<=13;x++) g[3][x]=WALL;
+  g[3][19]=WALL;g[3][20]=WALL;
+  g[4][19]=WALL;g[4][20]=WALL;
+  for(let x=3;x<=20;x++) g[5][x]=WALL;
+  for(let x=1;x<=6;x++) g[7][x]=WALL;
+  g[8][1]=WALL;
+  g[9][1]=WALL;
+  for(let x=3;x<=20;x++) g[9][x]=WALL;
+  g[10][4]=WALL;g[10][20]=WALL;
+  g[11][4]=WALL;g[11][6]=WALL;g[11][20]=WALL;
+  g[12][6]=WALL;g[12][17]=WALL;g[12][20]=WALL;
+  g[4][5]=MAGICAL_WALL;g[4][12]=MAGICAL_WALL;
+  for(let y=6;y<9;y++) g[y][20]=MAGICAL_WALL;
   /* Step 5: Platforms */
-  g[11][4]=PLATFORM;g[11][5]=PLATFORM;
-  g[11][17]=PLATFORM;g[11][18]=PLATFORM;
+  for(let x=21;x<=23;x++) g[4][x]=PLATFORM;
   /* Step 6: Glyphs */
-  g[6][17]=GLYPH;
+  g[1][3]=GLYPH;
+  /* Step 7: Special tiles */
+  g[8][6]=PUSH_SPAWN;
   /* Step 8: Golem spawn */
-  g[11][3]=GOLEM_SPAWN;
+  g[2][22]=GOLEM_SPAWN;
   /* Step 9: Push */
-chambers.push({w,h,tiles:g,glyphs:[{x:17,y:6}],flowId:'ch2'});
+  chambers.push({w,h,tiles:g,glyphs:[{x:3,y:1}],pushSpawn:{x:6,y:8},flowId:'ch2'});
 })();
 
 // Chamber 3: The Weight of Wisdom — push block down slot to open path
