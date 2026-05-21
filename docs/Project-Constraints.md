@@ -22,7 +22,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
 ||| File size | ~1596 lines, ~59 KB | Single-file constraint |
 | Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
-| Push block | Velocity-based push at PUSH_SPEED (1.25 px/frame) | Sections 1, 6 |
+|| Push block | PBlocks[] array — supports N push blocks per chamber via `pushSpawns` array. Backward-compatible with `pushSpawn` single-block. Velocity-based push at PUSH_SPEED (1.25 px/frame). | Sections 3, 6 |
 | Deployment | Single HTML file, no external dependencies | — |
 
 ## Design Constraints

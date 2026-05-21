@@ -247,32 +247,52 @@ const chambers = [];
   chambers.push({w,h,tiles:g,glyphs:[{x:3,y:1}],pushSpawn:{x:6,y:8},flowId:'ch2'});
 })();
 
-// Chamber 3: The Weight of Wisdom — push block down slot to open path
+// Chamber 3: The Weight of Wisdom — push blocks, magical walls, cracked barriers
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
-  for(let x=2;x<23;x++) g[12][x]=WALL;
+  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;g[13][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
+  /* Step 2: Pits */
+  g[0][1]=PIT; g[0][2]=PIT;
+  g[3][21]=PIT;
+  g[4][3]=PIT; g[5][3]=PIT; g[6][3]=PIT;
+  g[8][0]=PIT;
+  g[9][11]=PIT; g[9][12]=PIT; g[9][13]=PIT;
+  g[10][0]=PIT; g[11][0]=PIT; g[12][0]=PIT; g[13][0]=PIT;
+  g[14][6]=PIT; g[14][7]=PIT; g[14][8]=PIT;
   /* Step 3: Door/Portal */
-  g[1][12]=DOOR_D;
+  g[0][23]=DOOR_D;
   /* Step 4: Interior walls */
-  for(let x=4;x<=13;x++) g[10][x]=WALL;
-  for(let x=1;x<=5;x++) g[9][x]=WALL;
+  for(let x=4;x<=20;x++) g[2][x]=WALL;
+  for(let y=1;y<=7;y++) g[y][22]=WALL;
+  for(let y=9;y<=12;y++) g[y][22]=WALL;
+  for(let y=3;y<=7;y++) g[y][4]=WALL;
+  g[3][20]=WALL;
+  g[9][4]=WALL; g[9][5]=WALL;
+  for(let x=10;x<=14;x++) g[5][x]=WALL;
+  for(let x=6;x<=10;x++) g[9][x]=WALL;
+  for(let x=14;x<=21;x++) g[9][x]=WALL;
+  for(let y=1;y<=13;y++) g[y][7]=MAGICAL_WALL;
   /* Step 5: Platforms */
-  for(let x=14;x<23;x++) g[10][x]=PLATFORM;
-  g[9][16]=PLATFORM; g[9][17]=PLATFORM;
+  g[7][1]=PLATFORM; g[7][2]=PLATFORM; g[7][3]=PLATFORM;
+  g[9][1]=PLATFORM; g[9][2]=PLATFORM; g[9][3]=PLATFORM;
   /* Step 6: Glyphs */
-  g[8][17]=GLYPH;
+  g[1][18]=GLYPH;
   /* Step 7: Special tiles */
-  g[12][11]=AIR;
-  g[13][11]=AIR;
-  g[11][10]=PUSH_SPAWN;
+  for(let x=1;x<=6;x++) g[13][x]=AIR;
+  for(let x=8;x<=15;x++) g[13][x]=AIR;
+  for(let x=19;x<=23;x++) g[13][x]=AIR;
+  g[1][13]=PUSH_SPAWN;
+  g[4][12]=PUSH_SPAWN;
+  g[13][17]=PUSH_SPAWN;
+  g[12][16]=CRACKED; g[12][17]=CRACKED; g[12][18]=CRACKED;
+  g[13][16]=CRACKED; g[13][18]=CRACKED;
   /* Step 8: Golem spawn */
-  g[10][3]=GOLEM_SPAWN;
+  g[12][11]=GOLEM_SPAWN;
   /* Step 9: Push */
- chambers.push({w,h,tiles:g,glyphs:[{x:17,y:8}],
-    pushSpawn:{x:10,y:11}, pushSlot:{gx:11,gy:13}, flowId:'ch3'});
+  chambers.push({w,h,tiles:g,glyphs:[{x:18,y:1}],
+    pushSpawns:[{x:13,y:1},{x:12,y:4},{x:17,y:13}], flowId:'ch3'});
 })();
 
 // Chamber 4: The Ibis speaks — final chamber, no glyph needed, END_PORTAL triggers ending
@@ -350,12 +370,8 @@ const P = {
   pushing:false
 };
 
-/* ── Push block entity (free-moving physics object) ── */
-const PB = {
-  x:0, y:0, w:T, h:T,
-  vx:0, vy:0,
-  active:false, inSlot:false
-};
+/* ── Push block entities (array — supports multiple blocks) ── */
+const PBlocks = [];
 
 /* ── Game state globals ── */
 let glyphsCollected = 0;
@@ -467,9 +483,9 @@ function collidesNoPlat(gx1,gy1,gx2,gy2,ch) {
 function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
   if(tileCollidesRect(ch, gx1, gy1, gx2, gy2, {skipTileType:MAGICAL_WALL, includePlatforms:true, prevY, curY})) return true;
   /* Push block during dash */
-  if(PB.active){
-    const x1=gx1*T, x2=(gx2+1)*T;
-    if(aabb(x1, prevY, x2-x1, P.h, PB.x, PB.y, PB.w, PB.h)) return true;
+  const x1=gx1*T, x2=(gx2+1)*T;
+  for(const pb of PBlocks){
+    if(pb.active && aabb(x1, prevY, x2-x1, P.h, pb.x, pb.y, pb.w, pb.h)) return true;
   }
   return false;
 }
@@ -509,57 +525,60 @@ function tileCollides(ch, x, y, w, h){
 
 function resetPushBlock(){
   const c=chambers[P.chamber];
-  if(!c || !c.pushSpawn){ PB.active=false; return; }
-  PB.x = c.pushSpawn.x * T;
-  PB.y = c.pushSpawn.y * T;
-  PB.vx = 0; PB.vy = 0;
-  PB.active = true;
-  PB.inSlot = false;
+  PBlocks.length=0;
+  if(!c) return;
+  const spawns=c.pushSpawns||(c.pushSpawn?[c.pushSpawn]:null);
+  if(!spawns) return;
+  for(const sp of spawns){
+    PBlocks.push({x:sp.x*T,y:sp.y*T,w:T,h:T,vx:0,vy:0,active:true,inSlot:false});
+  }
 }
 
 /* Push block: resolve AFTER normal X movement + tile collision.
    Detect push overlap and apply velocity-based movement (not instant teleport). */
 function resolvePushBlockCollision(){
-  if(!PB.active || PB.inSlot) return;
-  if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
+  for(const pb of PBlocks){
+    if(!pb.active || pb.inSlot) continue;
+    if(!aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h)) continue;
 
-  const centerP = P.x + P.w / 2;
-  const centerB = PB.x + PB.w / 2;
-  const dir = (centerP < centerB) ? 1 : -1;
+    const centerP = P.x + P.w / 2;
+    const centerB = pb.x + pb.w / 2;
+    const dir = (centerP < centerB) ? 1 : -1;
 
-  const movingToward = (P.vx * dir > 0.1);
+    const movingToward = (P.vx * dir > 0.1);
 
-  // Y-overlap guard: skip X separation when player is landing on top
-  const isOnTop = P.y < PB.y
-                 && P.y + P.h >= PB.y - 8
-                 && P.y + P.h <= PB.y + P.h / 2;
+    // Y-overlap guard: skip X separation when player is landing on top
+    const isOnTop = P.y < pb.y
+                   && P.y + P.h >= pb.y - 8
+                   && P.y + P.h <= pb.y + P.h / 2;
 
-  if(P.canPush && P.onGround && movingToward){
-    // ── Active push: velocity-based ──
-    P.pushing = true;
+    if(P.canPush && P.onGround && movingToward){
+      // ── Active push: velocity-based ──
+      P.pushing = true;
 
-    // Apply push velocity to the block (half walk speed)
-    PB.vx = dir * PUSH_SPEED;
+      // Apply push velocity to the block (half walk speed)
+      pb.vx = dir * PUSH_SPEED;
 
-    // Clamp golem to same push speed (don't zero, just limit)
-    if(Math.abs(P.vx) > PUSH_SPEED) P.vx = dir * PUSH_SPEED;
+      // Clamp golem to same push speed (don't zero, just limit)
+      if(Math.abs(P.vx) > PUSH_SPEED) P.vx = dir * PUSH_SPEED;
 
-    // Keep golem glued to block side (smooth, no snap)
-    if(dir > 0) P.x = Math.min(P.x, PB.x - P.w + 1);
-    else        P.x = Math.max(P.x, PB.x + PB.w - 1);
+      // Keep golem glued to block side (smooth, no snap)
+      if(dir > 0) P.x = Math.min(P.x, pb.x - P.w + 1);
+      else        P.x = Math.max(P.x, pb.x + pb.w - 1);
 
-    Particles.spawn(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
+      Particles.spawn(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
 
-  } else if(P.canPush && movingToward && !P.onGround){
-    // Requirement 5: no push while airborne — separate
-    if(dir > 0) P.x = PB.x - P.w;
-    else        P.x = PB.x + PB.w;
+    } else if(P.canPush && movingToward && !P.onGround){
+      // Requirement 5: no push while airborne — separate
+      if(dir > 0) P.x = pb.x - P.w;
+      else        P.x = pb.x + pb.w;
 
-  } else {
-    // Not pushing — static separation (walking past, standing against)
-    if(isOnTop) return; // let Y landing check handle this
-    if(centerP < centerB) P.x = PB.x - P.w;
-    else                  P.x = PB.x + PB.w;
+    } else {
+      // Not pushing — static separation (walking past, standing against)
+      if(isOnTop) return; // let Y landing check handle this
+      if(centerP < centerB) P.x = pb.x - P.w;
+      else                  P.x = pb.x + pb.w;
+    }
   }
 }
 
@@ -567,55 +586,59 @@ function resolvePushBlockCollision(){
 function updatePushBlock(){
   const ch=P.chamber;
   const c=chambers[ch];
-  if(!c || !c.pushSpawn) return;
-  if(PB.inSlot) return;           // frozen in slot (still visible + rendered)
+  if(!c) return;
 
-  if(!PB.active){
-    resetPushBlock();
-    return;
-  }
+  for(const pb of PBlocks){
+    if(pb.inSlot) continue;
 
-  /* Move X */
-  PB.x += PB.vx;
-  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
-    if(PB.vx>0) PB.x = Math.floor((PB.x+PB.w)/T)*T - PB.w;
-    else        PB.x = (Math.floor(PB.x/T)+1)*T;
-    PB.vx = 0;
-  }
+    if(!pb.active){
+      continue;
+    }
 
-  /* Move Y (gravity) */
-  PB.vy += PB_GRAVITY;
-  if(PB.vy>PB_TERMINAL_VEL) PB.vy=PB_TERMINAL_VEL;
-  PB.y += PB.vy;
-  if(tileCollides(ch, PB.x, PB.y, PB.w, PB.h)){
-    if(PB.vy>0) PB.y = Math.floor((PB.y+PB.h)/T)*T - PB.h;
-    else        PB.y = (Math.floor(PB.y/T)+1)*T;
-    PB.vy = 0;
-  }
+    /* Move X */
+    pb.x += pb.vx;
+    if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
+      if(pb.vx>0) pb.x = Math.floor((pb.x+pb.w)/T)*T - pb.w;
+      else        pb.x = (Math.floor(pb.x/T)+1)*T;
+      pb.vx = 0;
+    }
 
- /* Friction (skip when player is actively pushing) */
-  if(!P.pushing){
-    PB.vx *= PB_FRICTION;
-    if(Math.abs(PB.vx)<PB_STOP_THRESH) PB.vx=0;
-  }
+    /* Move Y (gravity) */
+    pb.vy += PB_GRAVITY;
+    if(pb.vy>PB_TERMINAL_VEL) pb.vy=PB_TERMINAL_VEL;
+    pb.y += pb.vy;
+    if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
+      if(pb.vy>0) pb.y = Math.floor((pb.y+pb.h)/T)*T - pb.h;
+      else        pb.y = (Math.floor(pb.y/T)+1)*T;
+      pb.vy = 0;
+    }
 
-  /* Check if block fell into slot — settle visibly in the hole */
-  const cx=Math.floor((PB.x+PB.w/2)/T);
-  const cy=Math.floor((PB.y+PB.h/2)/T);
-  if(c.pushSlot && cx===c.pushSlot.gx && cy===c.pushSlot.gy){
-    PB.x = c.pushSlot.gx * T;
-    PB.y = c.pushSlot.gy * T;
-    PB.vx = 0;
-    PB.vy = 0;
-    PB.inSlot = true;
-    Particles.spawn((c.pushSlot.gx + 0.5)*T, PB.y + PB.h/2, '#d4a84b', 12);
-    showMessage("The weight settles.",80);
-  }
+    /* Friction (skip when player is actively pushing) */
+    if(!P.pushing){
+      pb.vx *= PB_FRICTION;
+      if(Math.abs(pb.vx)<PB_STOP_THRESH) pb.vx=0;
+    }
 
-  /* Reset if fallen past bottom */
-  if(PB.y > c.h*T){
-    PB.x = c.pushSpawn.x*T; PB.y = c.pushSpawn.y*T;
-    PB.vx=0; PB.vy=0; PB.inSlot=false;
+    /* Check if block fell into slot */
+    if(c.pushSlot){
+      const cx=Math.floor((pb.x+pb.w/2)/T);
+      const cy=Math.floor((pb.y+pb.h/2)/T);
+      if(cx===c.pushSlot.gx && cy===c.pushSlot.gy){
+        pb.x = c.pushSlot.gx * T;
+        pb.y = c.pushSlot.gy * T;
+        pb.vx = 0; pb.vy = 0;
+        pb.inSlot = true;
+        Particles.spawn((c.pushSlot.gx + 0.5)*T, pb.y + pb.h/2, '#d4a84b', 12);
+        showMessage("The weight settles.",80);
+      }
+    }
+
+    /* Reset if fallen past bottom */
+    if(pb.y > c.h*T){
+      const firstSpawn = c.pushSpawns ? c.pushSpawns[0] : c.pushSpawn;
+      pb.x = firstSpawn.x*T; pb.y = firstSpawn.y*T;
+      pb.vx=0; pb.vy=0; pb.inSlot=false;
+    }
   }
 }
 
@@ -963,11 +986,11 @@ function update(){
     } else {
       P.onGround = false;
     }
-    /* Push block Y collision — land on top */
-    if(PB.active){
-     if(aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h) && P.vy > 0 && Math.abs(P.vx) < 3){
-        if(prevY + P.h <= PB.y + 2){
-          P.y = PB.y - P.h;
+ /* Push block Y collision — land on top */
+    for(const pb of PBlocks){
+      if(pb.active && aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h) && P.vy > 0 && Math.abs(P.vx) < 3){
+        if(prevY + P.h <= pb.y + 2){
+          P.y = pb.y - P.h;
           P.vy = 0;
           land();
         }
@@ -1344,20 +1367,21 @@ function render(){
     }
   }
 
-  /* ── Push block entity ── */
-  if(PB.active){
-    const bpx=ox+PB.x, bpy=oy+PB.y;
-    X.fillStyle=PB.inSlot ? '#7a6a58' : COLORS.pushBlock;
-    X.fillRect(bpx,bpy,PB.w,PB.h);
-    X.fillStyle=PB.inSlot ? '#8a7a68' : COLORS.pushBlockTop;
-    X.fillRect(bpx+1,bpy+1,PB.w-2,3);
+ /* ── Push block entities ── */
+  for(const pb of PBlocks){
+    if(!pb.active) continue;
+    const bpx=ox+pb.x, bpy=oy+pb.y;
+    X.fillStyle=pb.inSlot ? '#7a6a58' : COLORS.pushBlock;
+    X.fillRect(bpx,bpy,pb.w,pb.h);
+    X.fillStyle=pb.inSlot ? '#8a7a68' : COLORS.pushBlockTop;
+    X.fillRect(bpx+1,bpy+1,pb.w-2,3);
     X.fillStyle='#6a5a4a';
-    X.fillRect(bpx+1,bpy+PB.h-4,PB.w-2,3);
+    X.fillRect(bpx+1,bpy+pb.h-4,pb.w-2,3);
     /* Hint glow only when pushable (not in slot) */
-    if(P.canPush && !PB.inSlot){
+    if(P.canPush && !pb.inSlot){
       const hintPulse=Math.sin(now/400)*0.2+0.3;
       X.fillStyle='rgba(212,168,75,'+hintPulse+')';
-      X.fillRect(bpx+3,bpy+3,PB.w-6,PB.h-6);
+      X.fillRect(bpx+3,bpy+3,pb.w-6,pb.h-6);
     }
   }
 

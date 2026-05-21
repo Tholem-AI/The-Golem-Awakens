@@ -114,6 +114,15 @@
 - [x] AGENTS.md quality gates updated with chamber_diff.py commands (5 -> 10 items)
 - [x] Validation: 0 tile mismatches, 0 strict validation errors, 0 JS errors, game loads in browser, export matches exactly, flow checks pass
 
+### Chamber 3 — The Weight of Wisdom Implementation (May 2026)
+- [x] Replaced placeholder Chamber 3 with "The Weight of Wisdom" complex grid from chamber-data.md
+- [x] New grid: 30+ walls, 15 pits, 6 platforms, 13 MAGICAL_WALLs, 1 GLYPH, 3 PUSH_SPAWNs, 5 CRACKED
+- [x] Spawn (11,12), Door (23,0), Glyph (18,1), PushSpawns (13,1)/(12,4)/(17,13)
+- [x] Extended push block system: PB -> PBlocks[] array, resetPushBlock supports pushSpawns/pushSpawn
+- [x] Updated resolvePushBlockCollision, updatePushBlock, collidesDash, render for multi-block iteration
+- [x] Follows 9-step ordered construction convention
+- [x] Validation: 0 tile mismatches, flow check OK, JS syntax OK, browser test OK
+
 ### Chamber 1 — The Library Implementation (May 2026)
 - [x] Replaced placeholder Chamber 1 with "The Library" complex grid from chamber-data.md
 - [x] New grid: 150 walls, 15 pits, 11 platforms, 2 MAGICAL_WALLs, 1 GLYPH, 1 DOOR_D, 1 GOLEM_SPAWN
@@ -174,10 +183,9 @@
 Redesign each chamber for better experience using `chamber-proposal.md` as staging area.
 
 - [x] Chamber 0 — Awakening: Replace staircase with platform-based jump sequence, widen pit, add scattered pits, platforms, interior walls. Door moved to (24,2), glyph at (12,5), spawn at (4,12). Validation: 0 tile mismatches, flow checks pass, JS syntax OK, browser verified.
-- [ ] Chamber 4 — The Ibis Chamber: Add pits, reposition platforms, make outer cracked walls structurally meaningful
 - [x] Chamber 1 — The Library: Replaced placeholder with complex grid (150 walls, 15 pits, 11 platforms, 2 MAGICAL_WALLs, 1 GLYPH). Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
 - [x] Chamber 2 — The Hall of Echoes: Replaced placeholder with complex grid (50+ walls, 9 pits, 3 platforms, 5 MAGICAL_WALLs, 1 GLYPH, 1 PUSH_SPAWN). Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
-- [ ] Chamber 3: No changes (assessed as well-designed)
+- [x] Chamber 3 — The Weight of Wisdom: Replaced placeholder with complex grid (30+ walls, 15 pits, 6 platforms, 13 MAGICAL_WALLs, 1 GLYPH, 3 PUSH_SPAWNs, 5 CRACKED). Extended push block system to PBlocks[] array supporting N blocks with backward-compatible pushSpawn wrapper. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
 ### Visual and Story Overhaul (Not Started)
@@ -237,9 +245,10 @@ Prepare the project for public repository sharing.
 | Sound effects | Not Started | — |
 ||||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
 ||||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
-||||| Chamber 2 redesign (The Hall of Echoes) | Complete | 0 tile mismatches, flow check OK, JS syntax OK, browser verified |
-||||| Chamber redesign | In Progress | Chambers 0,1,2 done; Chamber 3 unchanged; Chamber 4 pending. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-| Visual/story overhaul | Not Started | — |
+|||||| Chamber 2 redesign (The Hall of Echoes) | Complete | 0 tile mismatches, flow check OK, JS syntax OK, browser verified |
+|||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
+|||||| Chamber redesign | In Progress | Chambers 0,1,2,3 done; Chamber 4 pending. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
+|| Visual/story overhaul | Not Started | — |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |
 || Open source release prep | Not Started | — |
