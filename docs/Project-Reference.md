@@ -6,7 +6,7 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, and
 
 ## Architecture
 
-Single HTML file (1240 lines, ~45 KB) organized into 11 sections with delimiter comments.
+Single HTML file (~1665 lines, ~60 KB) organized into 11 sections with delimiter comments.
 
 ### Section Map
 
@@ -16,8 +16,8 @@ Single HTML file (1240 lines, ~45 KB) organized into 11 sections with delimiter 
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
 | 4 | INPUT | Key listeners, `fresh()`, `shiftHeld()`, 5 input helper functions |
-| 5 | TILE HELPERS & COLLISION | `getTile`, `setTile`, `solid`, `platSolid`, `tileCollidesRect`, `collides*`, `inPit`, `aabb` |
-| 6 | PUSH BLOCK SYSTEM | `resetPushBlock`, `resolvePushBlockCollision`, `updatePushBlock` |
+| 5 | TILE HELPERS & COLLISION | `getTile`, `setTile`, `solid`, `platSolid`, `tileCollidesRect`, `collides*`, `inPit`, `aabb`, `pushBlockHit`, `moveBlockRiders` |
+| 6 | PUSH BLOCK SYSTEM | `resetPushBlock`, `resolvePushBlockCollision`, `updatePushBlock` (block-vs-block AABB, riders) |
 | 7 | PARTICLE SYSTEM | IIFE: `Particles.shatter`, `.spawn`, `.update` |
 | 8 | GAME FLOW | `showMessage`, `_doTransition`, `transition`, `checkDoors`, `checkGlyphs`, `transitionEnding` |
 | 9 | UPDATE | Main physics/input/game logic loop |
@@ -151,7 +151,23 @@ isOnTop = P.y < PB.y                    // player top above push block
 2. Player X movement + tile collision
 3. `resolvePushBlockCollision()` — detects overlap, applies push or separation
 4. Player Y movement + tile/platform collision
-5. `updatePushBlock()` — X move with collision, Y gravity, friction, slot detection, fall reset
+5. `updatePushBlock()` — per-block: save prevBx, tile X, block-vs-block X, moveBlockRiders, save prevBy, tile Y, block-vs-block Y, friction, slot detection, fall reset
+
+### Block-vs-Block Collision
+
+Push blocks collide with each other via AABB overlap (`pushBlockHit()` helper in Section 5).
+
+**Horizontal:** blocks treat other blocks as solid walls. Pushing block A into block B stops A at B's face. No chain-push — A does not transfer momentum to B.
+
+**Vertical:** blocks stack on top only. `prevBottom <= hitY.y + 2` tolerance matches the player landing check (~line 992), so a falling block only lands when it was above the other block's top face the previous frame. Side overlap is ignored (X resolution handles it).
+
+**Riders:** `moveBlockRiders(pb, dx)` drags blocks sitting on top of a moving block. A rider is detected by feet proximity (`|feet - pb.y| <= 2`) and horizontal overlap (with 2px margin). If the support block falls off an edge, gravity pulls the rider down the next frame — no artificial binding.
+
+**Design decisions:**
+- `pushBlockHit()` skips self and inactive blocks but keeps `inSlot` blocks solid (locked-in blocks are immovable anchors)
+- No chain-push or domino mechanics — solid contact only
+- Separate from `tileCollides()` to keep grid and entity logic independent
+- Separate from `resolvePushBlockCollision()` (player-to-block) to keep concerns isolated
 
 ---
 

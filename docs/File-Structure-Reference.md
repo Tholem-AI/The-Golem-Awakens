@@ -5,7 +5,7 @@
 ```
 GOLEM_GAME/
   AGENTS.md                  # Project-scoped governance (Tholem Hermes Kit)
- golem.html                # Single-file HTML5 game (~1596 lines, 11 sections + animation system, ~59 KB)
+ golem.html                # Single-file HTML5 game (~1665 lines, 11 sections + animation system, ~60 KB)
   README.md                 # Project overview, controls, abilities, chambers
   ROADMAP.md                # Active development checkpoints
   chamber-data.md           # Chamber grid exports extracted from golem.html (grid-only, no annotations)
@@ -24,7 +24,7 @@ GOLEM_GAME/
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | Project governance: safety, quality, lifecycle, constraints |
-|| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1596 lines. 11-section structure: Setup/Constants, Chamber Data (Section 2 uses 9-step ordered construction convention with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities, Input, Tile Helpers/Collision, Push Block System, Particle System, Game Flow (flow-based DOOR_D), Update, Render, Init/Game Loop. Death/respawn animation system (state machine: idle->dying->respawning->idle). |
+|| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1665 lines. 11-section structure: Setup/Constants, Chamber Data (Section 2 uses 9-step ordered construction convention with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities, Input, Tile Helpers/Collision, Push Block System (block-vs-block AABB, riders), Particle System, Game Flow (flow-based DOOR_D), Update, Render, Init/Game Loop. Death/respawn animation system (state machine: idle->dying->respawning->idle). |
 | `README.md` | Project overview, controls, abilities, chambers |
 | `ROADMAP.md` | Active development checkpoints |
 | `chamber-data.md` | ASCII grid exports of all 6 chambers — grid-only, no annotations. Verified 0 mismatches against golem.html. |

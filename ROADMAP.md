@@ -31,6 +31,14 @@
 - [x] Push animation: forward-leaning squash + pulsing golden arm/shoulder lines
 - [x] Gap gravity, airborne guard, death respawn reset, wall blocking
 
+### Pushblock Block-vs-Block Collision (May 2026)
+- [x] `pushBlockHit()` helper: AABB overlap test between push blocks (excludes self, inSlot stays solid)
+- [x] Horizontal resolution: blocks treat other blocks as solid walls (push A into B stops at B's face)
+- [x] Vertical resolution: stacking on top only (prevBottom <= hitY.y + 2 matches player landing tolerance)
+- [x] Rider system: `moveBlockRiders()` drags stacked blocks when support moves horizontally
+- [x] Full per-block flow: prevBx/save -> tile X -> block X -> riders -> prevBy/save -> tile Y -> block Y
+- [x] No chain-push, no new tile types, no changes to resolvePushBlockCollision or tileCollides
+
 ### Dash Rewrite (May 2026)
 - [x] Hold-to-charge dash with linear distance scaling, ring indicator, HUD bar
 - [x] Validation: 20/20 tests passed, zero JS errors
@@ -227,8 +235,9 @@ Prepare the project for public repository sharing.
 | Core game | Complete | `golem.html` playable, state audit verified |
 | Dash rewrite | Complete | 20/20 tests, zero JS errors |
 | Physics tuning | Complete | All milestones verified, review approved |
-| Pushblock standing fix | Complete | Review approved, browser verified |
-| Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
+|| Pushblock standing fix | Complete | Review approved, browser verified |
+|| Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
+|| Pushblock block-vs-block collision | Complete | pushBlockHit, moveBlockRiders, stacking, riders |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |

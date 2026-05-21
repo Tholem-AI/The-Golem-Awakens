@@ -509,6 +509,28 @@ function aabb(ax,ay,aw,ah, bx,by,bw,bh){
   return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
 }
 
+/* Find overlapping push block (exclude self). inSlot blocks stay solid. */
+function pushBlockHit(x, y, w, h, skip){
+  for(const ob of PBlocks){
+    if(ob === skip || !ob.active) continue;
+    if(aabb(x, y, w, h, ob.x, ob.y, ob.w, ob.h)) return ob;
+  }
+  return null;
+}
+
+/* Drag riders sitting on top of a moving block */
+function moveBlockRiders(pb, dx){
+  if(!dx) return;
+  for(const ob of PBlocks){
+    if(ob === pb || !ob.active || ob.inSlot) continue;
+    const feet = ob.y + ob.h;
+    if(Math.abs(feet - pb.y) <= 2 &&
+       ob.x + ob.w > pb.x + 2 && ob.x < pb.x + pb.w - 2){
+      ob.x += dx;
+    }
+  }
+}
+
 /* Check if AABB overlaps any solid tile */
 function tileCollides(ch, x, y, w, h){
   const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
@@ -582,7 +604,7 @@ function resolvePushBlockCollision(){
   }
 }
 
-/* Push block: separate X then Y with gravity */
+/* Push block: separate X then Y with gravity + block-vs-block AABB */
 function updatePushBlock(){
   const ch=P.chamber;
   const c=chambers[ch];
@@ -596,14 +618,25 @@ function updatePushBlock(){
     }
 
     /* Move X */
+    const prevBx = pb.x;
     pb.x += pb.vx;
     if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
       if(pb.vx>0) pb.x = Math.floor((pb.x+pb.w)/T)*T - pb.w;
       else        pb.x = (Math.floor(pb.x/T)+1)*T;
       pb.vx = 0;
     }
+    /* Block-vs-block X resolution (solid wall) */
+    const hitX = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
+    if(hitX){
+      if(pb.vx > 0) pb.x = hitX.x - pb.w;
+      else if(pb.vx < 0) pb.x = hitX.x + hitX.w;
+      pb.vx = 0;
+    }
+    /* Drag riders that sit on top */
+    moveBlockRiders(pb, pb.x - prevBx);
 
     /* Move Y (gravity) */
+    const prevBy = pb.y;
     pb.vy += PB_GRAVITY;
     if(pb.vy>PB_TERMINAL_VEL) pb.vy=PB_TERMINAL_VEL;
     pb.y += pb.vy;
@@ -611,6 +644,18 @@ function updatePushBlock(){
       if(pb.vy>0) pb.y = Math.floor((pb.y+pb.h)/T)*T - pb.h;
       else        pb.y = (Math.floor(pb.y/T)+1)*T;
       pb.vy = 0;
+    }
+    /* Block-vs-block Y resolution (stack on top only) */
+    const hitY = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
+    if(hitY){
+      const prevBottom = prevBy + pb.h;
+      if(pb.vy > 0 && prevBottom <= hitY.y + 2){
+        pb.y = hitY.y - pb.h;
+        pb.vy = 0;
+      } else if(pb.vy < 0){
+        pb.y = hitY.y + hitY.h;
+        pb.vy = 0;
+      }
     }
 
     /* Friction (skip when player is actively pushing) */
