@@ -520,7 +520,7 @@ function resetPushBlock(){
 /* Push block: resolve AFTER normal X movement + tile collision.
    Detect push overlap and apply velocity-based movement (not instant teleport). */
 function resolvePushBlockCollision(){
-  if(!P.canPush || !PB.active || PB.inSlot) return;
+  if(!PB.active || PB.inSlot) return;
   if(!aabb(P.x, P.y, P.w, P.h, PB.x, PB.y, PB.w, PB.h)) return;
 
   const centerP = P.x + P.w / 2;
@@ -534,7 +534,7 @@ function resolvePushBlockCollision(){
                  && P.y + P.h >= PB.y - 8
                  && P.y + P.h <= PB.y + P.h / 2;
 
-  if(P.onGround && movingToward){
+  if(P.canPush && P.onGround && movingToward){
     // ── Active push: velocity-based ──
     P.pushing = true;
 
@@ -550,7 +550,7 @@ function resolvePushBlockCollision(){
 
     Particles.spawn(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
 
-  } else if(movingToward && !P.onGround){
+  } else if(P.canPush && movingToward && !P.onGround){
     // Requirement 5: no push while airborne — separate
     if(dir > 0) P.x = PB.x - P.w;
     else        P.x = PB.x + PB.w;
