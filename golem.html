@@ -540,16 +540,85 @@ function pushBlockHit(x, y, w, h, skip){
   return null;
 }
 
-/* Drag riders sitting on top of a moving block */
-function moveBlockRiders(pb, dx){
+function isRiding(ob, base){
+  const feet = ob.y + ob.h;
+  return Math.abs(feet - base.y) <= 2 &&
+         ob.x + ob.w > base.x + 2 && ob.x < base.x + base.w - 2;
+}
+/* Apply horizontal delta with tile + block collision. Does not touch vx. */
+function resolveBlockX(ch, pb, dx){
+  if(!dx) return 0;
+  const prevX = pb.x;
+  pb.x += dx;
+  if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
+    if(dx > 0) pb.x = Math.floor((pb.x + pb.w) / T) * T - pb.w;
+    else       pb.x = (Math.floor(pb.x / T) + 1) * T;
+  }
+  const hitX = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
+  if(hitX){
+    if(dx > 0) pb.x = hitX.x - pb.w;
+    else if(dx < 0) pb.x = hitX.x + hitX.w;
+  }
+  return pb.x - prevX;
+}
+/* Phase B: each rider attempts the same dx, with its own wall collision. */
+function moveBlockRiders(ch, pb, dx){
   if(!dx) return;
   for(const ob of PBlocks){
     if(ob === pb || !ob.active || ob.inSlot) continue;
-    const feet = ob.y + ob.h;
-    if(Math.abs(feet - pb.y) <= 2 &&
-       ob.x + ob.w > pb.x + 2 && ob.x < pb.x + pb.w - 2){
-      ob.x += dx;
-      moveBlockRiders(ob, dx);
+    if(!isRiding(ob, pb)) continue;
+    resolveBlockX(ch, ob, dx);
+    moveBlockRiders(ch, ob, dx);
+  }
+}
+/* Phase A: apply vx as a horizontal move. Returns net displacement. */
+function applyBlockVelocityX(ch, pb){
+  if(!pb.vx){ pb._frameDx = 0; return; }
+  const dx = pb.vx;
+  const moved = resolveBlockX(ch, pb, dx);
+  pb._frameDx = moved;
+  if(moved !== dx) pb.vx = 0;
+}
+/* Phase C: gravity + tile/block Y resolution. */
+function resolveBlockY(ch, pb){
+  const prevBy = pb.y;
+  pb.vy += PB_GRAVITY;
+  if(pb.vy > PB_TERMINAL_VEL) pb.vy = PB_TERMINAL_VEL;
+  pb.y += pb.vy;
+  if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
+    if(pb.vy > 0) pb.y = Math.floor((pb.y + pb.h) / T) * T - pb.h;
+    else          pb.y = (Math.floor(pb.y / T) + 1) * T;
+    pb.vy = 0;
+  }
+  const hitY = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
+  if(hitY){
+    const prevBottom = prevBy + pb.h;
+    if(pb.vy > 0 && prevBottom <= hitY.y + 2){
+      pb.y = hitY.y - pb.h;
+      pb.vy = 0;
+    } else if(pb.vy < 0){
+      pb.y = hitY.y + hitY.h;
+      pb.vy = 0;
+    }
+  }
+}
+/* Active blocks, bottom-up (larger y first). */
+function activePushBlocks(){
+  return PBlocks
+    .filter(pb => pb.active && !pb.inSlot)
+    .sort((a, b) => b.y - a.y);
+}
+/* Falling block overlaps player → death. */
+function checkPushBlockCrush(){
+  if(animState !== 'idle') return;
+  for(const pb of PBlocks){
+    if(!pb.active || pb.inSlot) continue;
+    if(pb.vy <= 0) continue;
+    if(!aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h)) continue;
+    if(pb.y + pb.h > P.y + 4 &&
+       pb.x + pb.w > P.x + 2 && pb.x < P.x + P.w - 2){
+      killAndRespawn(false, "The weight crushes you...", 90);
+      return;
     }
   }
 }
@@ -627,87 +696,52 @@ function resolvePushBlockCollision(){
   }
 }
 
-/* Push block: separate X then Y with gravity + block-vs-block AABB */
+/* Push block: 3-phase orchestrator + crush check */
 function updatePushBlock(){
-  const ch=P.chamber;
-  const c=chambers[ch];
+  const ch = P.chamber;
+  const c = chambers[ch];
   if(!c) return;
-
-  for(const pb of PBlocks){
-    if(pb.inSlot) continue;
-
-    if(!pb.active){
-      continue;
-    }
-
-    /* Move X */
-    const prevBx = pb.x;
-    pb.x += pb.vx;
-    if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
-      if(pb.vx>0) pb.x = Math.floor((pb.x+pb.w)/T)*T - pb.w;
-      else        pb.x = (Math.floor(pb.x/T)+1)*T;
-      pb.vx = 0;
-    }
-    /* Block-vs-block X resolution (solid wall) */
-    const hitX = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
-    if(hitX){
-      if(pb.vx > 0) pb.x = hitX.x - pb.w;
-      else if(pb.vx < 0) pb.x = hitX.x + hitX.w;
-      pb.vx = 0;
-    }
-    /* Drag riders that sit on top */
-    moveBlockRiders(pb, pb.x - prevBx);
-
-    /* Move Y (gravity) */
-    const prevBy = pb.y;
-    pb.vy += PB_GRAVITY;
-    if(pb.vy>PB_TERMINAL_VEL) pb.vy=PB_TERMINAL_VEL;
-    pb.y += pb.vy;
-    if(tileCollides(ch, pb.x, pb.y, pb.w, pb.h)){
-      if(pb.vy>0) pb.y = Math.floor((pb.y+pb.h)/T)*T - pb.h;
-      else        pb.y = (Math.floor(pb.y/T)+1)*T;
-      pb.vy = 0;
-    }
-    /* Block-vs-block Y resolution (stack on top only) */
-    const hitY = pushBlockHit(pb.x, pb.y, pb.w, pb.h, pb);
-    if(hitY){
-      const prevBottom = prevBy + pb.h;
-      if(pb.vy > 0 && prevBottom <= hitY.y + 2){
-        pb.y = hitY.y - pb.h;
-        pb.vy = 0;
-      } else if(pb.vy < 0){
-        pb.y = hitY.y + hitY.h;
-        pb.vy = 0;
-      }
-    }
-
-    /* Friction (skip when player is actively pushing) */
+  const blocks = activePushBlocks();
+  /* Phase A: horizontal velocity (each block, bottom-up) */
+  for(const pb of blocks){
+    applyBlockVelocityX(ch, pb);
+  }
+  /* Phase B: rider coupling (same dx, per-block wall collision) */
+  for(const pb of blocks){
+    if(pb._frameDx) moveBlockRiders(ch, pb, pb._frameDx);
+  }
+  /* Phase C: gravity + vertical resolution (bottom-up) */
+  for(const pb of blocks){
+    resolveBlockY(ch, pb);
+  }
+  /* Phase D: friction, slots, fall reset */
+  for(const pb of blocks){
     if(!P.pushing){
       pb.vx *= PB_FRICTION;
-      if(Math.abs(pb.vx)<PB_STOP_THRESH) pb.vx=0;
+      if(Math.abs(pb.vx) < PB_STOP_THRESH) pb.vx = 0;
     }
-
-    /* Check if block fell into slot */
     if(c.pushSlot){
-      const cx=Math.floor((pb.x+pb.w/2)/T);
-      const cy=Math.floor((pb.y+pb.h/2)/T);
-      if(cx===c.pushSlot.gx && cy===c.pushSlot.gy){
+      const cx = Math.floor((pb.x + pb.w / 2) / T);
+      const cy = Math.floor((pb.y + pb.h / 2) / T);
+      if(cx === c.pushSlot.gx && cy === c.pushSlot.gy){
         pb.x = c.pushSlot.gx * T;
         pb.y = c.pushSlot.gy * T;
         pb.vx = 0; pb.vy = 0;
         pb.inSlot = true;
-        Particles.spawn((c.pushSlot.gx + 0.5)*T, pb.y + pb.h/2, '#d4a84b', 12);
-        showMessage("The weight settles.",80);
+        Particles.spawn((c.pushSlot.gx + 0.5) * T, pb.y + pb.h / 2, '#d4a84b', 12);
+        showMessage("The weight settles.", 80);
       }
     }
-
-    /* Reset if fallen past bottom */
-    if(pb.y > c.h*T){
+    if(pb.y > c.h * T){
       const firstSpawn = c.pushSpawns ? c.pushSpawns[0] : c.pushSpawn;
-      pb.x = firstSpawn.x*T; pb.y = firstSpawn.y*T;
-      pb.vx=0; pb.vy=0; pb.inSlot=false;
+      pb.x = firstSpawn.x * T;
+      pb.y = firstSpawn.y * T;
+      pb.vx = 0; pb.vy = 0;
+      pb.inSlot = false;
     }
+    pb._frameDx = 0;
   }
+  checkPushBlockCrush();
 }
 
 /* ══════════════════════════════════════════════════
@@ -1030,7 +1064,7 @@ function update(){
 /* 2. Resolve against push-block entity */
   resolvePushBlockCollision();
 
-  /* Update push block physics while P.pushing flag is still valid */
+  /* 3. Push block physics + crush check (before player Y) */
   updatePushBlock();
 
  /* ── Move Y + collide (platforms = one-way) ── */

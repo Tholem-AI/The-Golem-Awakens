@@ -20,9 +20,9 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-||| File size | ~1688 lines, ~62 KB | Single-file constraint |
+||| File size | ~1722 lines, ~64 KB | Single-file constraint |
 | Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
-||| Push block | PBlocks[] array — supports N push blocks per chamber via `pushSpawns` array. Backward-compatible with `pushSpawn` single-block. Velocity-based push at PUSH_SPEED (1.25 px/frame). Block-vs-block AABB collision: solid walls horizontally, stacking vertically (top face only). Recursive rider system: `moveBlockRiders()` propagates displacement through N-level stacks. | Sections 3, 5, 6 |
+||| Push block | PBlocks[] array — supports N push blocks per chamber via `pushSpawns` array. Backward-compatible with `pushSpawn` single-block. Velocity-based push at PUSH_SPEED (1.25 px/frame). 3-phase orchestrator: horizontal velocity -> rider coupling -> gravity/vertical. Block-vs-block AABB collision: solid walls horizontally, stacking vertically. Riders get individual wall collision via `resolveBlockX()`. Falling block crush death via `checkPushBlockCrush()`. Bottom-up processing via `activePushBlocks()`. | Sections 3, 5, 6 |
 | Deployment | Single HTML file, no external dependencies | — |
 
 ## Design Constraints

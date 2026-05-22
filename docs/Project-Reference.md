@@ -6,7 +6,7 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, and
 
 ## Architecture
 
-Single HTML file (~1665 lines, ~60 KB) organized into 11 sections with delimiter comments.
+Single HTML file (~1722 lines, ~64 KB) organized into 11 sections with delimiter comments.
 
 ### Section Map
 
@@ -16,8 +16,8 @@ Single HTML file (~1665 lines, ~60 KB) organized into 11 sections with delimiter
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
 | 4 | INPUT | Key listeners, `fresh()`, `shiftHeld()`, 5 input helper functions |
-| 5 | TILE HELPERS & COLLISION | `getTile`, `setTile`, `solid`, `platSolid`, `tileCollidesRect`, `collides*`, `inPit`, `aabb`, `pushBlockHit`, `moveBlockRiders` |
-| 6 | PUSH BLOCK SYSTEM | `resetPushBlock`, `resolvePushBlockCollision`, `updatePushBlock` (block-vs-block AABB, riders) |
+| 5 | TILE HELPERS & COLLISION | `getTile`, `setTile`, `solid`, `platSolid`, `tileCollidesRect`, `collides*`, `inPit`, `aabb`, `pushBlockHit`, `isRiding`, `resolveBlockX`, `moveBlockRiders`, `applyBlockVelocityX`, `resolveBlockY`, `activePushBlocks`, `checkPushBlockCrush` |
+| 6 | PUSH BLOCK SYSTEM | `resetPushBlock`, `resolvePushBlockCollision`, `updatePushBlock` (3-phase orchestrator + crush) |
 | 7 | PARTICLE SYSTEM | IIFE: `Particles.shatter`, `.spawn`, `.update` |
 | 8 | GAME FLOW | `showMessage`, `_doTransition`, `transition`, `checkDoors`, `checkGlyphs`, `transitionEnding` |
 | 9 | UPDATE | Main physics/input/game logic loop |
@@ -150,8 +150,15 @@ isOnTop = P.y < PB.y                    // player top above push block
 1. `P.pushing = false` (per-frame reset before movement)
 2. Player X movement + tile collision
 3. `resolvePushBlockCollision()` — detects overlap, applies push or separation
-4. Player Y movement + tile/platform collision
-5. `updatePushBlock()` — per-block: save prevBx, tile X, block-vs-block X, moveBlockRiders, save prevBy, tile Y, block-vs-block Y, friction, slot detection, fall reset
+4. `updatePushBlock()` — 3-phase orchestrator (before player Y):
+   - Phase A: `applyBlockVelocityX()` — each block moves horizontally by its vx, records `_frameDx`
+   - Phase B: `moveBlockRiders()` — riders get the same `_frameDx` with their own wall collision
+   - Phase C: `resolveBlockY()` — gravity + tile/block Y resolution
+   - Phase D: friction, slot detection, fall reset, `_frameDx` cleanup
+   - `checkPushBlockCrush()` — falling blocks kill golem (before player Y so same-frame jump cannot escape)
+5. Player Y movement + tile/platform collision
+
+All phases process blocks bottom-up (`activePushBlocks()` sorts by descending y).
 
 ### Block-vs-Block Collision
 
@@ -159,15 +166,22 @@ Push blocks collide with each other via AABB overlap (`pushBlockHit()` helper in
 
 **Horizontal:** blocks treat other blocks as solid walls. Pushing block A into block B stops A at B's face. No chain-push — A does not transfer momentum to B.
 
-**Vertical:** blocks stack on top only. `prevBottom <= hitY.y + 2` tolerance matches the player landing check (~line 992), so a falling block only lands when it was above the other block's top face the previous frame. Side overlap is ignored (X resolution handles it).
+**Vertical:** blocks stack on top only. `prevBottom <= hitY.y + 2` tolerance matches the player landing check, so a falling block only lands when it was above the other block's top face the previous frame. Side overlap is ignored (X resolution handles it). Blocks also resolve upward collision (`pb.vy < 0`) when pushed from below.
 
-**Riders:** `moveBlockRiders(pb, dx)` drags blocks sitting on top of a moving block. A rider is detected by feet proximity (`|feet - pb.y| <= 2`) and horizontal overlap (with 2px margin). If the support block falls off an edge, gravity pulls the rider down the next frame — no artificial binding.
+**Riders:** `moveBlockRiders(ch, pb, dx)` drags blocks sitting on top of a moving block. A rider is detected by `isRiding()` — feet proximity (`|feet - base.y| <= 2`) and horizontal overlap (with 2px margin). Each rider calls `resolveBlockX(ch, ob, dx)` so it has its own wall and block-vs-block collision — it does not blindly offset by dx. If the support block falls off an edge, gravity pulls the rider down the next frame — no artificial binding.
+
+**Crush death:** `checkPushBlockCrush()` runs after block Y physics, before player Y movement. If a falling block (`pb.vy > 0`) overlaps the player with sufficient vertical and horizontal coverage, `killAndRespawn()` triggers with "The weight crushes you..." message. Guarded by `animState !== 'idle'` so it only hits during normal play — death/respawn animations are immune.
+
+**Processing order:** `activePushBlocks()` filters to active, non-slotted blocks and sorts by descending y (bottom-up). All four phases use this order, so gravity and stacking resolve correctly — lower blocks move before blocks resting on them.
+
+**Transient state:** `pb._frameDx` records Phase A net displacement for Phase B rider coupling. Cleared in Phase D.
 
 **Design decisions:**
 - `pushBlockHit()` skips self and inactive blocks but keeps `inSlot` blocks solid (locked-in blocks are immovable anchors)
 - No chain-push or domino mechanics — solid contact only
 - Separate from `tileCollides()` to keep grid and entity logic independent
 - Separate from `resolvePushBlockCollision()` (player-to-block) to keep concerns isolated
+- Crush check before player Y prevents the golem from jumping away in the same frame a block falls on it
 
 ---
 

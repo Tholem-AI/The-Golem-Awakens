@@ -45,6 +45,20 @@
 - [x] Hold-to-charge dash with linear distance scaling, ring indicator, HUD bar
 - [x] Validation: 20/20 tests passed, zero JS errors
 
+### Pushblock Physics Refactor (May 2026)
+- [x] 3-phase orchestrator: Phase A (horizontal velocity), Phase B (rider coupling), Phase C (gravity/vertical), Phase D (friction/slots/reset)
+- [x] `resolveBlockX(ch, pb, dx)`: horizontal resolver with tile + block collision, returns net displacement
+- [x] `resolveBlockY(ch, pb)`: gravity + tile/block Y resolution extracted from updatePushBlock
+- [x] `applyBlockVelocityX(ch, pb)`: Phase A helper, stores `_frameDx` for rider coupling
+- [x] `isRiding(ob, base)`: extracted rider predicate (feet proximity + horizontal overlap)
+- [x] `activePushBlocks()`: returns active non-slotted blocks sorted bottom-up for correct stacking
+- [x] `moveBlockRiders(ch, pb, dx)`: riders now get their own wall collision via `resolveBlockX` instead of blind `+= dx`
+- [x] `checkPushBlockCrush()`: falling blocks (vy > 0) kill golem via `killAndRespawn` with "The weight crushes you..." message
+- [x] Crush check runs after block Y physics, before player Y — prevents escape via same-frame jump
+- [x] Bottom-up processing prevents stack instability in multi-block stacks
+- [x] `_frameDx` transient cleaned per block in Phase D
+- [x] Validation: zero JS errors, game loads in browser
+
 ### Code Refactor & Optimization (May 2026)
 - [x] 11-section reorganization with delimiter comments
 - [x] Logic duplication elimination: killAndRespawn(), endDash(), land(), snapToTileX()
@@ -154,11 +168,6 @@
 
 ## Remaining Work
 
-### Bug Fixes (Not Started)
-
-#### Pushblock gap skip
-- [ ] Fix: when pushing pushblock over a 1-tile gap at high speed, gravity check is skipped and block floats across. Pushblock should fall into 1-tile gap as intended. Likely needs per-frame gravity enforcement regardless of horizontal velocity.
-
 ### Platform Visual Rework (May 2026) — COMPLETED
 
 - [x] Redraw platforms as narrow ledges at the top of the tile (match hitbox, preserve landing-on-top behavior)
@@ -250,6 +259,7 @@ Prepare the project for public repository sharing.
 || Pushblock standing fix | Complete | Review approved, browser verified |
 || Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
 ||| Pushblock block-vs-block collision | Complete | pushBlockHit, moveBlockRiders (recursive), N-block stacking, riders |
+||| Pushblock physics refactor | Complete | 3-phase orchestrator, resolveBlockX/Y, rider collision, crush death, bottom-up |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
@@ -257,8 +267,7 @@ Prepare the project for public repository sharing.
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 ||| Death & respawn animations | Complete | 1.5s collapse/construct, state machine, easing, particles, RIPER reviewed |
 ||| Chamber flow system | Complete | CHAMBER_FLOW + flowId, DOOR_D follows flow, !c.flowId test detection, flow-based HUD |
-||| Bug fixes (gap skip) | Not Started | — |
-|| Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
+||| Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
 ||| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
 ||| Chamber data management | Complete | chamber_diff.py (6 modes), 0 mismatches, 0 strict errors, grids match exactly |
 || Pause toggle | Not Started | — |
