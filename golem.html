@@ -549,6 +549,7 @@ function moveBlockRiders(pb, dx){
     if(Math.abs(feet - pb.y) <= 2 &&
        ob.x + ob.w > pb.x + 2 && ob.x < pb.x + pb.w - 2){
       ob.x += dx;
+      moveBlockRiders(ob, dx);
     }
   }
 }

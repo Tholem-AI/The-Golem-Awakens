@@ -35,9 +35,11 @@
 - [x] `pushBlockHit()` helper: AABB overlap test between push blocks (excludes self, inSlot stays solid)
 - [x] Horizontal resolution: blocks treat other blocks as solid walls (push A into B stops at B's face)
 - [x] Vertical resolution: stacking on top only (prevBottom <= hitY.y + 2 matches player landing tolerance)
-- [x] Rider system: `moveBlockRiders()` drags stacked blocks when support moves horizontally
+- [x] Rider system: `moveBlockRiders()` recursively drags stacked blocks when support moves horizontally
+- [x] Recursive rider propagation: 3+ block stacks move as a unit (was: only 2 blocks worked)
 - [x] Full per-block flow: prevBx/save -> tile X -> block X -> riders -> prevBy/save -> tile Y -> block Y
 - [x] No chain-push, no new tile types, no changes to resolvePushBlockCollision or tileCollides
+- [x] Validation: 0 tile mismatches, flow check OK, JS syntax OK, browser test OK, reviewer approved
 
 ### Dash Rewrite (May 2026)
 - [x] Hold-to-charge dash with linear distance scaling, ring indicator, HUD bar
@@ -247,7 +249,7 @@ Prepare the project for public repository sharing.
 | Physics tuning | Complete | All milestones verified, review approved |
 || Pushblock standing fix | Complete | Review approved, browser verified |
 || Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
-|| Pushblock block-vs-block collision | Complete | pushBlockHit, moveBlockRiders, stacking, riders |
+||| Pushblock block-vs-block collision | Complete | pushBlockHit, moveBlockRiders (recursive), N-block stacking, riders |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
