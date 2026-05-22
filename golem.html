@@ -295,32 +295,54 @@ const chambers = [];
     pushSpawns:[{x:13,y:1},{x:12,y:4},{x:17,y:13}], flowId:'ch3'});
 })();
 
-// Chamber 4: The Ibis speaks — final chamber, no glyph needed, END_PORTAL triggers ending
+// Chamber 4: The Ibis Chamber — final chamber, END_PORTAL triggers ending
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
   /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[13][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;g[13][x]=WALL;}
+  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
+  /* Step 2: Pits */
+  for(let x=1;x<=6;x++) g[14][x]=PIT;
+  for(let x=20;x<=21;x++) g[3][x]=PIT;
+  g[5][9]=PIT;g[6][3]=PIT;g[6][10]=PIT;
+  for(let x=16;x<=17;x++) g[6][x]=PIT;
+  g[7][3]=PIT;g[7][21]=PIT;g[8][21]=PIT;g[9][21]=PIT;
+  for(let x=8;x<=10;x++) g[10][x]=PIT;
+  g[10][12]=PIT;g[11][10]=PIT;
   /* Step 3: Door/Portal */
-  g[7][12]=END_PORTAL;
+  g[1][1]=END_PORTAL;
+  /* Step 4: Interior walls */
+  for(let x=1;x<=22;x++) g[2][x]=WALL;
+  for(let x=5;x<=8;x++) g[1][x]=MAGICAL_WALL;
+  g[1][13]=MAGICAL_WALL;g[1][20]=MAGICAL_WALL;
+  g[7][13]=MAGICAL_WALL;g[8][13]=MAGICAL_WALL;
+  g[3][10]=WALL;g[3][22]=WALL;
+  g[4][10]=WALL;g[4][22]=WALL;
+  for(let x=3;x<=8;x++) g[5][x]=WALL;
+  g[5][10]=WALL;
+  g[6][4]=WALL;g[6][22]=WALL;
+  for(let x=11;x<=15;x++) g[6][x]=WALL;
+  g[7][4]=WALL;g[7][22]=WALL;
+  g[8][4]=WALL;g[8][22]=WALL;
+  g[9][4]=WALL;g[9][22]=WALL;
+  for(let x=8;x<=11;x++) g[9][x]=WALL;
+  g[10][4]=WALL;g[10][11]=WALL;
+  for(let x=13;x<=22;x++) g[10][x]=WALL;
+  g[11][11]=WALL;g[12][11]=WALL;
   /* Step 5: Platforms */
-  for(let x=4;x<8;x++) g[12][x]=PLATFORM;
-  for(let x=17;x<22;x++) g[12][x]=PLATFORM;
-  for(let x=11;x<14;x++) g[10][x]=PLATFORM;
+  for(let x=1;x<=2;x++) g[5][x]=PLATFORM;
+  for(let x=1;x<=3;x++) g[10][x]=PLATFORM;
+  for(let x=5;x<=7;x++) g[10][x]=PLATFORM;
   /* Step 7: Special tiles */
-  g[6][11]=CRACKED;g[6][12]=CRACKED;g[6][13]=CRACKED;
-  g[7][11]=CRACKED;g[7][13]=CRACKED;
-  g[8][11]=CRACKED;g[8][12]=CRACKED;g[8][13]=CRACKED;
-  g[3][12]=CRACKED;g[11][12]=CRACKED;
-  g[5][10]=CRACKED;g[5][11]=CRACKED;g[5][13]=CRACKED;g[5][14]=CRACKED;
-  g[6][9]=CRACKED;g[6][14]=CRACKED;
-  g[7][8]=CRACKED;g[7][16]=CRACKED;
-  g[8][9]=CRACKED;g[8][14]=CRACKED;
-  g[9][10]=CRACKED;g[9][11]=CRACKED;g[9][13]=CRACKED;g[9][14]=CRACKED;
+  for(let x=1;x<=23;x++) g[13][x]=AIR;
+  g[1][2]=CRACKED;
+  for(let x=12;x<=14;x++) g[4][x]=CRACKED;
+  g[5][12]=CRACKED;g[5][14]=CRACKED;g[5][23]=CRACKED;
+  g[8][10]=CRACKED;
+  g[3][6]=PUSH_SPAWN;g[4][6]=PUSH_SPAWN;g[5][13]=PUSH_SPAWN;
   /* Step 8: Golem spawn */
-  g[11][2]=GOLEM_SPAWN;
-  /* Step 9: Push */
-chambers.push({w,h,tiles:g,glyphs:[],flowId:'ch4'});
+  g[4][2]=GOLEM_SPAWN;
+  chambers.push({w,h,tiles:g,glyphs:[],pushSpawns:[{x:6,y:3},{x:6,y:4},{x:13,y:5}],flowId:'ch4'});
 })();
 
 // Ch.T: Test chamber — entered by pressing KeyT (no flowId)
