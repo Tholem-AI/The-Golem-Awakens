@@ -150,13 +150,18 @@ isOnTop = P.y < PB.y                    // player top above push block
 1. `P.pushing = false` (per-frame reset before movement)
 2. Player X movement + tile collision
 3. `resolvePushBlockCollision()` — detects overlap, applies push or separation
-4. `updatePushBlock()` — 3-phase orchestrator (before player Y):
+4. `updatePushBlock()` — 3-phase orchestrator (block physics only):
    - Phase A: `applyBlockVelocityX()` — each block moves horizontally by its vx, records `_frameDx`
    - Phase B: `moveBlockRiders()` — riders get the same `_frameDx` with their own wall collision
    - Phase C: `resolveBlockY()` — gravity + tile/block Y resolution
    - Phase D: friction, slot detection, fall reset, `_frameDx` cleanup
-   - `checkPushBlockCrush()` — falling blocks kill golem (before player Y so same-frame jump cannot escape)
 5. Player Y movement + tile/platform collision
+6. Push block landing on golem (line ~1092)
+7. `checkPushBlockCrush()` — after player Y resolved, so P.y is accurate:
+   - Guard 1: `P.y + P.h <= pb.y + 4` — golem on top of block, skip
+   - Guard 2: `pb.y >= P.y + P.h - 4` — block below golem feet, skip
+   - Guard 3: `overlapW < 10` — side brush, skip
+   - All 3 passed → crush death
 
 All phases process blocks bottom-up (`activePushBlocks()` sorts by descending y).
 
@@ -170,7 +175,13 @@ Push blocks collide with each other via AABB overlap (`pushBlockHit()` helper in
 
 **Riders:** `moveBlockRiders(ch, pb, dx)` drags blocks sitting on top of a moving block. A rider is detected by `isRiding()` — feet proximity (`|feet - base.y| <= 2`) and horizontal overlap (with 2px margin). Each rider calls `resolveBlockX(ch, ob, dx)` so it has its own wall and block-vs-block collision — it does not blindly offset by dx. If the support block falls off an edge, gravity pulls the rider down the next frame — no artificial binding.
 
-**Crush death:** `checkPushBlockCrush()` runs after block Y physics, before player Y movement. If a falling block (`pb.vy > 0`) overlaps the player with sufficient vertical and horizontal coverage, `killAndRespawn()` triggers with "The weight crushes you..." message. Guarded by `animState !== 'idle'` so it only hits during normal play — death/respawn animations are immune.
+**Crush death:** `checkPushBlockCrush()` runs after player Y + landing resolution, so P.y reflects the resolved position. Requires all 3 guards to pass before triggering:
+
+1. Vertical guard 1: `P.y + P.h <= pb.y + 4` — skip if golem is on top of block (landing/riding)
+2. Vertical guard 2: `pb.y >= P.y + P.h - 4` — skip if block is below golem feet (support, not crusher)
+3. Horizontal guard: `overlapW < 10` — skip if horizontal overlap is <10px (side brush, not landing on golem)
+
+All 3 pass → block is genuinely falling onto the golem → `killAndRespawn()` with "The weight crushes you..." message. Guarded by `animState !== 'idle'` so death/respawn animations are immune.
 
 **Processing order:** `activePushBlocks()` filters to active, non-slotted blocks and sorts by descending y (bottom-up). All four phases use this order, so gravity and stacking resolve correctly — lower blocks move before blocks resting on them.
 

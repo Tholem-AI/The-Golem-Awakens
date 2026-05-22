@@ -53,15 +53,18 @@
 - [x] `isRiding(ob, base)`: extracted rider predicate (feet proximity + horizontal overlap)
 - [x] `activePushBlocks()`: returns active non-slotted blocks sorted bottom-up for correct stacking
 - [x] `moveBlockRiders(ch, pb, dx)`: riders now get their own wall collision via `resolveBlockX` instead of blind `+= dx`
-- [x] `checkPushBlockCrush()`: falling blocks (vy > 0) kill golem via `killAndRespawn` with "The weight crushes you..." message
-- [x] Crush check runs after block Y physics, before player Y — prevents escape via same-frame jump
+- [x] `checkPushBlockCrush()`: falling blocks kill golem — 3 guards (vertical direction + horizontal overlap). Runs after player Y resolution so P.y is accurate.
 - [x] Bottom-up processing prevents stack instability in multi-block stacks
 - [x] `_frameDx` transient cleaned per block in Phase D
 - [x] Validation: zero JS errors, game loads in browser
 
+### Pushblock Crush Fix (May 2026)
+- [x] Crush vertical guards: golem-on-top (`P.y + P.h <= pb.y + 4`) and block-below (`pb.y >= P.y + P.h - 4`) skip crush
+- [x] Crush horizontal guard: `overlapW < 10` skips side-by-side brush
+- [x] Crush check moved from `updatePushBlock()` to after player Y + push block landing resolution
+- [x] Validation: JS syntax OK, game loads in browser
+
 ### Code Refactor & Optimization (May 2026)
-- [x] 11-section reorganization with delimiter comments
-- [x] Logic duplication elimination: killAndRespawn(), endDash(), land(), snapToTileX()
 - [x] Performance: Date.now() cached, ABILITIES/CHAMBER_NAMES hoisted
 - [x] Input normalization: 5 helper functions replacing raw key checks
 - [x] 15 physics constants extracted, starfield precomputed
@@ -259,7 +262,8 @@ Prepare the project for public repository sharing.
 || Pushblock standing fix | Complete | Review approved, browser verified |
 || Pushblock mechanics overhaul | Complete | Smooth push, animation, gap gravity |
 ||| Pushblock block-vs-block collision | Complete | pushBlockHit, moveBlockRiders (recursive), N-block stacking, riders |
-||| Pushblock physics refactor | Complete | 3-phase orchestrator, resolveBlockX/Y, rider collision, crush death, bottom-up |
+||||| Pushblock crush fix | Complete | 3 guards (vertical + horizontal overlap), moved after player Y |
+|||| Pushblock physics refactor | Complete | 3-phase orchestrator, resolveBlockX/Y, rider collision, crush death (3 guards), bottom-up |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
 | Code optimization | Complete | 6 slices implemented, JS syntax OK |
 || Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |

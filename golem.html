@@ -608,18 +608,21 @@ function activePushBlocks(){
     .filter(pb => pb.active && !pb.inSlot)
     .sort((a, b) => b.y - a.y);
 }
-/* Falling block overlaps player → death. */
+/* Falling block crushes golem — only if block is above and actually landing on it. */
 function checkPushBlockCrush(){
   if(animState !== 'idle') return;
   for(const pb of PBlocks){
     if(!pb.active || pb.inSlot) continue;
     if(pb.vy <= 0) continue;
     if(!aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h)) continue;
-    if(pb.y + pb.h > P.y + 4 &&
-       pb.x + pb.w > P.x + 2 && pb.x < P.x + P.w - 2){
-      killAndRespawn(false, "The weight crushes you...", 90);
-      return;
-    }
+    /* Golem on top of / landing on block */
+    if(P.y + P.h <= pb.y + 4) continue;
+    if(pb.y >= P.y + P.h - 4) continue;
+    /* Side brush — not enough horizontal overlap to count as "on" the golem */
+    const overlapW = Math.min(P.x + P.w, pb.x + pb.w) - Math.max(P.x, pb.x);
+    if(overlapW < 10) continue;
+    killAndRespawn(false, "The weight crushes you...", 90);
+    return;
   }
 }
 
@@ -696,7 +699,7 @@ function resolvePushBlockCollision(){
   }
 }
 
-/* Push block: 3-phase orchestrator + crush check */
+/* Push block: 3-phase orchestrator (crush check moved after player Y + landing) */
 function updatePushBlock(){
   const ch = P.chamber;
   const c = chambers[ch];
@@ -741,7 +744,6 @@ function updatePushBlock(){
     }
     pb._frameDx = 0;
   }
-  checkPushBlockCrush();
 }
 
 /* ══════════════════════════════════════════════════
@@ -1092,13 +1094,16 @@ function update(){
     for(const pb of PBlocks){
       if(pb.active && aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h) && P.vy > 0 && Math.abs(P.vx) < 3){
         if(prevY + P.h <= pb.y + 2){
-          P.y = pb.y - P.h;
+         P.y = pb.y - P.h;
           P.vy = 0;
           land();
         }
       }
     }
   }
+
+  /* Crush check — after player Y + landing snap, so P.y is resolved */
+  checkPushBlockCrush();
 
   /* ── Jump buffer countdown ── */
   if(P.jumpBuffer>0 && !P.onGround) P.jumpBuffer--;
