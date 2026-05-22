@@ -6,21 +6,23 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, and
 
 ## Architecture
 
-Single HTML file (~1722 lines, ~64 KB) organized into 11 sections with delimiter comments.
+Single HTML file (~1716 lines, ~62 KB) organized into 12 sections with delimiter comments.
 
 ### Section Map
 
 | # | Section | Functions |
 |---|---------|-----------|
-| 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, static UI arrays |
+| 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays |
+| 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn` |
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
 | 4 | INPUT | Key listeners, `fresh()`, `shiftHeld()`, 5 input helper functions |
 | 5 | TILE HELPERS & COLLISION | `getTile`, `setTile`, `solid`, `platSolid`, `tileCollidesRect`, `collides*`, `inPit`, `aabb`, `pushBlockHit`, `isRiding`, `resolveBlockX`, `moveBlockRiders`, `applyBlockVelocityX`, `resolveBlockY`, `activePushBlocks`, `checkPushBlockCrush` |
 | 6 | PUSH BLOCK SYSTEM | `resetPushBlock`, `resolvePushBlockCollision`, `updatePushBlock` (3-phase orchestrator + crush) |
 | 7 | PARTICLE SYSTEM | IIFE: `Particles.shatter`, `.spawn`, `.update` |
-| 8 | GAME FLOW | `showMessage`, `_doTransition`, `transition`, `checkDoors`, `checkGlyphs`, `transitionEnding` |
+| 8 | GAME FLOW | `MSG_*` constants, `showMessage`, `calcDisplayDuration`, `_doTransition`, `transition`, `checkDoors`, `checkGlyphs`, `transitionEnding` |
 | 9 | UPDATE | Main physics/input/game logic loop |
+| 9.5 | ANIMATION STATE MACHINE | Death/respawn animations (idle -> dying -> respawning -> idle) |
 | 10 | RENDER | `COLORS`, `render()` — all drawing |
 | 11 | INIT & GAME LOOP | Init code, `loop()`, `requestAnimationFrame` |
 
@@ -37,6 +39,76 @@ Constants --> Chamber Data --> Entities --> Input --> Tile Helpers
                                                     |
 Push Block --> Particles --> Game Flow --> Update / Render (both depend on all above)
 ```
+
+---
+
+## New Data Structures (added in refactoring)
+
+### PARTICLE_COLORS (Section 1)
+
+Named color constants extracted from particle spawn call sites to centralize color configuration:
+
+```javascript
+const PARTICLE_COLORS = {
+  jump: '#8a7d6b',
+  doubleJump: '#d4a84b',
+  glyph: '#f0d060',
+  dashBurst: 'rgba(220,120,255,0.6)',
+  death: '#8a7d6b',
+};
+```
+
+### GLYPH_EFFECTS (Section 1)
+
+Data-driven glyph ability system — each entry maps a glyph index to its setter function and activation message:
+
+```javascript
+const GLYPH_EFFECTS = [
+  { set: () => { P.maxJumps = 2; }, msg: "Knowledge lifts me." },
+  { set: () => { P.canDash = true; }, msg: "Speed courses through me." },
+  { set: () => { P.canPush = true; }, msg: "Strength returns." },
+  { set: () => { P.canBreak = true; }, msg: "Clay becomes Wisdom." },
+];
+```
+
+### MSG_* Constants (Section 8)
+
+Message system constants moved from Section 1 to Section 8 (GAME FLOW) for co-location with `showMessage()`:
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `MSG_FADE_IN_FRAMES` | 180 | Fade-in duration (frames) |
+| `MSG_FADE_OUT_FRAMES` | 180 | Fade-out duration (frames) |
+| `MSG_MAX_QUEUE_DEPTH` | 5 | Maximum queued messages |
+| `MSG_CHARS_PER_FRAME` | 0.35 | Typewriter scroll rate |
+| `MSG_MIN_HOLD` | 90 | Minimum display time (frames) |
+| `MSG_MAX_HOLD` | 360 | Maximum display time (frames) |
+| `MSG_FOREVER_THRESHOLD` | 99999 | Duration value for permanent messages |
+
+---
+
+## Utility Functions (Section 1.5)
+
+All shared helper functions consolidated in a dedicated section between Setup/Constants and Chamber Data.
+
+| Function | Purpose |
+|----------|---------|
+| `snapToTileX(gx1, gx2, prevX)` | Snap player X to tile boundary after collision |
+| `playerGridPos()` | Return player center as grid coordinates `{gx, gy}` |
+| `endDash()` | End dash state cleanly; sets cooldown to `DASH_COOLDOWN` |
+| `land()` | Land on ground — reset jumps and coyote timer |
+| `easeOutCubic(t)` | Easing function for death/respawn animations |
+| `syncPrevKeys()` | Snapshot `prevKeys = { ...keys }` (replaces unbounded `for...in` copy) |
+| `advanceTimers()` | Advance message queue phases + decrement portal lock timer |
+| `fullDashReset()` | Reset all dash state — used on death/transition (clears charge too) |
+| `cancelDash()` | Cancel active dash without resetting cooldown — used on immediate death |
+| `resetPlayerToRespawn()` | Restore player position and velocity to respawn point |
+| `killAndRespawn(msg, duration)` | Kill and respawn player; triggers death animation (no `onGround` param) |
+
+### API Change Notes
+
+- `killAndRespawn()` no longer takes an `onGround` parameter (was unused in all callers)
+- `setTile()` simplified — no longer maintains `solidTiles` set (removed for clarity; `solidTiles` is optional cache)
 
 ---
 
@@ -194,6 +266,8 @@ All 3 pass → block is genuinely falling onto the golem → `killAndRespawn()` 
 - Separate from `resolvePushBlockCollision()` (player-to-block) to keep concerns isolated
 - Crush check before player Y prevents the golem from jumping away in the same frame a block falls on it
 
+**Bugfix note:** `resolvePushBlockCollision()` originally used `return` instead of `continue` when skipping an `isOnTop` block, which caused remaining blocks in the loop to never be checked. Fixed to `continue` so all active blocks are evaluated.
+
 ---
 
 ## Tile System
@@ -221,6 +295,10 @@ Note: `BLOCK` (value 6) was removed during optimization. Value gap is preserved 
 - `GOLEM_SPAWN` (3) is NOT solid — invisible pass-through tile
 - Push block entity (`PB`) has its own collision via `resolvePushBlockCollision()`
 
+### setTile Simplification
+
+The `setTile()` function was simplified: it no longer maintains the optional `solidTiles` cache set. The `solid()` function checks tile type values directly, making the cache redundant. The `solidTiles` Set still exists as an optional cache but is not updated by `setTile()`.
+
 ---
 
 ## Chamber Design
@@ -229,3 +307,19 @@ Note: `BLOCK` (value 6) was removed during optimization. Value gap is preserved 
 - Tile size: 32x32 px (canvas 800x480)
 - See `chamber-data.md` for ASCII grids and `chamber-template.md` for format spec
 - Grant-then-use chain: Chamber N grants ability for Chamber N+1
+
+---
+
+## Dead Code Removed (refactoring)
+
+The following was identified as dead/unused and removed during the Master Improvement Plan:
+
+| Item | Reason |
+|------|--------|
+| `easeInOutCubic()` | Defined but never called |
+| `easeOutBack()` | Defined but never called |
+| `_testMode` | Always false; dead code paths in `transition()` and `transitionEnding()` |
+| Duplicate "I awaken..." overlay | `X.fillText` in render was redundant with `showMessage()` queue |
+| HUD dash bar indicator | Redundant with centered ring indicator |
+| Push slot `pushSlot` code | No chamber defines `pushSlot`; dead game logic (preserved `inSlot` property for future use) |
+| `pushSpawns` fallback | Dead reference in `resetPushBlock()` |

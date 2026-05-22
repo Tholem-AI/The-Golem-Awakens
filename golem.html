@@ -36,8 +36,8 @@ const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
 const PUSH_SPEED = 1.25;           // px/frame — half of walk speed 2.5
 
 /* ── Particle color constants (extracted from call sites) ── */
-const DASH_EXEC_PARTICLE_COLOR = 'rgba(220,120,255,0.4)';  // A2
-const DASH_CHARGE_PARTICLE_COLOR = 'rgba(180,80,255,0.4)'; // A2
+const DASH_EXEC_PARTICLE_COLOR = 'rgba(220,120,255,0.4)';
+const DASH_CHARGE_PARTICLE_COLOR = 'rgba(180,80,255,0.4)';
 
 /* ── Player physics constants ── */
 const H_ACCEL_GROUND = 0.05;    // horizontal acceleration on ground
@@ -58,14 +58,14 @@ const PB_TERMINAL_VEL = 4;      // push block terminal velocity
 const PB_FRICTION = 0.85;       // push block friction
 const PB_STOP_THRESH = 0.1;     // push block velocity threshold to stop
 
-/* ── Message system constants ── */
-const MSG_FADE_IN_FRAMES   = 180;
-const MSG_FADE_OUT_FRAMES  = 180;
-const MSG_MAX_QUEUE_DEPTH  = 5;
-const MSG_CHARS_PER_FRAME  = 0.35;
-const MSG_MIN_HOLD         = 90;
-const MSG_MAX_HOLD         = 360;
-const MSG_FOREVER_THRESHOLD = 99999;
+/* ── Particle color constants ── */
+const PARTICLE_COLORS = {
+  jump: '#8a7d6b',
+  doubleJump: '#d4a84b',
+  glyph: '#f0d060',
+  dashBurst: 'rgba(220,120,255,0.6)',
+  death: '#8a7d6b',
+};
 
 /* ── Static UI arrays (hoisted from render, B2+B3) ── */
 const ABILITIES = [
@@ -74,37 +74,80 @@ const ABILITIES = [
 ];
 const CHAMBER_NAMES = ['Awakening','The Library','The Hall of Echoes','The Weight of Wisdom','The Ibis Chamber'];
 const CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4'];
+const GLYPH_EFFECTS = [
+  { set: () => { P.maxJumps = 2; }, msg: "Knowledge lifts me." },
+  { set: () => { P.canDash = true; }, msg: "Speed courses through me." },
+  { set: () => { P.canPush = true; }, msg: "Strength returns." },
+  { set: () => { P.canBreak = true; }, msg: "Clay becomes Wisdom." },
+];
 
 /* ══════════════════════════════════════════════════
-   HELPER FUNCTIONS (extracted from duplicated patterns)
+   1.5. UTILITIES (shared helper functions)
    ══════════════════════════════════════════════════ */
 
-/* A4: Snap player X to tile boundary after collision */
+/* Snap player X to tile boundary after collision */
 function snapToTileX(gx1, gx2, prevX) {
   if(P.vx>0){ P.x=gx2*T-P.w; }
   else if(P.vx<0){ P.x=(gx1+1)*T; }
   else { P.x=prevX; }
 }
 
-/* A5: End dash state cleanly */
+/* Get player center as grid coordinates */
+function playerGridPos() {
+  return { gx: Math.floor((P.x+P.w/2)/T), gy: Math.floor((P.y+P.h/2)/T) };
+}
+
+/* End dash state cleanly */
 function endDash() {
   P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false;
 }
 
-/* A6: Land on ground — reset jumps and coyote */
+/* Land on ground — reset jumps and coyote */
 function land() {
   P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES;
 }
 
-/* ── Easing functions for death/respawn animations ── */
+/* ── Easing function for death/respawn animations ── */
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
-function easeOutBack(t) { const c1=1.70158; const c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
 
-/* A3: Kill and respawn player at checkpoint */
-function killAndRespawn(onGround, msg, duration) {
-  if(animState!=='idle') return; // prevent double-trigger
+/* ── Sync prevKeys with current keys (spread, no unbounded growth) ── */
+function syncPrevKeys() { prevKeys = { ...keys }; }
+
+/* ── Advance message queue phases and decrement portal lock timer ── */
+function advanceTimers() {
+  if(messageQueue.length>0){
+    const m=messageQueue[0];
+    m.elapsed++;
+    if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_FRAMES){
+      m.phase='display'; m.elapsed=0;
+    } else if(m.phase==='display' && m.elapsed>=m.hold){
+      m.phase='fadeOut'; m.elapsed=0;
+    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_FRAMES){
+      messageQueue.shift();
+    }
+  }
+  if(portalLockMsg>0) portalLockMsg--;
+}
+
+/* Reset all dash state — used on death/transition to fully clear */
+function fullDashReset() {
+  P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
+}
+
+/* Cancel an active dash without resetting cooldown — used on immediate death */
+function cancelDash() {
   P.dashing=false; P.dashTimer=0;
+}
+
+/* Restore player position and velocity to respawn point */
+function resetPlayerToRespawn() {
+  P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
+}
+
+/* Kill and respawn player at checkpoint */
+function killAndRespawn(msg, duration) {
+  if(animState!=='idle') return; // prevent double-trigger
+  cancelDash();
   animState='dying'; animFrame=0;
   showMessage(msg, duration);
 }
@@ -399,13 +442,13 @@ const PBlocks = [];
 let glyphsCollected = 0;
 let collectedGlyphs = [];          // per-chamber boolean
 let gameState = 'playing';
+let animFrameId;                // rAF handle for cancel on game end
 let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
 let screenAlpha = 0;
 let messageQueue = [];
 let portalLockMsg = 0;             // cooldown for locked-portal message
 let particles = [];
 let testChamberSrc = -1;           // remembers which chamber we came from for test exit
-let _testMode = false;             // set by test harness for instant transitions
 let _c;                            // cached chambers[P.chamber] for getTile optimization
 let _transitionTarget = -1;        // stores target chamber during async fade cycle
 let animState = 'idle';            // 'idle' | 'dying' | 'respawning'
@@ -430,7 +473,7 @@ function fresh(code){ return keys[code] && !prevKeys[code]; }
 
 function shiftHeld(){ return keys['ShiftLeft']||keys['ShiftRight']; }
 
-/* A7: Input normalization abstractions */
+/* Input normalization abstractions */
 function inputLeft()         { return keys['ArrowLeft']  || keys['KeyA']; }
 function inputRight()        { return keys['ArrowRight'] || keys['KeyD']; }
 function inputJumpPressed()  { return fresh('ArrowUp')||fresh('KeyW')||fresh('Space'); }
@@ -449,16 +492,7 @@ function getTile(ch,x,y){
 }
 function setTile(ch,x,y,v){
   const c=chambers[ch];
-  if(x>=0&&x<c.w&&y>=0&&y<c.h){
-    const old=c.tiles[y][x];
-    c.tiles[y][x]=v;
-    if(old!==AIR && v===AIR){
-      const idx=c.solidTiles.findIndex(t=>t.x===x&&t.y===y);
-      if(idx>=0) c.solidTiles.splice(idx,1);
-    } else if(old===AIR && v!==AIR){
-      c.solidTiles.push({x,y});
-    }
-  }
+  if(x>=0&&x<c.w&&y>=0&&y<c.h){ c.tiles[y][x]=v; }
 }
 
 /* Fast tile access — uses pre-cached _c (set at update/render entry) */
@@ -514,7 +548,7 @@ function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
 
 function inPit(){
   const px=P.x+P.w/2, py=P.y+P.h/2;
-  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  const {gx, gy} = playerGridPos();
   const thresh=1.1*T;
   for(let dy=-1;dy<=1;dy++)
     for(let dx=-1;dx<=1;dx++){
@@ -621,7 +655,7 @@ function checkPushBlockCrush(){
     /* Side brush — not enough horizontal overlap to count as "on" the golem */
     const overlapW = Math.min(P.x + P.w, pb.x + pb.w) - Math.max(P.x, pb.x);
     if(overlapW < 10) continue;
-    killAndRespawn(false, "The weight crushes you...", 90);
+    killAndRespawn("The weight crushes you...", 90);
     return;
   }
 }
@@ -683,7 +717,7 @@ function resolvePushBlockCollision(){
       if(dir > 0) P.x = Math.min(P.x, pb.x - P.w + 1);
       else        P.x = Math.max(P.x, pb.x + pb.w - 1);
 
-      Particles.spawn(P.x + P.w/2, P.y + P.h - 4, '#d4a84b', 2);
+      Particles.spawn(P.x + P.w/2, P.y + P.h - 4, PARTICLE_COLORS.doubleJump, 2);
 
     } else if(P.canPush && movingToward && !P.onGround){
       // Requirement 5: no push while airborne — separate
@@ -692,7 +726,7 @@ function resolvePushBlockCollision(){
 
     } else {
       // Not pushing — static separation (walking past, standing against)
-      if(isOnTop) return; // let Y landing check handle this
+      if(isOnTop) continue; // let Y landing check handle this (check other blocks too)
       if(centerP < centerB) P.x = pb.x - P.w;
       else                  P.x = pb.x + pb.w;
     }
@@ -717,23 +751,11 @@ function updatePushBlock(){
   for(const pb of blocks){
     resolveBlockY(ch, pb);
   }
-  /* Phase D: friction, slots, fall reset */
+  /* Phase D: friction, fall reset */
   for(const pb of blocks){
     if(!P.pushing){
       pb.vx *= PB_FRICTION;
       if(Math.abs(pb.vx) < PB_STOP_THRESH) pb.vx = 0;
-    }
-    if(c.pushSlot){
-      const cx = Math.floor((pb.x + pb.w / 2) / T);
-      const cy = Math.floor((pb.y + pb.h / 2) / T);
-      if(cx === c.pushSlot.gx && cy === c.pushSlot.gy){
-        pb.x = c.pushSlot.gx * T;
-        pb.y = c.pushSlot.gy * T;
-        pb.vx = 0; pb.vy = 0;
-        pb.inSlot = true;
-        Particles.spawn((c.pushSlot.gx + 0.5) * T, pb.y + pb.h / 2, '#d4a84b', 12);
-        showMessage("The weight settles.", 80);
-      }
     }
     if(pb.y > c.h * T){
       const firstSpawn = c.pushSpawns ? c.pushSpawns[0] : c.pushSpawn;
@@ -806,6 +828,15 @@ const Particles = (function(){
    8. GAME FLOW (transitions, doors, glyphs)
    ══════════════════════════════════════════════════ */
 
+/* ── Message system constants ── */
+const MSG_FADE_IN_FRAMES   = 180;
+const MSG_FADE_OUT_FRAMES  = 180;
+const MSG_MAX_QUEUE_DEPTH  = 5;
+const MSG_CHARS_PER_FRAME  = 0.35;
+const MSG_MIN_HOLD         = 90;
+const MSG_MAX_HOLD         = 360;
+const MSG_FOREVER_THRESHOLD = 99999;
+
 /* ── Message queue system ── */
 function calcDisplayDuration(text, providedDur) {
     const auto = Math.floor(text.length / MSG_CHARS_PER_FRAME);
@@ -829,16 +860,15 @@ function _doTransition(toChamber){
   P.chamber = toChamber;
   const nc = chambers[toChamber];
   P.x = nc.spawnPx; P.y = nc.spawnPy;
-  P.respawnX = nc.spawnPx; P.respawnY = nc.spawnPy;
+ P.respawnX = nc.spawnPx; P.respawnY = nc.spawnPy;
   P.vx=0; P.vy=0; P.jumps=0;
-  P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
+  fullDashReset();
   P.onGround=false; P.coyoteTime=0;
   P.pushing=false;
   resetPushBlock();
 }
 function transition(toChamber){
   if(animState!=='idle') return; // don't interrupt death/respawn
-  if(_testMode){ _doTransition(toChamber); return; }
   _transitionTarget = toChamber;
   screenFade = 1;
   screenAlpha = 0;
@@ -846,8 +876,7 @@ function transition(toChamber){
 
 function checkDoors(){
   const ch=P.chamber, c=chambers[ch];
-  const px=P.x+P.w/2, py=P.y+P.h/2;
-  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  const {gx, gy} = playerGridPos();
   for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
     const t=_getTile(gx+dx,gy+dy);
     if(t===DOOR_D){
@@ -884,8 +913,7 @@ function checkDoors(){
 function checkGlyphs(){
   const ch=P.chamber, c=chambers[ch];
   if(collectedGlyphs[ch]) return;
-  const px=P.x+P.w/2, py=P.y+P.h/2;
-  const gx=Math.floor(px/T), gy=Math.floor(py/T);
+  const {gx, gy} = playerGridPos();
   for(let i=0;i<c.glyphs.length;i++){
     const gl=c.glyphs[i];
     if(_getTile(gl.x,gl.y)!==GLYPH) continue;
@@ -894,18 +922,18 @@ function checkGlyphs(){
       setTile(ch,gl.x,gl.y,AIR);
       collectedGlyphs[ch]=true;
       glyphsCollected++;
-      Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T,'#f0d060',15);
-      if(glyphsCollected===1){ P.maxJumps=2; showMessage("Knowledge lifts me.",120); }
-      else if(glyphsCollected===2){ P.canDash=true; showMessage("Speed courses through me.",120); }
-      else if(glyphsCollected===3){ P.canPush=true; showMessage("Strength returns.",120); }
-      else if(glyphsCollected===4){ P.canBreak=true; showMessage("Clay becomes Wisdom.",120); }
+      Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T, PARTICLE_COLORS.glyph, 15);
+      const gi = glyphsCollected - 1;
+      if(gi >= 0 && gi < GLYPH_EFFECTS.length){
+        GLYPH_EFFECTS[gi].set();
+        showMessage(GLYPH_EFFECTS[gi].msg, 120);
+      }
     }
   }
 }
 
 function transitionEnding(){
   if(animState!=='idle') return;
-  if(_testMode){ gameState='ending'; showMessage("The Ibis speaks: 'You were clay. Now you are Wisdom.'",99999); return; }
   screenFade=1; screenAlpha=0;
   setTimeout(function(){
     gameState='ending';
@@ -946,12 +974,11 @@ function update(){
   }
 
   /* Screen fade */
-  if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1; if(_transitionTarget>=0){_doTransition(_transitionTarget);_transitionTarget=-1;} screenFade=-1;} }
+ if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1; if(_transitionTarget>=0){_doTransition(_transitionTarget);_c=chambers[P.chamber];_transitionTarget=-1;} screenFade=-1;} }
   if(screenFade===-1){ screenAlpha-=0.06; if(screenAlpha<=0){screenAlpha=0;screenFade=0;} }
-  if(screenFade===1) return;
+ if(screenFade===1){ syncPrevKeys(); return; }
 
-  if(messageQueue.length>0){const m=messageQueue[0];m.elapsed++;if(m.phase==='fadeIn'&&m.elapsed>=MSG_FADE_IN_FRAMES){m.phase='display';m.elapsed=0;}else if(m.phase==='display'&&m.elapsed>=m.hold){m.phase='fadeOut';m.elapsed=0;}else if(m.phase==='fadeOut'&&m.elapsed>=MSG_FADE_OUT_FRAMES){messageQueue.shift();}}
-  if(portalLockMsg>0) portalLockMsg--;
+  advanceTimers();
 
   /* ── Dash: charge on hold, execute on release ── */
   const isCharging = P.dashCharge > 0;
@@ -993,7 +1020,7 @@ function update(){
       P.vx = P.dashDir * dashSpeed;
       P.vy = 0;
 
-      Particles.spawn(P.x+P.w/2, P.y+P.h/2, 'rgba(220,120,255,0.6)', 6);
+      Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashBurst, 6);
     } else {
       /* Still holding — accumulate charge */
       if(P.dashCharge < DASH_CHARGE_MAX){
@@ -1019,7 +1046,7 @@ function update(){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
       if(_getTile(cx,cy)===MAGICAL_WALL){
-        killAndRespawn(true, "The barrier consumes you...", 90);
+        killAndRespawn("The barrier consumes you...", 90);
       }
     }
   }
@@ -1045,21 +1072,20 @@ function update(){
     const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
     const colFn = P.dashPhase ? collidesDash : collidesNoPlat;
     if(colFn(gx1,gy1,gx2,gy2,P.chamber,P.y)){
-      if(P.dashPhase){
+     if(P.dashPhase){
         const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
         if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
           setTile(P.chamber,fcx,fcy,AIR);
           Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
           endDash();
-          P.vx=0;
         } else {
           snapToTileX(gx1, gx2, prevX);
-          P.vx=0;
+          endDash();
         }
       } else {
         snapToTileX(gx1, gx2, prevX);
-        P.vx=0;
       }
+      P.vx=0;
     }
   }
 
@@ -1082,7 +1108,7 @@ function update(){
         P.vy=0;
         land();
         if(prevY+P.h < gy2*T - 4)
-          Particles.spawn(P.x+P.w/2, P.y+P.h, '#8a7d6b', 4);
+          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
       } else if(P.vy<0){
         P.y=(gy1+1)*T;
         P.vy=0;
@@ -1111,7 +1137,7 @@ function update(){
   /* ── Jump (fresh press only, variable height, buffered) ── */
   const jumpPressed = inputJumpPressed();
   const jumpHeld = inputJumpHeld();
-  const jx=P.x+P.w/2, jy=P.y+P.h; // A1: precompute jump particle coords
+  const jx=P.x+P.w/2, jy=P.y+P.h; // precompute jump particle coords
 
   if(P.onGround && P.jumpBuffer>0 && P.jumps<P.maxJumps){
     P.vy = P.jumps===0 ? JUMP_VEL_1 : JUMP_VEL_2;
@@ -1119,7 +1145,7 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, '#8a7d6b', 5);
+    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5);
   }
   else if(jumpPressed && P.jumps===0 && P.coyoteTime>0){
     P.vy = JUMP_VEL_1;
@@ -1127,13 +1153,13 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, '#8a7d6b', 5);
+    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5);
   }
   else if(jumpPressed && P.jumps < P.maxJumps && P.jumps>0){
     P.vy = JUMP_VEL_2;
     P.jumps++;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, '#d4a84b', 8);
+    Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8);
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
     P.jumpBuffer = JUMP_BUFFER_FRAMES;
@@ -1143,58 +1169,43 @@ function update(){
   if(!jumpHeld && P.vy < JUMP_CUT_VEL) P.vy = JUMP_CUT_VEL;
 
   /* ── Pit / out-of-bounds death ── */
-  if(inPit() || P.y > chambers[P.chamber].h*T){
-    P.dashing=false; P.dashTimer=0;
-    killAndRespawn(false, "The void claims clay...", 90);
+if(inPit() || P.y > chambers[P.chamber].h*T){
+    cancelDash();
+    killAndRespawn("The void claims clay...", 90);
     resetPushBlock();
   }
 
   checkDoors();
   checkGlyphs();
-  Particles.update();
+ Particles.update();
 
- for(const k in keys) prevKeys[k]=keys[k];
-  for(const k in prevKeys) if(!keys[k]) delete prevKeys[k];
+  syncPrevKeys();
 }
 
 /* ══════════════════════════════════════════════════
-   ANIM UPDATE — runs during death/respawn animations
+   9.5. ANIMATION STATE MACHINE (death/respawn animations)
    ══════════════════════════════════════════════════ */
 function updateAnim(){
   _c = chambers[P.chamber]; // keep chamber cache valid for render
-  // Advance message queue
-  if(messageQueue.length>0){
-    const m=messageQueue[0];
-    m.elapsed++;
-    if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_FRAMES){
-      m.phase='display'; m.elapsed=0;
-    } else if(m.phase==='display' && m.elapsed>=m.hold){
-      m.phase='fadeOut'; m.elapsed=0;
-    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_FRAMES){
-      messageQueue.shift();
-    }
-  }
-  if(portalLockMsg>0) portalLockMsg--;
+  advanceTimers();
   Particles.update();
   animFrame++;
   const progress = animFrame / ANIM_TOTAL_FRAMES;
-  // Dying -> transition to respawning
+ // Dying -> transition to respawning
   if(animState==='dying' && animFrame>=ANIM_TOTAL_FRAMES){
-    P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
+    resetPlayerToRespawn();
     animState='respawning'; animFrame=0;
     showMessage('Clay reforms...', 60);
   }
-  // Respawning -> transition back to idle
+ // Respawning -> transition back to idle
   if(animState==='respawning' && animFrame>=ANIM_TOTAL_FRAMES){
-    P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
+    resetPlayerToRespawn();
     P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
-    P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false;
+    fullDashReset();
     resetPushBlock();
-    animState='idle'; animFrame=0;
+   animState='idle'; animFrame=0;
   }
-  // Copy prevKeys
-  for(const k in keys) prevKeys[k]=keys[k];
-  for(const k in prevKeys) if(!keys[k]) delete prevKeys[k];
+  syncPrevKeys();
 }
 
 /* ══════════════════════════════════════════════════
@@ -1225,7 +1236,7 @@ function renderDeathRespawnAnimation(ox, oy){
 
     // Spawn clay particles during first half
     if(animFrame % 4 === 0 && progress < 0.6){
-      Particles.spawn(P.x + P.w/2, P.y + P.h/2, '#8a7d6b', 2);
+      Particles.spawn(P.x + P.w/2, P.y + P.h/2, PARTICLE_COLORS.death, 2);
     }
 
     X.save();
@@ -1611,24 +1622,7 @@ function render(){
   for(const [name,req] of ABILITIES){
     X.fillStyle=glyphsCollected>=req?'#8f8':'#444';
     X.fillText(name, 10, ay); ay+=14;
-  }
-
-  /* Dash charge indicator in HUD */
-  if(P.dashCharge > 0){
-    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
-    const barW = 80, barH = 4;
-    const barX = 10, barY = ay + 4;
-    X.fillStyle='rgba(100,60,160,0.5)';
-    X.fillRect(barX, barY, barW, barH);
-    X.fillStyle='rgba(200,140,255,' + (0.5 + chargeRatio * 0.5) + ')';
-    X.fillRect(barX, barY, barW * chargeRatio, barH);
-    if(chargeRatio >= 1){
-      const pulse = Math.sin(now/150)*0.3+0.7;
-      X.fillStyle='rgba(220,160,255,' + pulse + ')';
-      X.font='9px monospace';
-      X.fillText('MAX', barX + barW + 4, barY + 4);
-    }
-  }
+ }
 
  /* Chamber name + portal status */
   X.fillStyle='#665a4a'; X.font='12px monospace'; X.textAlign='center';
@@ -1679,12 +1673,8 @@ function render(){
     X.font='italic 22px serif';
     X.fillText("'You were clay. Now you are Wisdom.'", W/2, H/2+25);
     X.fillStyle='#555'; X.font='14px monospace';
-    X.fillText('Refresh to play again', W/2, H/2+70);
-  }
-
-  if(ch===0 && glyphsCollected===0 && messageQueue.length===0){
-    X.fillStyle='#665a4a'; X.font='14px serif'; X.textAlign='center';
-    X.fillText('I awaken...', W/2, 60);
+   X.fillText('Refresh to play again', W/2, H/2+70);
+    cancelAnimationFrame(animFrameId);
   }
 }
 
@@ -1719,8 +1709,8 @@ animState='respawning'; animFrame=0;
 showMessage('I awaken...', 150);
 
 /* ── Game loop ── */
-function loop(){ update(); render(); requestAnimationFrame(loop); }
-requestAnimationFrame(loop);
+function loop(){ update(); render(); if(gameState!=='ending'){ animFrameId = requestAnimationFrame(loop); } }
+animFrameId = requestAnimationFrame(loop);
 
 </script>
 </body>

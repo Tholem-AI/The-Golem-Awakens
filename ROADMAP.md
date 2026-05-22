@@ -167,6 +167,20 @@
 - [x] No game logic changes needed — existing pushSpawns array support handles 3 blocks
 - [x] Validation: 0 tile mismatches, flow check OK, JS syntax OK, browser test OK, reviewer approved
 
+### Code Refinement Pass (May 2026)
+- [x] Dead code removal: easeInOutCubic, easeOutBack, `_testMode`, duplicate "I awaken..." overlay, dead render code, dead slot code
+- [x] Section header renumbering: clean 1, 1.5, 2-9, 9.5, 10, 11 with comment cleanup
+- [x] `prevKeys` unbounded growth fix: `syncPrevKeys()` helper keeps it bounded to active keys only
+- [x] Message queue + timer extraction: `advanceTimers()` helper consolidates HUD/messaging state
+- [x] API cleanup: `killAndRespawn` `onGround` param removed, rAF cancel on game end
+- [x] Dash/reset helper consolidation: `fullDashReset()`, `cancelDash()`, `resetPlayerToRespawn()`
+- [x] Push block defensive fix: `return` -> `continue` in `resolvePushBlockCollision` for multi-block iteration
+- [x] `playerGridPos()` helper extraction, X-collision simplification
+- [x] MSG_* constants co-located in Section 8, `setTile()` simplified
+- [x] Data-driven glyph system: `GLYPH_EFFECTS` map, `PARTICLE_COLORS` constants
+- [x] Helper functions consolidated in UTILITIES section (1.5)
+- [x] File reduced: 1727 -> 1716 lines, ~64 KB -> ~62 KB. Zero JS errors, game loads and runs.
+
 ---
 
 ## Remaining Work
@@ -265,8 +279,9 @@ Prepare the project for public repository sharing.
 ||||| Pushblock crush fix | Complete | 3 guards (vertical + horizontal overlap), moved after player Y |
 |||| Pushblock physics refactor | Complete | 3-phase orchestrator, resolveBlockX/Y, rider collision, crush death (3 guards), bottom-up |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
-| Code optimization | Complete | 6 slices implemented, JS syntax OK |
-|| Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
+||| Code optimization | Complete | 6 slices implemented, JS syntax OK |
+||| Code refinement pass | Complete | Dead code removed, helpers consolidated, data-driven glyphs, section cleanup |
+||| Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 ||| Death & respawn animations | Complete | 1.5s collapse/construct, state machine, easing, particles, RIPER reviewed |

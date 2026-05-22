@@ -5,15 +5,16 @@
 ```
 GOLEM_GAME/
   AGENTS.md                  # Project-scoped governance (Tholem Hermes Kit)
- golem.html                # Single-file HTML5 game (~1722 lines, 11 sections + animation system, ~64 KB)
+  golem.html                # Single-file HTML5 game (~1716 lines, 12 sections + animation system, ~62 KB)
   README.md                 # Project overview, controls, abilities, chambers
   ROADMAP.md                # Active development checkpoints
   chamber-data.md           # Chamber grid exports extracted from golem.html (grid-only, no annotations)
   chamber-proposal.md       # Reusable template for new chamber proposals with diff-guided workflow
   chamber-template.md       # Tile legend, coordinate system, chamber flow, ordered construction convention, diff workflows (A-F), conversion spec
- tools/
+  master-improvement-plan.md  # Completed Master Improvement Plan (8 slices) — reference for past refactoring work
+  tools/
     chamber_diff.py         # Diff/validation tool (6 modes: diff, validate, strict, export-ascii, diff-proposal, check-flow)
- docs/
+  docs/
     File-Structure-Reference.md   # This file
     Project-Constraints.md        # Inferred stack and constraints
     Project-Reference.md          # Architecture, physics tuning rationale, push-block design
@@ -24,12 +25,13 @@ GOLEM_GAME/
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | Project governance: safety, quality, lifecycle, constraints |
-|| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1722 lines. 11-section structure: Setup/Constants, Chamber Data (Section 2 uses 9-step ordered construction convention with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities, Input, Tile Helpers/Collision (pushBlockHit, isRiding, resolveBlockX/Y, activePushBlocks, checkPushBlockCrush), Push Block System (3-phase orchestrator, block-vs-block AABB, rider collision, crush death), Particle System, Game Flow (flow-based DOOR_D), Update, Render, Init/Game Loop. Death/respawn animation system (state machine: idle->dying->respawning->idle). |
+| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1716 lines. 12-section structure (1, 1.5, 2–9, 9.5, 10, 11): Setup/Constants (Section 1 includes tile types, physics/dash constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays), Utilities (Section 1.5: snapToTileX, playerGridPos, endDash, land, easeOutCubic, syncPrevKeys, advanceTimers, fullDashReset, cancelDash, resetPlayerToRespawn, killAndRespawn), Chamber Data (Section 2, 9-step ordered construction with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities (Section 3: P player, PB push block, game state globals), Input (Section 4), Tile Helpers/Collision (Section 5: getTile, setTile, solid, platSolid, tileCollidesRect, collides*, inPit, aabb, pushBlockHit, isRiding, resolveBlockX/Y, moveBlockRiders, applyBlockVelocityX, activePushBlocks, checkPushBlockCrush), Push Block System (Section 6: 3-phase orchestrator, block-vs-block AABB, rider collision, crush death), Particle System (Section 7, IIFE), Game Flow (Section 8: MSG_* constants, showMessage, _doTransition, transition, checkDoors, checkGlyphs, transitionEnding), Update (Section 9: main physics/input loop), Animation State Machine (Section 9.5: idle->dying->respawning->idle), Render (Section 10), Init/Game Loop (Section 11). |
 | `README.md` | Project overview, controls, abilities, chambers |
 | `ROADMAP.md` | Active development checkpoints |
 | `chamber-data.md` | ASCII grid exports of all 6 chambers — grid-only, no annotations. Verified 0 mismatches against golem.html. |
-|| `chamber-proposal.md` | Reusable template for new chamber proposals; used with chamber_diff.py diff-proposal workflow |
-|| `chamber-template.md` | Tile legend, coordinate system, chamber flow system, ordered construction convention (9-step), diff workflows (A-F), conversion spec |
-|| `tools/chamber_diff.py` | Diff/validation CLI tool with 6 modes: --diff, --validate, --strict, --export-ascii, --diff-proposal, --check-flow |
-|| `docs/Project-Constraints.md` | Stack, runtime constraints, design constraints, assumptions. |
+| `chamber-proposal.md` | Reusable template for new chamber proposals; used with chamber_diff.py diff-proposal workflow |
+| `chamber-template.md` | Tile legend, coordinate system, chamber flow system, ordered construction convention (9-step), diff workflows (A-F), conversion spec |
+| `master-improvement-plan.md` | Completed 8-slice improvement plan with execution details, validation gates, and before/after state. Kept as reference for future refactoring. |
+| `tools/chamber_diff.py` | Diff/validation CLI tool with 6 modes: --diff, --validate, --strict, --export-ascii, --diff-proposal, --check-flow |
+| `docs/Project-Constraints.md` | Stack, runtime constraints, design constraints, assumptions. |
 | `docs/Project-Reference.md` | Architecture overview, physics tuning rationale, push-block system design, tile system. |

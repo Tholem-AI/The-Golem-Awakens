@@ -1,5 +1,10 @@
 # Master Improvement Plan: The Golem Awakens
 
+> **Status: COMPLETED** — All 8 slices implemented and validated (May 22, 2026).
+> Results: 1727 -> 1716 lines (net -11 lines), 0 browser console errors, game loads and runs correctly.
+> Source reports (code-review-report.md, optimization-opportunities-report.md, refactor-readiness-report.md, left-out-findings.md) removed after execution.
+> This file kept as reference for the completed refactoring work.
+
 ## Executive Summary
 
 Three independent review reports were produced for `golem.html` (1727 lines, ~64 KB): a code review (bugs and improvements), a refactor readiness report (grouping and organization), and an optimization opportunities report (dead code, duplication, performance). All three agree on the core assessment: the codebase is well-structured for a single-file game, with clean sectioning, well-tuned physics, and a sophisticated push-block system. No critical bugs that break core functionality were found.
