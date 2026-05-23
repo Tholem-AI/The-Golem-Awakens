@@ -22,6 +22,9 @@ canvas { display: block; image-rendering: pixelated; }
 #title-screen .ts-credits a { color: #C5B391; text-decoration: none; }
 #title-screen .ts-credits a:hover { color: #5CB3AF; }
 #title-screen .ts-credits svg { vertical-align: middle; margin-left: 4px; }
+#title-screen .ts-blurb { font-family: Georgia,'Times New Roman',serif; font-size: 13px; color: #4A4A5C; margin-bottom: 16px; }
+#title-screen .ts-blurb a { color: #6B6B80; text-decoration: none; }
+#title-screen .ts-blurb a:hover { color: #5CB3AF; }
 #title-screen .ts-start { font-family: Georgia,'Times New Roman',serif; font-size: 16px; color: rgba(232,232,240,0.6); letter-spacing: 3px; animation: tsPulse 2.5s ease-in-out infinite; }
 @keyframes tsPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
 #pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; cursor: default; }
@@ -50,7 +53,8 @@ canvas { display: block; image-rendering: pixelated; }
           </svg>
         </div>
         <div class="ts-title">THE GOLEM AWAKENS</div>
-        <div class="ts-credits">made by: <a href="https://tholem.ai" target="_blank" id="tholem-link">THOLEM</a></div>
+        <div class="ts-credits">made by <a href="https://tholem.ai" target="_blank" id="tholem-link">Tholem Labs</a></div>
+        <div class="ts-blurb"><a href="https://github.com/Tholem-AI" target="_blank" id="github-link">Fully open source</a> &bull; Built entirely with local AI models on a single RTX 3090 Ti</div>
         <div class="ts-start">PRESS ANY KEY TO BEGIN</div>
       </div>
     </div>
@@ -2050,12 +2054,43 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 const titleScreen = document.getElementById('title-screen');
 const pauseOverlay = document.getElementById('pause-overlay');
 
+function resetGameState(){
+  if(animFrameId){ cancelAnimationFrame(animFrameId); }
+  P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy; P.vx=0; P.vy=0;
+  P.onGround=false; P.jumps=0; P.maxJumps=1;
+  P.canDash=false; P.dashing=false; P.dashTimer=0; P.dashDir=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
+  P.canPush=false; P.canBreak=false;
+  P.facing=1; P.chamber=0;
+  P.coyoteTime=0; P.jumpBuffer=0; P.pushing=false;
+  P.landSquish=0; P.turnLean=0; P.lastFacing=1;
+  P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
+  PBlocks.length=0;
+  glyphsCollected=0;
+  collectedGlyphs=new Array(chambers.length).fill(false);
+  gameState='title';
+  screenFade=0; screenAlpha=0;
+  messageQueue.length=0;
+  particles.length=0;
+  portalLockMsg=0;
+  testChamberSrc=-1;
+  _c=undefined;
+  _transitionTarget=-1;
+  animState='idle'; animFrame=0;
+  endingBeat=0; endingFrame=0;
+  endingStartTime=Date.now();
+  frozenElapsedSec=0;
+  gameStartTime=undefined;
+  totalDeaths=0;
+  keys={}; prevKeys={};
+}
+
 function startGame(){
   gameState = 'playing';
   gameStartTime = Date.now();
   titleScreen.style.display = 'none';
   pauseOverlay.style.display = 'none';
   document.getElementById('hud-bar').style.display = 'flex';
+  animFrameId = requestAnimationFrame(loop);
 }
 
 function togglePause(){
@@ -2069,12 +2104,10 @@ function togglePause(){
 }
 
 function returnToMenu(){
-  gameState = 'title';
+  resetGameState();
   pauseOverlay.style.display = 'none';
   titleScreen.style.display = 'flex';
   document.getElementById('hud-bar').style.display = 'none';
-  gameStartTime = undefined;
-  totalDeaths = 0;
 }
 
 /* Resume button */
@@ -2091,7 +2124,7 @@ document.getElementById('btn-menu').addEventListener('click', function(){
 titleScreen.addEventListener('click', function(e){
   if(gameState === 'title'){
     /* Prevent clicks on the THOLEM link from starting the game */
-    if(e.target.id === 'tholem-link' || e.target.closest('#tholem-link')) return;
+    if(e.target.id === 'tholem-link' || e.target.closest('#tholem-link') || e.target.id === 'github-link' || e.target.closest('#github-link')) return;
     startGame();
   }
 });
@@ -2135,13 +2168,13 @@ C.addEventListener('click', function(e){
     const btnX = W/2-60, btnY = H-25, btnW = 120, btnH = 28;
     if(clickX >= btnX && clickX <= btnX+btnW &&
        clickY >= btnY && clickY <= btnY+btnH){
-      location.reload();
+      returnToMenu();
     }
   }
 });
 
 /* ── Game loop ── */
-function loop(){ update(); render(); animFrameId = requestAnimationFrame(loop); }
+function loop(){ update(); render(); if(gameState==='playing'||gameState==='paused') animFrameId = requestAnimationFrame(loop); }
 animFrameId = requestAnimationFrame(loop);
 
 </script>

@@ -208,15 +208,18 @@
 
 ### Title Menu (Phase 6) + Pause Menu (Phase 7) (May 2026) — COMPLETED
 
-- [x] Title menu: THOLEM SVG logo (6 paths matching Logo_Full_Color.svg exactly), "THE GOLEM AWAKENS" title, "made by: THOLEM" link to tholem.ai, "PRESS ANY KEY TO BEGIN" prompt with pulse animation
+- [x] Title menu: THOLEM SVG logo (6 paths matching Logo_Full_Color.svg exactly), "THE GOLEM AWAKENS" title, "made by Tholem Labs" link to tholem.ai, "Fully open source" link to GitHub + AI blurb, "PRESS ANY KEY TO BEGIN" prompt with pulse animation
 - [x] Title screen overlay: HTML/CSS overlay in `#game-shell` wrapper, inline SVG with native `<a href>` link, CSS hover effects (Seafoam color transition)
 - [x] Timer starts only when gameplay begins from title screen (deferred `gameStartTime`)
 - [x] Pause menu: P key toggle with `fresh()` edge detection to prevent hold spam
 - [x] Pause overlay: "PAUSED" text, RESUME button, RETURN TO MAIN MENU button
 - [x] HUD visibility: hidden on title screen (cleared), visible during gameplay and pause (removed 'paused' from HUD guard)
-- [x] Return to menu resets timer and death count, transitions back to title state
-- [x] State machine: title -> playing -> paused -> playing (resume) or title (return to menu)
-- [x] Validation: JS syntax OK, 0 browser errors/warnings, full flow verified (Title -> Start -> Play -> Pause -> Resume -> Return to Menu -> Title -> Start fresh)
+- [x] Return to menu: full game reset via resetGameState() (player state, chamber, abilities, glyphs, particles, ending state, keys), loop cancellation, then UI transition
+- [x] Play Again (ending): calls returnToMenu() instead of location.reload()
+- [x] Loop guard: rAF only scheduled during playing/paused states (stops during title/ending)
+- [x] startGame(): restarts rAF loop after reset
+- [x] State machine: title -> playing -> paused -> playing (resume) or title (return to menu with full reset)
+- [x] Validation: JS syntax OK, 0 browser errors/warnings, full flow verified (Title -> Start -> Play -> Pause -> Return to Menu -> Title -> Start fresh -> player moves)
 
 ### Responsive Canvas Scaling (Not Started)
 
@@ -268,8 +271,8 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [x] Phase 5.6: Visual refinements (May 2026) — pit symmetric danger indicators (upward chevron + side ticks on all 4 edges), reduced platforming particles (removed airborne trail + coyote dust, halved landing dust 4->2), removed vertical Hebrew glyphs from golem body (glyph count in HUD), hide normal side arms during push animation (prevents 4-arm illusion). RIPER reviewed. ~23 lines removed/changed.
 - [x] Phase 5.6.1: Pushblock particle spam fix — gated pushblock landing particles with `justLanded` check (`prevY + P.h < pb.y` strict) so particles only spawn once on actual landing, not every frame during gravity oscillation. Zero physics/mechanics change. ~3 lines added.
 - [x] Phase 8: Extended HUD bar — DOM-based 32px bar above canvas (#game-wrapper), Hebrew glyph slots (RTL) left side, timer (MM:SS) + death count right side, removed "Name: " prefix artifact, removed inline ABILITIES list from canvas, ability unlocks show themed message + ability name via showMessage queue, removed unused ABILITIES const array. RIPER reviewed. ~40 lines net.
-- [x] Phase 6: Title menu — THOLEM SVG logo (6 paths), "THE GOLEM AWAKENS" title, "made by: THOLEM" link to tholem.ai, pulse animation prompt. Timer deferred until gameplay starts.
-- [x] Phase 7: Pause menu — P key toggle (fresh edge detection), "PAUSED" overlay, RESUME + RETURN TO MAIN MENU buttons, HUD visible during pause, full game reset on return to menu.
+- [x] Phase 6: Title menu — THOLEM SVG logo (6 paths), "THE GOLEM AWAKENS" title, "made by Tholem Labs" link to tholem.ai, "Fully open source" link to GitHub + AI blurb, pulse animation prompt. Timer deferred until gameplay starts.
+- [x] Phase 7: Pause menu — P key toggle (fresh edge detection), "PAUSED" overlay, RESUME + RETURN TO MAIN MENU buttons, HUD visible during pause, full game reset on return to menu (resetGameState()), loop restart on startGame().
 - [ ] Phases 10a-10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
 
 **Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
@@ -324,7 +327,7 @@ Prepare the project for public repository sharing.
 ||| Platform visual rework + drop-down | Complete | gy2 fix + platSolid tolerance + inputDown() + narrow ledge render |
 ||| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
 ||| Chamber data management | Complete | chamber_diff.py (6 modes), 0 mismatches, 0 strict errors, grids match exactly |
-||| Pause toggle (Phase 6 + 7) | Complete | Title menu (THOLEM SVG + press-any-key start), P-key pause (fresh edge detection), RESUME + RETURN TO MAIN MENU, HUD hidden on title / visible during pause, timer + deaths reset. 0 browser errors, full flow verified. |
+||| Pause toggle (Phase 6 + 7) | Complete | Title menu (THOLEM SVG + Tholem Labs credit + GitHub link + AI blurb, press-any-key start), P-key pause (fresh edge detection), RESUME + RETURN TO MAIN MENU, HUD hidden on title / visible during pause, full reset via resetGameState() on return to menu, loop guard stops rAF during title/ending, startGame() restarts loop. Play Again -> returnToMenu(). 0 browser errors, full flow verified. |
 | Responsive canvas scaling | Not Started | — |
 | Sound effects | Not Started | — |
 ||||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
