@@ -237,7 +237,18 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 - [x] Chamber 4 — The Ibis Chamber: Replaced placeholder with complex grid (134 walls, 22 pits, 8 platforms, 8 MAGICAL_WALLs, 8 CRACKED, 3 PUSH_SPAWN, 1 END_PORTAL). Spawn at (2,4), END_PORTAL at (1,1), row 13 AIR override. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified, reviewer approved.
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
-### Visual and Story Overhaul (Phases 1-5.5 Complete)
+### Glyph Ordering & Ending Animation Fixes (May 2026)
+
+- [x] Glyph letter assignment: replaced position-based formula `(x+y*25)%4` with chamber index `ch` — each chamber now shows correct Hebrew letter (Aleph/Mem/He/Tav)
+- [x] HUD: replaced `Glyphs: 3/4` count with `Name: א ○ ○ ○` showing actual Hebrew letters with empty circle slots
+- [x] EMET ending text: fixed `\u05e2` (Ayin) to `\u05d0` (Aleph) — renders אמת ("truth") not עמת ("earth")
+- [x] Timer freeze: added `frozenElapsedSec` captured in `transitionEnding()`, displayed instead of live `Date.now()`
+- [x] Text outline: added `strokeText()` before `fillText()` for EMET visibility against background
+- [x] RTL rendering: set `X.direction='rtl'` for all Hebrew fillText calls (glyphs, HUD, orbit, ending)
+- [x] Text overlap fix: beat 3 message guarded to only render during beat 3, not during beat 4+
+- [x] Validation: JS syntax OK, zero console errors, flow checks pass, browser test OK, RIPER reviewed
+
+### Visual and Story Overhaul (Phases 1-5.6 Complete)
 
 See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 
@@ -311,9 +322,10 @@ Prepare the project for public repository sharing.
 ||||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
 |||||| Chamber 2 redesign (The Hall of Echoes) | Complete | 0 tile mismatches, flow check OK, JS syntax OK, browser verified |
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
-||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
-||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-||||||| Visual/story overhaul | Complete | Phases 1–5.6 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard). RIPER reviewed. ~295 lines net.
+|||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
+|||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
+|||||||| Visual/story overhaul | Complete | Phases 1–5.6 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard). RIPER reviewed. ~295 lines net.
+|||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |
 || Open source release prep | Not Started | — |

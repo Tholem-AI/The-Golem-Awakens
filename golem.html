@@ -470,6 +470,7 @@ let endingFrame = 0;
 let endingStartTime = Date.now();
 let gameStartTime = Date.now();
 let totalDeaths = 0;
+let frozenElapsedSec = 0;       // frozen game time for ending stats
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -954,6 +955,7 @@ function transitionEnding(){
   endingStartTime = Date.now();
   gameState='ending';
   screenFade=1; screenAlpha=0;
+  frozenElapsedSec = Math.round((Date.now()-gameStartTime)/1000); // freeze elapsed time
 }
 
 /* ══════════════════════════════════════════════════
@@ -1516,9 +1518,10 @@ function render(){
       X.closePath(); X.fill();
       // Hebrew letter
       const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
-      const gIdx = (x + y * 25) % 4; // deterministic per position
+      const gIdx = ch; // chamber index = glyph index (0=Aleph, 1=Mem, 2=He, 3=Tav)
       X.fillStyle='rgba(197,179,145,'+pulse+')';
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      X.direction='rtl';
       X.fillText(hebrewLetters[gIdx], px+T/2, py+T/2+1);
 
   } else if(t===CRACKED){
@@ -1748,7 +1751,10 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
   /* ── HUD ── */
  X.fillStyle=COLORS.text; X.font=FONT_UI; X.textAlign='left';
-  X.fillText('Glyphs: '+glyphsCollected+'/4', 10, 20);
+  const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
+  const collectedStr = hebrewHUD.map((l,i) => collectedGlyphs[i] ? l : '\u25cb').join(' ');
+  X.font=FONT_HEBREW; X.direction='rtl';
+  X.fillText('Name: '+collectedStr, 10, 20);
 
  X.font=FONT_UI;
   let ay=36;
@@ -1850,10 +1856,12 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy-2,3,14); X.fillRect(cx+8,cy-2,3,14);
     // Glyphs on hero -- removed (count shown in HUD)
 
-    const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
+    const allGlyphs = ['\u05d0','\u05de','\u05d4','\u05ea']; // Aleph, Mem, He, Tav — all 4
+    const emetLetters = ['\u05d0','\u05de','\u05ea']; // Aleph, Mem, Tav — EMET only
+      X.direction='rtl'; // RTL for all Hebrew text in ending
 
     if(endingBeat >= 1){
-      // Beat 1: Letters pulse around golem
+      // Beat 1: All 4 glyphs pulse around golem
       const pulse = Math.sin(now/300)*0.3+0.7;
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
       for(let i=0;i<4;i++){
@@ -1862,12 +1870,12 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         const lx = cx + Math.cos(angle)*radius;
         const ly = cy + Math.sin(angle)*radius;
         X.fillStyle='rgba(197,179,145,'+(pulse*0.6)+')';
-        X.fillText(hebrewLetters[i], lx, ly);
+        X.fillText(allGlyphs[i], lx, ly);
       }
     }
 
     if(endingBeat >= 2){
-      // Beat 2: Letters orbit faster, message appears
+      // Beat 2: All 4 glyphs orbit faster, message appears
       const orbitSpeed = (endingFrame-120)/120; // 0-1 over beat 2
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
       for(let i=0;i<4;i++){
@@ -1876,14 +1884,14 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         const lx = cx + Math.cos(angle)*radius;
         const ly = cy-30 + Math.sin(angle)*radius*0.5;
         X.fillStyle='rgba(197,179,145,'+(0.5+orbitSpeed*0.5)+')';
-        X.fillText(hebrewLetters[i], lx, ly);
+        X.fillText(allGlyphs[i], lx, ly);
       }
       // Message
       if(endingFrame > 140){
         const msgAlpha = Math.min((endingFrame-140)/30, 1);
         X.fillStyle='rgba(232,232,240,'+msgAlpha+')';
         X.font=FONT_DISPLAY;
-        X.fillText('The four letters converge.', W/2, H-60);
+        X.fillText('The four glyphs converge.', W/2, H-60);
       }
     }
 
@@ -1893,20 +1901,26 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       const emetAlpha = converge;
       X.font='24px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
+      // RTL rendering for Hebrew text
+      X.direction='rtl';
       // Champagne flash during convergence
       if(converge < 0.5){
         const flash = Math.sin(converge*Math.PI*4)*0.3;
         X.fillStyle='rgba(197,179,145,'+flash+')';
         X.fillRect(0,0,W,H);
       }
-      // EMET above golem forehead
+      // EMET above golem forehead — outline + fill for contrast
+      X.strokeStyle='rgba(10,10,18,'+emetAlpha+')'; X.lineWidth=3;
+      X.strokeText('\u05d0\u05de\u05ea', cx, cy-40);
       X.fillStyle='rgba(197,179,145,'+(emetAlpha*0.9)+')';
-      X.fillText('\u05e2\u05de\u05ea', cx, cy-40);
-      // Message below golem
-      const msgAlpha = Math.min((endingFrame-260)/40, 1);
-      X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
-      X.font=FONT_DISPLAY;
-      X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-65);
+      X.fillText('\u05d0\u05de\u05ea', cx, cy-40);
+      // Message below golem — only during beat 3, fades out when beat 4 starts
+      if(endingBeat < 4){
+        const msgAlpha = Math.min((endingFrame-260)/40, 1);
+        X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
+        X.font=FONT_DISPLAY;
+        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-65);
+      }
     }
 
     if(endingBeat >= 4){
@@ -1914,10 +1928,13 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       const glow = Math.sin(now/400)*0.3+0.7;
       X.font='28px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
+      X.direction='rtl'; // RTL for Hebrew
       X.shadowColor='rgba(197,179,145,'+glow+')';
       X.shadowBlur=10;
+      X.strokeStyle='rgba(10,10,18,0.8)'; X.lineWidth=3;
+      X.strokeText('\u05d0\u05de\u05ea', cx, cy-40);
       X.fillStyle='rgba(197,179,145,'+(0.7+glow*0.3)+')';
-      X.fillText('\u05e2\u05de\u05ea', cx, cy-40);
+      X.fillText('\u05d0\u05de\u05ea', cx, cy-40);
       X.shadowBlur=0;
       // Ibis text — positioned below golem
       if(endingFrame > 380){
@@ -1930,12 +1947,11 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     }
 
     if(endingBeat >= 5){
-      // Beat 5: Stats
-      const timeElapsed = Math.round((Date.now()-gameStartTime)/1000);
+      // Beat 5: Stats (timer frozen at ending start)
       const statsAlpha = Math.min((endingFrame-480)/30, 1);
       X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
       X.font=FONT_UI;
-      X.fillText('Time: '+timeElapsed+'s  |  Deaths: '+totalDeaths, W/2, H-40);
+      X.fillText('Time: '+frozenElapsedSec+'s  |  Deaths: '+totalDeaths, W/2, H-40);
     }
 
     if(endingBeat >= 6){
