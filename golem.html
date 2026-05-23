@@ -1077,12 +1077,7 @@ function update(){
  /* ── Coyote time countdown ── */
   const coyoteWasActive = P.coyoteTime > 0;
   if(coyoteWasActive) P.coyoteTime--;
-  /* Coyote dust puff (Phase 4.5) */
-  if(coyoteWasActive && P.coyoteTime===0) Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
-
-  /* Airborne clay trail (Phase 4.5) */
-  if(!P.onGround && Math.floor(Date.now()/17)%4===0)
-    Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 1, 'diamond');
+   /* Airborne clay trail (Phase 4.5) -- removed to reduce visual clutter */
 
   /* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
@@ -1131,7 +1126,7 @@ function update(){
         P.vy=0;
         land();
         P.landSquish=10;
-        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4, 'diamond');
+        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
       } else if(P.vy<0){
         P.y=(gy1+1)*T;
         P.vy=0;
@@ -1146,7 +1141,7 @@ function update(){
          P.y = pb.y - P.h;
           P.vy = 0;
           land();
-          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4, 'diamond');
+          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
         }
       }
     }
@@ -1466,6 +1461,9 @@ function render(){
       X.fillStyle='rgba(71,158,153,'+(glow*0.15)+')'; X.fillRect(px,py,T,3);
       X.strokeStyle='rgba(197,179,145,'+(glow*0.15)+')'; X.lineWidth=1;
       X.beginPath(); X.moveTo(px+5,py); X.lineTo(px+T/2,py+T/3); X.lineTo(px+T-5,py); X.stroke();
+      X.beginPath(); X.moveTo(px+5,py+T); X.lineTo(px+T/2,py+2*T/3); X.lineTo(px+T-5,py+T); X.stroke();
+      X.beginPath(); X.moveTo(px,py+T/2-T/6); X.lineTo(px+T/6,py+T/2); X.lineTo(px,py+T/2+T/6); X.stroke();
+      X.beginPath(); X.moveTo(px+T,py+T/2-T/6); X.lineTo(px+5*T/6,py+T/2); X.lineTo(px+T,py+T/2+T/6); X.stroke();
 
   } else if(t===DOOR_D){
       const locked = !glyphCollected;
@@ -1708,9 +1706,11 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
   X.fillStyle=COLORS.golemDark;
   X.beginPath(); X.moveTo(px+3,py+ph-4); X.lineTo(px+10,py+ph-4); X.lineTo(px+12,py+ph); X.lineTo(px+1,py+ph); X.closePath(); X.fill();
   X.beginPath(); X.moveTo(px+pw-10,py+ph-4); X.lineTo(px+pw-3,py+ph-4); X.lineTo(px+pw-1,py+ph); X.lineTo(px+pw-12,py+ph); X.closePath(); X.fill();
-  // Arms
+  // Arms (hidden during push animation to avoid 4-arm illusion)
+  if(!P.pushing){
   X.fillStyle=COLORS.golem;
   X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
+  }
 
 /* Push effort: arms press into block */
   if(P.pushing){
@@ -1733,20 +1733,7 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     X.fillRect(sparkX, py+10, 2, 2);
   }
 
-  /* Hebrew letters on body (RTL ordering, dark stroke for visibility) */
-  if(glyphsCollected>0){
-    const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
-    X.font='10px "Segoe UI", "Arial Hebrew", "David", serif';
-    X.textAlign='center'; X.textBaseline='middle';
-    const baseY = py + ph - 6;
-    for(let g=0; g<glyphsCollected; g++){
-      const ly = baseY - (g * 7);
-      X.strokeStyle='rgba(30,30,50,0.8)'; X.lineWidth=3;
-      X.strokeText(hebrewLetters[g], px+pw/2, ly);
-      X.fillStyle='rgba(197,179,145,'+(0.6+g*0.1)+')';
-      X.fillText(hebrewLetters[g], px+pw/2, ly);
-    }
-  }
+  /* Hebrew letters on body -- removed (glyph count shown in HUD instead) */
 
   /* Falling motion lines */
   if(fallingFast){
@@ -1861,17 +1848,7 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     X.beginPath(); X.moveTo(cx+2,cy+16); X.lineTo(cx+9,cy+16); X.lineTo(cx+12,cy+20); X.lineTo(cx,cy+20); X.closePath(); X.fill();
     // Arms
     X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy-2,3,14); X.fillRect(cx+8,cy-2,3,14);
-    // Glyphs on hero
-    X.font='10px "Segoe UI", "Arial Hebrew", "David", serif';
-    X.textAlign='center'; X.textBaseline='middle';
-    const heroBaseY = cy + 12;
-    for(let g=0;g<4;g++){
-      const ly = heroBaseY - (g*7);
-      X.strokeStyle='rgba(30,30,50,0.8)'; X.lineWidth=3;
-      X.strokeText(hebrewLetters[g], cx, ly);
-      X.fillStyle='rgba(197,179,145,'+(0.6+g*0.1)+')';
-      X.fillText(hebrewLetters[g], cx, ly);
-    }
+    // Glyphs on hero -- removed (count shown in HUD)
 
     const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
 

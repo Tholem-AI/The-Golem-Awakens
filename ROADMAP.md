@@ -248,6 +248,7 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [x] Phase 4.5: Movement polish — idle head sway, land squish (8-12f), turn lean (6-8f), airborne clay trail, coyote dust puff, landing dust extended to ground (~25 lines)
 - [x] Phase 5: Animated 6-beat ending — hero golem, Hebrew letter orbit, EMET convergence on forehead, Champagne flash, Ibis narration, stats (time+deaths), Play Again button with click handler (~90 lines)
 - [x] Phase 5.5: Visual refinements — wall bevel corner highlight, platform chamfered edges (path drawing), pit danger glow all 4 edges, push block rounded corners (arcTo), push effort stroke lines + spark, dash compass rose (8 segments), magical wall hexagonal core (Cosmic Purple #7B68EE), cracked walls X-pattern + edge glow, door geometric icons (seal/chevron), particle shape system (circle/diamond/star/square), golem rounded head (arcTo) + splayed trapezoid feet, glyph RTL bottom-up ordering + dark stroke outline, ending golem consistent + text repositioning, pushblock particle spam fix (~103 lines)
+- [x] Phase 5.6: Visual refinements (May 2026) — pit symmetric danger indicators (upward chevron + side ticks on all 4 edges), reduced platforming particles (removed airborne trail + coyote dust, halved landing dust 4->2), removed vertical Hebrew glyphs from golem body (glyph count in HUD), hide normal side arms during push animation (prevents 4-arm illusion). RIPER reviewed. ~23 lines removed/changed.
 - [ ] Phases 6-8: Title menu, pause menu, extended HUD bar (future — see ROADMAP pause/responsive items)
 - [ ] Phases 10a-10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
 
@@ -312,7 +313,7 @@ Prepare the project for public repository sharing.
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
 ||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 ||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-|||| Visual/story overhaul | Complete | Phases 1–5 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending. RIPER reviewed. ~215 lines added.
+||||||| Visual/story overhaul | Complete | Phases 1–5.6 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard). RIPER reviewed. ~295 lines net.
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |
 || Open source release prep | Not Started | — |
