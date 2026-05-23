@@ -221,10 +221,17 @@
 - [x] State machine: title -> playing -> paused -> playing (resume) or title (return to menu with full reset)
 - [x] Validation: JS syntax OK, 0 browser errors/warnings, full flow verified (Title -> Start -> Play -> Pause -> Return to Menu -> Title -> Start fresh -> player moves)
 
-### Responsive Canvas Scaling (Not Started)
+### Responsive Canvas Scaling (Phase 9) (May 2026) — COMPLETED
 
-- [ ] Add CSS: `canvas { max-width: 100vw; max-height: 100vh; object-fit: contain; }`
-- [ ] Preserves 800x480 internal resolution while fitting viewport
+- [x] CSS: `transform-origin: center center` on `#game-wrapper`
+- [x] JS: IIFE responsive scaling — calculates `min(viewportWidth/800, viewportHeight/512)` and applies `transform: scale(N)`
+- [x] Window resize listener updates scale factor dynamically
+- [x] Scales entire game (canvas + HUD bar + title menu + pause overlay + all fonts/SVG)
+- [x] Preserves 800x480 internal canvas resolution
+- [x] `image-rendering: pixelated` ensures crisp scaling
+- [x] Click handler already normalizes via `getBoundingClientRect()` — works with any CSS scale
+- [x] Tested: 1920x1080 (2.109x), 375x812 (0.469x), 320x568 (0.4x), 3440x1440 (2.8125x)
+- [x] Validation: zero JS errors, zero console errors, browser test OK, reviewer approved
 
 ### Sound Effects (Not Started)
 
@@ -273,6 +280,7 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [x] Phase 8: Extended HUD bar — DOM-based 32px bar above canvas (#game-wrapper), Hebrew glyph slots (RTL) left side, timer (MM:SS) + death count right side, removed "Name: " prefix artifact, removed inline ABILITIES list from canvas, ability unlocks show themed message + ability name via showMessage queue, removed unused ABILITIES const array. RIPER reviewed. ~40 lines net.
 - [x] Phase 6: Title menu — THOLEM SVG logo (6 paths), "THE GOLEM AWAKENS" title, "made by Tholem Labs" link to tholem.ai, "Fully open source" link to GitHub + AI blurb, pulse animation prompt. Timer deferred until gameplay starts.
 - [x] Phase 7: Pause menu — P key toggle (fresh edge detection), "PAUSED" overlay, RESUME + RETURN TO MAIN MENU buttons, HUD visible during pause, full game reset on return to menu (resetGameState()), loop restart on startGame().
+- [x] Phase 9: Responsive CSS scaling — `transform-origin: center center` on `#game-wrapper`, JS IIFE calculates `min(viewportWidth/800, viewportHeight/512)` scale factor, window resize listener, scales entire game (canvas + HUD + overlays + fonts + SVG). Zero JS errors, browser verified, reviewer approved. ~13 lines net.
 - [ ] Phases 10a-10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
 
 **Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
@@ -328,7 +336,7 @@ Prepare the project for public repository sharing.
 ||| Message display improvement | Complete | FIFO queue, 3s fade phases, auto-duration, text shadow, 10 browser tests |
 ||| Chamber data management | Complete | chamber_diff.py (6 modes), 0 mismatches, 0 strict errors, grids match exactly |
 ||| Pause toggle (Phase 6 + 7) | Complete | Title menu (THOLEM SVG + Tholem Labs credit + GitHub link + AI blurb, press-any-key start), P-key pause (fresh edge detection), RESUME + RETURN TO MAIN MENU, HUD hidden on title / visible during pause, full reset via resetGameState() on return to menu, loop guard stops rAF during title/ending, startGame() restarts loop. Play Again -> returnToMenu(). 0 browser errors, full flow verified. |
-| Responsive canvas scaling | Not Started | — |
+|| Responsive canvas scaling | Complete | Phase 9: JS-based transform scale, zero errors, reviewer approved |
 | Sound effects | Not Started | — |
 ||||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
 ||||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
@@ -336,7 +344,7 @@ Prepare the project for public repository sharing.
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
 |||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 |||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-||||||||| Visual/story overhaul | Complete | Phases 1–8 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu. RIPER reviewed. ~295 lines net. |
+||||||||| Visual/story overhaul | Complete | Phases 1-9 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling. RIPER reviewed. ~310 lines net. |
 |||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

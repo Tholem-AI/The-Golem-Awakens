@@ -6,7 +6,7 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #0A0A12; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-#game-wrapper { display: flex; flex-direction: column; align-items: center; }
+#game-wrapper { display: flex; flex-direction: column; align-items: center; transform-origin: center center; }
 #hud-bar { width: 800px; height: 32px; background: rgba(10,10,18,0.85); border: 1px solid rgba(197,179,145,0.2); border-bottom: 1px solid rgba(197,179,145,0.15); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font: 11px system-ui,-apple-system,"Segoe UI",sans-serif; color: #E8E8F0; user-select: none; }
 #hud-bar .hud-left, #hud-bar .hud-right { display: flex; align-items: center; gap: 12px; }
 #hud-bar .hud-left { direction: rtl; }
@@ -2176,6 +2176,19 @@ C.addEventListener('click', function(e){
 /* ── Game loop ── */
 function loop(){ update(); render(); if(gameState==='playing'||gameState==='paused') animFrameId = requestAnimationFrame(loop); }
 animFrameId = requestAnimationFrame(loop);
+
+/* ── Responsive scaling (Phase 9) ── */
+(function(){
+  var gw = document.getElementById('game-wrapper');
+  function applyScale(){
+    var sx = window.innerWidth / 800;
+    var sy = window.innerHeight / 512;
+    var s = Math.min(sx, sy);
+    gw.style.transform = 'scale(' + s.toFixed(4) + ')';
+  }
+  applyScale();
+  window.addEventListener('resize', applyScale);
+})();
 
 </script>
 </body>

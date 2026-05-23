@@ -2,7 +2,7 @@
 
 Context spec for the visual and narrative overhaul of [`golem.html`](../golem.html). All changes are polish and theming only — no gameplay mechanics, chamber layouts, or tile behavior.
 
-**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-5 (+ 4.5, +5.5) **implemented and reviewed**. Future Phases 6-10 **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
+**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-9 (+ 4.5, +5.5, +5.6, +5.6.1) **implemented and reviewed**. Future Phases 10a-10b **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
 
 ---
 
@@ -334,7 +334,7 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | Future | ~60 |
 | **7** Pause menu | `P` key, skip update, overlay | Future | ~40 |
 | **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | **Complete** | ~40 |
-| **9** Responsive CSS | §5.4 | Future | ~6 |
+| **9** Responsive CSS | §5.4 | **Complete** | ~13 |
 | **10a** SFX | Web Audio primitives + call sites | Future | ~60 |
 | **10b** Ambient | Drone + optional melody loop | Future | ~60 |
 
