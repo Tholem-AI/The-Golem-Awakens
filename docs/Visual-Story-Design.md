@@ -333,7 +333,7 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **5.5** Visual refinements | §4.7 geometry refinements (beveled walls, chamfered platforms, danger pits, rounded push blocks, hex magical walls, X-crack walls, geometric door, particle shapes, compass rose dash, rounded golem, Hebrew RTL glyphs, ending cleanup) | **Complete** | ~103 |
 | **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | Future | ~60 |
 | **7** Pause menu | `P` key, skip update, overlay | Future | ~40 |
-| **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | Future | ~40 |
+| **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | **Complete** | ~40 |
 | **9** Responsive CSS | §5.4 | Future | ~6 |
 | **10a** SFX | Web Audio primitives + call sites | Future | ~60 |
 | **10b** Ambient | Drone + optional melody loop | Future | ~60 |

@@ -6,11 +6,18 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #0A0A12; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+#game-wrapper { display: flex; flex-direction: column; align-items: center; }
+#hud-bar { width: 800px; height: 32px; background: rgba(10,10,18,0.85); border: 1px solid rgba(197,179,145,0.2); border-bottom: 1px solid rgba(197,179,145,0.15); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font: 11px system-ui,-apple-system,"Segoe UI",sans-serif; color: #E8E8F0; user-select: none; }
+#hud-bar .hud-left, #hud-bar .hud-right { display: flex; align-items: center; gap: 12px; }
+#hud-bar .hud-left { direction: rtl; }
 canvas { display: block; image-rendering: pixelated; }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+<div id="game-wrapper">
+  <div id="hud-bar"><div class="hud-left"></div><div class="hud-right"></div></div>
+  <canvas id="c"></canvas>
+</div>
 <script>
 
 /* ══════════════════════════════════════════════════
@@ -73,17 +80,13 @@ const FONT_DISPLAY = 'italic 16px Georgia, "Times New Roman", serif';
 const FONT_HEBREW  = '18px "Segoe UI", "Arial Hebrew", "David", serif';
 
 /* ── Static UI arrays (hoisted from render, B2+B3) ── */
-const ABILITIES = [
-  ['[1] Double Jump', 1], ['[2] Dash (Shift)', 2],
-  ['[3] Push Blocks', 3], ['[4] Break Cracked', 4]
-];
 const CHAMBER_NAMES = ['The First Breath','The Flowing Deep','The Spirit\'s Mirror','The Weight of Name','The Seal of Thoth'];
 const CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4'];
 const GLYPH_EFFECTS = [
-  { set: () => { P.maxJumps = 2; }, msg: "The First breathes life." },
-  { set: () => { P.canDash = true; }, msg: "The Waters flow through form." },
-  { set: () => { P.canPush = true; }, msg: "The Window opens within." },
-  { set: () => { P.canBreak = true; }, msg: "The Seal completes the Name." },
+  { set: () => { P.maxJumps = 2; }, msg: "The First breathes life.", name: "Double Jump" },
+  { set: () => { P.canDash = true; }, msg: "The Waters flow through form.", name: "Dash" },
+  { set: () => { P.canPush = true; }, msg: "The Window opens within.", name: "Push" },
+  { set: () => { P.canBreak = true; }, msg: "The Seal completes the Name.", name: "Break" },
 ];
 
 /* ══════════════════════════════════════════════════
@@ -943,6 +946,7 @@ function checkGlyphs(){
       if(gi >= 0 && gi < GLYPH_EFFECTS.length){
         GLYPH_EFFECTS[gi].set();
         showMessage(GLYPH_EFFECTS[gi].msg, 120);
+        showMessage("Ability: " + GLYPH_EFFECTS[gi].name, 120);
       }
     }
   }
@@ -1752,19 +1756,22 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
   }
   }
 
-  /* ── HUD ── */
- X.fillStyle=COLORS.text; X.font=FONT_UI; X.textAlign='left';
+ /* ── HUD bar (DOM) ── */
+  const hudBar = document.getElementById('hud-bar');
+  const hudLeft = hudBar.querySelector('.hud-left');
+  const hudRight = hudBar.querySelector('.hud-right');
   const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
-  const collectedStr = hebrewHUD.map((l,i) => collectedGlyphs[i] ? l : '\u25cb').join(' ');
-  X.font=FONT_HEBREW; X.direction='rtl';
-  X.fillText('Name: '+collectedStr, 10, 20);
-
- X.font=FONT_UI;
-  let ay=36;
-  for(const [name,req] of ABILITIES){
-    X.fillStyle=glyphsCollected>=req?'#5CB3AF':'#A18F75';
-    X.fillText(name, 10, ay); ay+=14;
- }
+  const glyphSlots = hebrewHUD.map((l,i) =>
+    collectedGlyphs[i]
+      ? '<span style="color:#C5B391;font-family:\'Segoe UI\',\'Arial Hebrew\',\'David\',serif;font-size:16px;">' + l + '</span>'
+      : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
+  ).join(' &nbsp; ');
+  hudLeft.innerHTML = glyphSlots;
+  const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const timeStr = mins + ':' + String(secs).padStart(2, '0');
+  hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span>';
 
  /* Chamber name + portal status */
   X.fillStyle='#A18F75'; X.font=FONT_DISPLAY; X.textAlign='center';
