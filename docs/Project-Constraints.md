@@ -20,10 +20,12 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-| File size | ~1716 lines, ~62 KB | Single-file constraint |
-| Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
+|| File size | ~1932 lines, ~70 KB | Single-file constraint (Phases 1-5 theming added ~215 lines) |
+|| Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
+|| Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
+|| Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |
 | Push block | PBlocks[] array — supports N push blocks per chamber via `pushSpawns` array. Backward-compatible with `pushSpawn` single-block. Velocity-based push at PUSH_SPEED (1.25 px/frame). 3-phase orchestrator: horizontal velocity -> rider coupling -> gravity/vertical. Block-vs-block AABB collision: solid walls horizontally, stacking vertically. Riders get individual wall collision via `resolveBlockX()`. Falling block crush death via `checkPushBlockCrush()` with 3 guards: golem-on-top skip, block-below skip, horizontal overlap >=10px. Runs after player Y resolution. Bottom-up processing via `activePushBlocks()`. | Sections 3, 5, 6 |
-| rAF lifecycle | Cancelled when game reaches `'ending'` state | Section 11 |
+|| rAF lifecycle | Continues during `'ending'` state (animated ending sequence); update() skips, render() draws ending beats | Section 10/11 |
 | Deployment | Single HTML file, no external dependencies | — |
 
 ## Code Organization
@@ -58,4 +60,4 @@ Inferred from `golem.html` source code and design artifacts.
 2. **No external assets** — all visuals are currently procedurally drawn (Canvas 2D primitives, particle colors). Adding image/sprite assets would change the asset model.
 3. **60 FPS target** — physics constants are tuned for 60 FPS. Changing frame rate requires re-tuning gravity, speed, and timing values.
 4. **No audio** — the current implementation has no sound system. Adding audio requires architectural decisions (Web Audio API vs. library).
-5. **rAF cancelled on game end** — the animation loop is properly cancelled when `gameState` becomes `'ending'`, so the credits screen does not consume CPU. Added in refactoring.
+5. **rAF continues during ending** — the animation loop continues during the animated ending sequence (Phase 5). `update()` skips while `render()` draws the 6-beat ending animation. Play Again button reloads the page.

@@ -2,7 +2,7 @@
 
 Context spec for the visual and narrative overhaul of [`golem.html`](../golem.html). All changes are polish and theming only — no gameplay mechanics, chamber layouts, or tile behavior.
 
-**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1–5 (+ 4.5) **not started**. Future Phases 6–10 **not started**. Palette spec reflects tholem.ai brand tokens (doc iteration only — code still uses legacy brown palette).
+**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1–5 (+ 4.5) **implemented and reviewed**. Future Phases 6–10 **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
 
 ---
 
@@ -320,12 +320,12 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 
 | Phase | Scope | Status | Est. |
 |-------|-------|--------|------|
-| **1** Color & text | `FONT_*`, `COLORS`, particles, dash constants, all messages, `CHAMBER_NAMES`, HUD colors, door/portal/magical wall colors, starfield, death/respawn colors; contrast QA §4.3 | Not started | ~38 |
-| **2** Glyph visuals | Hebrew letter tiles + golem body letters | Not started | ~15 |
-| **3** Background runes | 6–8% geometric overlay | Not started | ~15 |
-| **4** Geometry | §4.7 checklist | Not started | ~45 |
-| **4.5** Movement polish | §4.7 last bullet | Not started | ~25 |
-| **5** Ending | §5.3 animated sequence | Not started | ~80–100 |
+| **1** Color & text | `FONT_*`, `COLORS`, particles, dash constants, all messages, `CHAMBER_NAMES`, HUD colors, door/portal/magical wall colors, starfield, death/respawn colors; contrast QA §4.3 | **Complete** | ~38 |
+| **2** Glyph visuals | Hebrew letter tiles + golem body letters | **Complete** | ~15 |
+| **3** Background runes | 6–8% geometric overlay | **Complete** | ~15 |
+| **4** Geometry | §4.7 checklist | **Complete** | ~45 |
+| **4.5** Movement polish | §4.7 last bullet | **Complete** | ~25 |
+| **5** Ending | §5.3 animated sequence | **Complete** | ~90 |
 | **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | Future | ~60 |
 | **7** Pause menu | `P` key, skip update, overlay | Future | ~40 |
 | **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | Future | ~40 |

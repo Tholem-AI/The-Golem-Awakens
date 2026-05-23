@@ -5,7 +5,7 @@
 ```
 GOLEM_GAME/
   AGENTS.md                  # Project-scoped governance (Tholem Hermes Kit)
-  golem.html                # Single-file HTML5 game (~1716 lines, 12 sections + animation system, ~62 KB)
+  golem.html                # Single-file HTML5 game (~1932 lines, 12 sections + ending animation, ~70 KB)
   README.md                 # Project overview, controls, abilities, chambers
   ROADMAP.md                # Active development checkpoints
   chamber-data.md           # Chamber grid exports extracted from golem.html (grid-only, no annotations)
@@ -26,7 +26,7 @@ GOLEM_GAME/
 | File | Purpose |
 |------|---------|
 | `AGENTS.md` | Project governance: safety, quality, lifecycle, constraints |
-| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1716 lines. 12-section structure (1, 1.5, 2–9, 9.5, 10, 11): Setup/Constants (Section 1 includes tile types, physics/dash constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays), Utilities (Section 1.5: snapToTileX, playerGridPos, endDash, land, easeOutCubic, syncPrevKeys, advanceTimers, fullDashReset, cancelDash, resetPlayerToRespawn, killAndRespawn), Chamber Data (Section 2, 9-step ordered construction with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities (Section 3: P player, PB push block, game state globals), Input (Section 4), Tile Helpers/Collision (Section 5: getTile, setTile, solid, platSolid, tileCollidesRect, collides*, inPit, aabb, pushBlockHit, isRiding, resolveBlockX/Y, moveBlockRiders, applyBlockVelocityX, activePushBlocks, checkPushBlockCrush), Push Block System (Section 6: 3-phase orchestrator, block-vs-block AABB, rider collision, crush death), Particle System (Section 7, IIFE), Game Flow (Section 8: MSG_* constants, showMessage, _doTransition, transition, checkDoors, checkGlyphs, transitionEnding), Update (Section 9: main physics/input loop), Animation State Machine (Section 9.5: idle->dying->respawning->idle), Render (Section 10), Init/Game Loop (Section 11). |
+|| `golem.html` | Complete game source. Single-file HTML5 platformer. ~1932 lines. 12-section structure (1, 1.5, 2–9, 9.5, 10, 11): Setup/Constants (Section 1 includes tile types, physics/dash constants, PARTICLE_COLORS, GLYPH_EFFECTS, FONT_*/COLORS, static UI arrays, ending state), Utilities (Section 1.5: snapToTileX, playerGridPos, endDash, land, easeOutCubic, syncPrevKeys, advanceTimers, fullDashReset, cancelDash, resetPlayerToRespawn, killAndRespawn), Chamber Data (Section 2, 9-step ordered construction with /* Step N: */ comments, CHAMBER_FLOW flow system), Entities (Section 3: P player, PB push block, game state globals), Input (Section 4), Tile Helpers/Collision (Section 5: getTile, setTile, solid, platSolid, tileCollidesRect, collides*, inPit, aabb, pushBlockHit, isRiding, resolveBlockX/Y, moveBlockRiders, applyBlockVelocityX, activePushBlocks, checkPushBlockCrush), Push Block System (Section 6: 3-phase orchestrator, block-vs-block AABB, rider collision, crush death), Particle System (Section 7, IIFE), Game Flow (Section 8: MSG_* constants, showMessage, _doTransition, transition, checkDoors, checkGlyphs, transitionEnding), Update (Section 9: main physics/input loop), Animation State Machine (Section 9.5: idle->dying->respawning->idle), Render (Section 10: tholem.ai palette, Hebrew glyphs, background runes, themed tiles, animated ending beats), Init/Game Loop (Section 11). |
 | `README.md` | Project overview, controls, abilities, chambers |
 | `ROADMAP.md` | Active development checkpoints |
 | `chamber-data.md` | ASCII grid exports of all 6 chambers — grid-only, no annotations. Verified 0 mismatches against golem.html. |
@@ -36,4 +36,4 @@ GOLEM_GAME/
 | `tools/chamber_diff.py` | Diff/validation CLI tool with 6 modes: --diff, --validate, --strict, --export-ascii, --diff-proposal, --check-flow |
 | `docs/Project-Constraints.md` | Stack, runtime constraints, design constraints, assumptions. |
 | `docs/Project-Reference.md` | Architecture overview, physics tuning rationale, push-block system design, tile system. |
-| `docs/Visual-Story-Design.md` | tholem.ai theming spec, narrative tables, palette/contrast guardrails, Phases 1–10b checklist, code map. |
+|| `docs/Visual-Story-Design.md` | tholem.ai theming spec, narrative tables, palette/contrast guardrails, Phases 1–10b checklist, code map. Phases 1–5 (+4.5) implemented. |

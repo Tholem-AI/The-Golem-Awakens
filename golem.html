@@ -5,7 +5,7 @@
 <title>The Golem Awakens</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+body { background: #0A0A12; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
 canvas { display: block; image-rendering: pixelated; }
 </style>
 </head>
@@ -36,8 +36,8 @@ const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
 const PUSH_SPEED = 1.25;           // px/frame — half of walk speed 2.5
 
 /* ── Particle color constants (extracted from call sites) ── */
-const DASH_EXEC_PARTICLE_COLOR = 'rgba(220,120,255,0.4)';
-const DASH_CHARGE_PARTICLE_COLOR = 'rgba(180,80,255,0.4)';
+const DASH_EXEC_PARTICLE_COLOR = 'rgba(92,179,175,0.50)';
+const DASH_CHARGE_PARTICLE_COLOR = 'rgba(71,158,153,0.35)';
 
 /* ── Player physics constants ── */
 const H_ACCEL_GROUND = 0.05;    // horizontal acceleration on ground
@@ -60,25 +60,30 @@ const PB_STOP_THRESH = 0.1;     // push block velocity threshold to stop
 
 /* ── Particle color constants ── */
 const PARTICLE_COLORS = {
-  jump: '#8a7d6b',
-  doubleJump: '#d4a84b',
-  glyph: '#f0d060',
-  dashBurst: 'rgba(220,120,255,0.6)',
-  death: '#8a7d6b',
+  jump: '#A89B8E',
+  doubleJump: '#C5B391',
+  glyph: '#C5B391',
+  dashBurst: 'rgba(92,179,175,0.6)',
+  death: '#A89B8E',
 };
+
+/* ── Font constants ── */
+const FONT_UI      = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONT_DISPLAY = 'italic 16px Georgia, "Times New Roman", serif';
+const FONT_HEBREW  = '18px "Segoe UI", "Arial Hebrew", "David", serif';
 
 /* ── Static UI arrays (hoisted from render, B2+B3) ── */
 const ABILITIES = [
   ['[1] Double Jump', 1], ['[2] Dash (Shift)', 2],
   ['[3] Push Blocks', 3], ['[4] Break Cracked', 4]
 ];
-const CHAMBER_NAMES = ['Awakening','The Library','The Hall of Echoes','The Weight of Wisdom','The Ibis Chamber'];
+const CHAMBER_NAMES = ['The First Breath','The Flowing Deep','The Spirit\'s Mirror','The Weight of Name','The Seal of Thoth'];
 const CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4'];
 const GLYPH_EFFECTS = [
-  { set: () => { P.maxJumps = 2; }, msg: "Knowledge lifts me." },
-  { set: () => { P.canDash = true; }, msg: "Speed courses through me." },
-  { set: () => { P.canPush = true; }, msg: "Strength returns." },
-  { set: () => { P.canBreak = true; }, msg: "Clay becomes Wisdom." },
+  { set: () => { P.maxJumps = 2; }, msg: "The First breathes life." },
+  { set: () => { P.canDash = true; }, msg: "The Waters flow through form." },
+  { set: () => { P.canPush = true; }, msg: "The Window opens within." },
+  { set: () => { P.canBreak = true; }, msg: "The Seal completes the Name." },
 ];
 
 /* ══════════════════════════════════════════════════
@@ -149,6 +154,7 @@ function killAndRespawn(msg, duration) {
   if(animState!=='idle') return; // prevent double-trigger
   cancelDash();
   animState='dying'; animFrame=0;
+  totalDeaths++;
   showMessage(msg, duration);
 }
 
@@ -430,9 +436,12 @@ const P = {
   onGround:false, jumps:0, maxJumps:1,
   canDash:false, dashing:false, dashTimer:0, dashDir:0, dashCooldown:0, dashPhase:false, dashCharge:0,
   canPush:false, canBreak:false,
-  facing:1, chamber:0, respawnX:0, respawnY:0,
+ facing:1, chamber:0, respawnX:0, respawnY:0,
   coyoteTime:0, jumpBuffer:0,
-  pushing:false
+  pushing:false,
+  landSquish:0,      // Phase 4.5: squash frame counter
+  turnLean:0,        // Phase 4.5: turn lean frame counter
+  lastFacing:1       // Phase 4.5: track facing for turn detection
 };
 
 /* ── Push block entities (array — supports multiple blocks) ── */
@@ -454,6 +463,13 @@ let _transitionTarget = -1;        // stores target chamber during async fade cy
 let animState = 'idle';            // 'idle' | 'dying' | 'respawning'
 let animFrame = 0;
 const ANIM_TOTAL_FRAMES = 90;      // 1.5s at 60fps
+
+/* ── Ending sequence state (Phase 5) ── */
+let endingBeat = 0;
+let endingFrame = 0;
+let endingStartTime = Date.now();
+let gameStartTime = Date.now();
+let totalDeaths = 0;
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -655,7 +671,7 @@ function checkPushBlockCrush(){
     /* Side brush — not enough horizontal overlap to count as "on" the golem */
     const overlapW = Math.min(P.x + P.w, pb.x + pb.w) - Math.max(P.x, pb.x);
     if(overlapW < 10) continue;
-    killAndRespawn("The weight crushes you...", 90);
+    killAndRespawn("Unformed clay breaks.", 90);
     return;
   }
 }
@@ -782,21 +798,21 @@ const Particles = (function(){
       pool.push({x,y,
         vx:(Math.random()-0.5)*8, vy:-Math.random()*5-2,
         life:25+Math.random()*20, maxLife:45,
-        color:['#c86040','#a04030','#d08060','#e0a070'][i%4],
+        color:['#42425C','#3A3A52','#5A5A72','#6A6A82'][i%4],
         size:3+Math.random()*4});
     /* Dust cloud — slow, diffuse */
     for(let i=0;i<10;i++)
       pool.push({x,y,
         vx:(Math.random()-0.5)*3, vy:-Math.random()*2,
         life:15+Math.random()*10, maxLife:25,
-        color:'rgba(200,160,100,0.5)',
+        color:'rgba(197,179,145,0.4)',
         size:2+Math.random()*2});
     /* Spark flash */
     for(let i=0;i<6;i++)
       pool.push({x,y,
         vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6,
         life:8+Math.random()*6, maxLife:14,
-        color:'#ffe0a0',
+        color:'#C5B391',
         size:1+Math.random()*2});
   }
 
@@ -897,7 +913,7 @@ function checkDoors(){
         }
       } else {
         if(portalLockMsg<=0){
-          showMessage("The seal demands Knowledge...", 70);
+          showMessage("Truth must be earned.", 70);
           portalLockMsg = 45;
         }
       }
@@ -934,11 +950,11 @@ function checkGlyphs(){
 
 function transitionEnding(){
   if(animState!=='idle') return;
+  endingBeat = 0;
+  endingFrame = 0;
+  endingStartTime = Date.now();
+  gameState='ending';
   screenFade=1; screenAlpha=0;
-  setTimeout(function(){
-    gameState='ending';
-    showMessage("The Ibis speaks: 'You were clay. Now you are Wisdom.'",99999);
-  },300);
 }
 
 /* ══════════════════════════════════════════════════
@@ -987,6 +1003,7 @@ function update(){
   let inputX = 0;
   if(inputLeft()) inputX=-1;
   if(inputRight()) inputX=1;
+  if(inputX!==0 && P.facing!==inputX && P.onGround){ P.turnLean=8; P.lastFacing=P.facing; }
   if(inputX!==0) P.facing=inputX;  /* facing always updates — allows aiming dash */
 
   if(!isCharging && !P.dashing){
@@ -1046,7 +1063,7 @@ function update(){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
       if(_getTile(cx,cy)===MAGICAL_WALL){
-        killAndRespawn("The barrier consumes you...", 90);
+        killAndRespawn("The boundary rejects the unfinished.", 90);
       }
     }
   }
@@ -1058,8 +1075,15 @@ function update(){
   }
   if(P.vy>TERMINAL_VEL) P.vy=TERMINAL_VEL;
 
-  /* ── Coyote time countdown ── */
-  if(P.coyoteTime>0) P.coyoteTime--;
+ /* ── Coyote time countdown ── */
+  const coyoteWasActive = P.coyoteTime > 0;
+  if(coyoteWasActive) P.coyoteTime--;
+  /* Coyote dust puff (Phase 4.5) */
+  if(coyoteWasActive && P.coyoteTime===0) Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2);
+
+  /* Airborne clay trail (Phase 4.5) */
+  if(!P.onGround && Math.floor(Date.now()/17)%4===0)
+    Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 1);
 
   /* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
@@ -1103,12 +1127,12 @@ function update(){
     const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h)/T);
     const colFn = P.dashPhase ? collidesDash : collides;
   if(colFn(gx1,gy1,gx2,gy2,P.chamber,prevY,P.y)){
-      if(P.vy>0){
+     if(P.vy>0){
         P.y=gy2*T-P.h;
         P.vy=0;
         land();
-        if(prevY+P.h < gy2*T - 4)
-          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
+        P.landSquish=10;
+        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
       } else if(P.vy<0){
         P.y=(gy1+1)*T;
         P.vy=0;
@@ -1123,6 +1147,7 @@ function update(){
          P.y = pb.y - P.h;
           P.vy = 0;
           land();
+          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
         }
       }
     }
@@ -1171,7 +1196,7 @@ function update(){
   /* ── Pit / out-of-bounds death ── */
 if(inPit() || P.y > chambers[P.chamber].h*T){
     cancelDash();
-    killAndRespawn("The void claims clay...", 90);
+    killAndRespawn("Clay returns to dust.", 90);
     resetPushBlock();
   }
 
@@ -1212,12 +1237,13 @@ function updateAnim(){
    10. RENDER
    ══════════════════════════════════════════════════ */
 const COLORS = {
-  bg:'#0d0d1a', wall:'#4a4035', wallTop:'#6b5d4f',
-  platform:'#5a4d3a', pit:'#000000', door:'#2a5a3a',
-  glyph:'#c8a84e', glyphGlow:'#f0d060',
-  cracked:'#8a5040',
-  golem:'#8a7d6b', golemDark:'#5a5040', golemEye:'#d4a84b',
- text:'#d4a84b', pushBlock:'#a08868', pushBlockTop:'#b8a080'
+  bg:'#12121F', wall:'#222233', wallTop:'#3A3A52',
+  wallCapstone:'rgba(197,179,145,0.60)',
+  platform:'#42425C', pit:'#060608',
+  glyph:'#C5B391', glyphGlow:'rgba(197,179,145,0.45)',
+  cracked:'#2E2840',
+  golem:'#A89B8E', golemDark:'#4A4858', golemEye:'#C5B391',
+  text:'#E8E8F0', pushBlock:'#2E2E44', pushBlockTop:'#454560'
 };
 
 /* ── Death/Respawn animation renderer ── */
@@ -1282,14 +1308,14 @@ function renderDeathRespawnAnimation(ox, oy){
 
     // Spawn reforming particles during first 60%
     if(animFrame % 3 === 0 && progress < 0.6){
-      Particles.spawn(P.respawnX + P.w/2 + (Math.random()-0.5)*30,
-                       P.respawnY + P.h + (Math.random()-0.5)*20, '#8a7d6b', 2);
+     Particles.spawn(P.respawnX + P.w/2 + (Math.random()-0.5)*30,
+                       P.respawnY + P.h + (Math.random()-0.5)*20, PARTICLE_COLORS.death, 2);
     }
 
     // Clay pile at feet — shrinks as golem forms
     const pileSize = (1 - easeOutCubic(Math.min(1, p * 2))) * 15;
     if(pileSize > 1){
-      X.fillStyle = 'rgba(138,125,107,' + (1 - p) * 0.5 + ')';
+      X.fillStyle = 'rgba(168,155,142,' + (1 - p) * 0.5 + ')';
       X.beginPath();
       X.ellipse(cx, oy + P.respawnY + P.h + 2, pileSize + 5, pileSize/2, 0, 0, Math.PI*2);
       X.fill();
@@ -1354,7 +1380,7 @@ function renderDeathRespawnAnimation(ox, oy){
     // Final activation flash (90-100%)
     if(flash > 0){
       X.globalAlpha = flash * 0.3;
-      X.fillStyle = '#f0d060';
+      X.fillStyle = '#C5B391';
       X.beginPath();
       X.arc(cx, cy, (pw + ph) * flash * 0.8, 0, Math.PI*2);
       X.fill();
@@ -1373,8 +1399,35 @@ function render(){
   X.fillStyle=COLORS.bg; X.fillRect(0,0,W,H);
 
   /* Subtle starfield (B4: precomputed per chamber) */
-  X.fillStyle='#1a1a2e';
-  for(const [sx,sy] of c.stars) X.fillRect(sx,sy,1,1);
+  X.fillStyle='#151525';
+ for(const [sx,sy] of c.stars) X.fillRect(sx,sy,1,1);
+
+  /* Background runes — subtle geometric overlay (Phase 3) */
+  X.save();
+  const runeAlpha = 0.05 + (ch * 0.008); // progressive sanctity: 0.05 -> 0.089
+  X.globalAlpha = runeAlpha;
+  X.lineWidth = 1;
+  // Champagne diamond
+  X.strokeStyle = '#C5B391';
+  X.beginPath();
+  const rOff = (ch * 47) % 60 + 30;
+  X.moveTo(rOff, rOff); X.lineTo(rOff+T*2, H/2); X.lineTo(rOff, H-rOff);
+  X.lineTo(W-rOff, H-rOff); X.lineTo(W-rOff-T*2, H/2); X.lineTo(rOff, rOff);
+  X.stroke();
+  // Seafoam arc
+  X.strokeStyle = '#5CB3AF';
+  X.beginPath();
+  X.arc(W/2 + (ch*23)%100 - 50, H/2 + (ch*37)%80 - 40, 80 + ch*10, 0, Math.PI*2);
+  X.stroke();
+  // Muted Gold corner accents
+  X.strokeStyle = '#A18F75';
+  X.beginPath();
+  X.moveTo(10,10); X.lineTo(30,10); X.lineTo(30,12); X.lineTo(12,12); X.lineTo(12,30); X.lineTo(10,30); X.closePath();
+  X.moveTo(W-10,10); X.lineTo(W-30,10); X.lineTo(W-30,12); X.lineTo(W-12,12); X.lineTo(W-12,30); X.lineTo(W-10,30); X.closePath();
+  X.moveTo(10,H-10); X.lineTo(30,H-10); X.lineTo(30,H-12); X.lineTo(12,H-12); X.lineTo(12,H-30); X.lineTo(10,H-30); X.closePath();
+  X.moveTo(W-10,H-10); X.lineTo(W-30,H-10); X.lineTo(W-30,H-12); X.lineTo(W-12,H-12); X.lineTo(W-12,H-30); X.lineTo(W-10,H-30); X.closePath();
+  X.stroke();
+  X.restore();
 
   /* Center chamber on screen */
   const ox=Math.floor((W-c.w*T)/2);
@@ -1387,99 +1440,99 @@ function render(){
     if(t===WALL){
       X.fillStyle=COLORS.wall; X.fillRect(px,py,T,T);
       X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
-      X.fillStyle='#3a302a';
+      X.fillStyle=COLORS.wallCapstone; X.fillRect(px,py+3,T,1);
+      X.fillStyle='rgba(58,58,82,0.3)';
       if((x+y)%2===0) X.fillRect(px+T/2-1,py,2,T);
       X.fillRect(px,py+T/2-1,T,2);
-      let adjPit=false;
-      if(y+1<c.h && c.tiles[y+1]&&c.tiles[y+1][x]===PIT) adjPit=true;
-      if(y-1>=0 && c.tiles[y-1]&&c.tiles[y-1][x]===PIT) adjPit=true;
-      if(x-1>=0 && c.tiles[y]&&c.tiles[y][x-1]===PIT) adjPit=true;
-      if(x+1<c.w && c.tiles[y]&&c.tiles[y][x+1]===PIT) adjPit=true;
-      if(adjPit){
-        X.fillStyle='rgba(180,40,20,0.25)';
-        X.fillRect(px,py,T,T);
-      }
 
     } else if(t===PLATFORM){
       X.fillStyle=COLORS.platform; X.fillRect(px+2,py+2,T-4,3);
-      X.fillStyle='#6a5d4a'; X.fillRect(px+2,py+1,T-4,2);
+      X.fillStyle=COLORS.wallTop; X.fillRect(px+2,py+1,T-4,2);
 
     } else if(t===PIT){
       X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
       const glow=Math.sin(now/600+x)*0.3+0.3;
-      X.fillStyle='rgba(180,40,20,'+glow+')'; X.fillRect(px,py,T,2);
-      X.fillStyle='rgba(100,20,10,'+glow*0.5+')'; X.fillRect(px,py,T,4);
-      X.fillStyle='rgba(180,40,20,0.15)'; X.fillRect(px,py,2,T);
-      X.fillRect(px+T-2,py,2,T);
+      X.fillStyle='rgba(92,179,175,'+(glow*0.28)+')'; X.fillRect(px,py,T,1);
+      X.fillStyle='rgba(71,158,153,'+(glow*0.15)+')'; X.fillRect(px,py,T,3);
+      // Hairline cracks
+      X.strokeStyle='rgba(197,179,145,'+(glow*0.15)+')'; X.lineWidth=1;
+      X.beginPath(); X.moveTo(px+5,py); X.lineTo(px+T/2,py+T/3); X.lineTo(px+T-5,py); X.stroke();
 
     } else if(t===DOOR_D){
       const locked = !glyphCollected;
       if(locked){
-        const pulse=Math.sin(now/500)*0.2+0.7;
-        X.fillStyle='#1a1520'; X.fillRect(px,py,T,T);
-        X.fillStyle='rgba(160,30,30,'+pulse+')'; X.fillRect(px+1,py+1,T-2,T-2);
-        X.fillStyle='rgba(120,20,20,'+(pulse*0.6)+')'; X.fillRect(px+3,py+3,T-6,T-6);
-        X.fillStyle='rgba(180,50,50,'+(pulse*0.5)+')'; X.fillRect(px+5,py+5,T-10,T-10);
-        X.strokeStyle='#6a2020'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
-        X.fillStyle='#8a3030'; X.font='16px serif';
-        X.textAlign='center'; X.textBaseline='middle';
-        X.fillText('\u{1F512}', px+T/2, py+T/2);
+      const pulse=Math.sin(now/500)*0.15+0.7;
+      X.fillStyle='#12121F'; X.fillRect(px,py,T,T);
+      X.strokeStyle='rgba(197,179,145,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
+      X.fillStyle='rgba(197,179,145,'+(pulse*0.4)+')'; X.fillRect(px+4,py+4,T-8,T-8);
+      X.fillStyle='rgba(197,179,145,'+pulse+')'; X.font=FONT_DISPLAY;
+      X.textAlign='center'; X.textBaseline='middle';
+      X.fillText('Sealed', px+T/2, py+T/2);
       } else {
-        const pulse=Math.sin(now/500)*0.15+0.85;
-        X.fillStyle='rgba(42,90,58,'+pulse+')'; X.fillRect(px,py,T,T);
-        X.fillStyle='#3a7a4a'; X.fillRect(px+1,py+1,T-2,T-2);
-        X.fillStyle='#5aaa6a'; X.fillRect(px+3,py+3,T-6,T-6);
-        X.fillStyle='rgba(90,170,106,0.5)'; X.fillRect(px+5,py+5,T-10,T-10);
-        X.fillStyle='#fff'; X.font='14px serif';
-        X.textAlign='center'; X.textBaseline='middle';
-        X.fillText('\u279C', px+T/2, py+T/2);
+      const pulse=Math.sin(now/500)*0.15+0.7;
+      X.fillStyle='rgba(92,179,175,'+(pulse*0.25)+')'; X.fillRect(px,py,T,T);
+      X.strokeStyle='rgba(92,179,175,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
+      X.fillStyle='rgba(92,179,175,'+pulse+')'; X.font=FONT_DISPLAY;
+      X.textAlign='center'; X.textBaseline='middle';
+      X.fillText('Open', px+T/2, py+T/2);
       }
 
     } else if(t===END_PORTAL){
       const pulse=Math.sin(now/400)*0.2+0.8;
       const pulse2=Math.sin(now/300)*0.3+0.5;
-      X.fillStyle='rgba(20,10,40,'+pulse+')'; X.fillRect(px,py,T,T);
-      X.fillStyle='rgba(180,140,60,'+pulse+')'; X.fillRect(px+1,py+1,T-2,T-2);
-      X.fillStyle='rgba(240,200,100,'+pulse2+')'; X.fillRect(px+3,py+3,T-6,T-6);
-      X.fillStyle='rgba(255,240,200,'+(pulse*0.6)+')'; X.fillRect(px+5,py+5,T-10,T-10);
-      X.fillStyle='rgba(255,255,255,'+(pulse*0.4)+')'; X.fillRect(px+8,py+8,T-16,T-16);
-      X.strokeStyle='rgba(240,200,100,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+1,py+1,T-2,T-2);
-      X.fillStyle='#fff'; X.font='14px serif';
+      X.fillStyle='rgba(5,150,105,'+(pulse*0.15)+')'; X.fillRect(px,py,T,T);
+      X.fillStyle='rgba(5,150,105,'+(pulse*0.4)+')'; X.fillRect(px+1,py+1,T-2,T-2);
+      X.fillStyle='rgba(5,150,105,'+(pulse2*0.6)+')'; X.fillRect(px+3,py+3,T-6,T-6);
+      X.fillStyle='rgba(5,150,105,'+(pulse*0.8)+')'; X.fillRect(px+5,py+5,T-10,T-10);
+      X.fillStyle='rgba(100,255,200,'+(pulse*0.3)+')'; X.fillRect(px+8,py+8,T-16,T-16);
+      X.strokeStyle='rgba(5,150,105,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+1,py+1,T-2,T-2);
+      X.fillStyle='rgba(100,255,200,'+(pulse*0.6)+')'; X.font='14px serif';
       X.textAlign='center'; X.textBaseline='middle';
       X.fillText('\u2605', px+T/2, py+T/2);
 
     } else if(t===GLYPH){
-      const bob=Math.sin(now/400)*3;
-      const pulse=Math.sin(now/300)*0.3+0.7;
-      X.fillStyle='rgba(200,168,78,'+(pulse*0.3)+')';
-      X.beginPath(); X.arc(px+T/2,py+T/2+bob,T,0,Math.PI*2); X.fill();
-      X.fillStyle=COLORS.glyphGlow;
-      X.fillRect(px+12,py+4+bob,8,20); X.fillRect(px+8,py+10+bob,16,8);
-      X.fillStyle=COLORS.glyph;
-      X.fillRect(px+13,py+5+bob,6,16); X.fillRect(px+10,py+12+bob,12,4);
+      const pulse=Math.sin(now/400+x*0.5+y*0.3)*0.3+0.7;
+      // Diamond halo
+      X.strokeStyle='rgba(197,179,145,'+(pulse*0.5)+')'; X.lineWidth=1;
+      X.beginPath();
+      X.moveTo(px+T/2,py+4); X.lineTo(px+T-4,py+T/2);
+      X.lineTo(px+T/2,py+T-4); X.lineTo(px+4,py+T/2);
+      X.closePath(); X.stroke();
+      // Glow behind letter
+      X.fillStyle='rgba(197,179,145,'+(pulse*0.25)+')';
+      X.beginPath();
+      X.moveTo(px+T/2,py+8); X.lineTo(px+T-8,py+T/2);
+      X.lineTo(px+T/2,py+T-8); X.lineTo(px+8,py+T/2);
+      X.closePath(); X.fill();
+      // Hebrew letter
+      const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
+      const gIdx = (x + y * 25) % 4; // deterministic per position
+      X.fillStyle='rgba(197,179,145,'+pulse+')';
+      X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      X.fillText(hebrewLetters[gIdx], px+T/2, py+T/2+1);
 
     } else if(t===CRACKED){
       X.fillStyle=COLORS.cracked; X.fillRect(px,py,T,T);
       X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
-      X.strokeStyle='#2a1010'; X.lineWidth=2;
+      X.strokeStyle='rgba(197,179,145,0.4)'; X.lineWidth=2;
       X.beginPath();
       X.moveTo(px+4,py+4); X.lineTo(px+T/2,py+T/2);
       X.lineTo(px+T-4,py+6);
       X.moveTo(px+T/2,py+T/2); X.lineTo(px+8,py+T-4);
       X.stroke();
-      if(P.canBreak){ X.fillStyle='rgba(255,100,50,0.2)'; X.fillRect(px,py,T,T); }
+      if(P.canBreak){ X.fillStyle='rgba(197,179,145,0.15)'; X.fillRect(px,py,T,T); }
 
     } else if(t===MAGICAL_WALL){
       const pulse=Math.sin(now/300+x*0.7+y*0.5)*0.3+0.5;
       const phaseAlpha = P.dashPhase ? 0.2 : 0.6;
-      X.fillStyle='rgba(60,20,80,'+phaseAlpha+')'; X.fillRect(px,py,T,T);
-      X.strokeStyle='rgba(180,80,255,'+(pulse*phaseAlpha)+')'; X.lineWidth=2;
+      X.fillStyle='rgba(92,179,175,'+(phaseAlpha*0.30)+')'; X.fillRect(px,py,T,T);
+      X.strokeStyle='rgba(71,158,153,'+(pulse*phaseAlpha)+')'; X.lineWidth=2;
       X.strokeRect(px+3,py+3,T-6,T-6);
-      X.fillStyle='rgba(220,120,255,'+(pulse*phaseAlpha*0.7)+')';
+      X.fillStyle='rgba(71,158,153,'+(pulse*phaseAlpha)+')';
       X.fillRect(px+10,py+6,12,20); X.fillRect(px+6,py+12,20,8);
       for(let i=0;i<3;i++){
         const sparkY=(now/200+i*11)%T;
-        X.fillStyle='rgba(255,200,255,'+(pulse*0.5)+')';
+        X.fillStyle='rgba(92,179,175,'+(pulse*0.5)+')';
         X.fillRect(px+8+i*7, sparkY, 2, 2);
       }
     }
@@ -1489,16 +1542,16 @@ function render(){
   for(const pb of PBlocks){
     if(!pb.active) continue;
     const bpx=ox+pb.x, bpy=oy+pb.y;
-    X.fillStyle=pb.inSlot ? '#7a6a58' : COLORS.pushBlock;
+    X.fillStyle=pb.inSlot ? '#2E2E44' : COLORS.pushBlock;
     X.fillRect(bpx,bpy,pb.w,pb.h);
-    X.fillStyle=pb.inSlot ? '#8a7a68' : COLORS.pushBlockTop;
+    X.fillStyle=pb.inSlot ? '#454560' : COLORS.pushBlockTop;
     X.fillRect(bpx+1,bpy+1,pb.w-2,3);
-    X.fillStyle='#6a5a4a';
+    X.fillStyle='#454560';
     X.fillRect(bpx+1,bpy+pb.h-4,pb.w-2,3);
     /* Hint glow only when pushable (not in slot) */
     if(P.canPush && !pb.inSlot){
       const hintPulse=Math.sin(now/400)*0.2+0.3;
-      X.fillStyle='rgba(212,168,75,'+hintPulse+')';
+      X.fillStyle='rgba(92,179,175,'+hintPulse+')';
       X.fillRect(bpx+3,bpy+3,pb.w-6,pb.h-6);
     }
   }
@@ -1527,13 +1580,13 @@ function render(){
       const pulse = Math.sin(now / 150) * 0.5 + 0.5;
       const outerRadius = radius + 3 + pulse * 3;
       /* Outer pulse ring */
-      X.strokeStyle = 'rgba(200,140,255,' + (0.15 + pulse * 0.25) + ')';
+      X.strokeStyle = 'rgba(92,179,175,' + (0.15 + pulse * 0.25) + ')';
       X.lineWidth = 2;
       X.beginPath();
       X.arc(cx, cy, outerRadius, 0, Math.PI * 2);
       X.stroke();
       /* Inner steady ring — brighter at max */
-      X.strokeStyle = 'rgba(200,140,255,' + (0.5 + pulse * 0.2) + ')';
+      X.strokeStyle = 'rgba(92,179,175,' + (0.5 + pulse * 0.2) + ')';
       X.lineWidth = 2;
       X.beginPath();
       X.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -1541,13 +1594,13 @@ function render(){
     } else {
       /* Charging — ring grows proportionally */
       const alpha = 0.25 + chargeRatio * 0.35;
-      X.strokeStyle = 'rgba(180,120,255,' + alpha + ')';
+      X.strokeStyle = 'rgba(92,179,175,' + alpha + ')';
       X.lineWidth = 1.5;
       X.beginPath();
       X.arc(cx, cy, radius, 0, Math.PI * 2);
       X.stroke();
       /* Subtle fill to give a soft glow */
-      X.fillStyle = 'rgba(160,100,240,' + (alpha * 0.12) + ')';
+      X.fillStyle = 'rgba(71,158,153,' + (alpha * 0.12) + ')';
       X.beginPath();
       X.arc(cx, cy, radius, 0, Math.PI * 2);
       X.fill();
@@ -1560,7 +1613,7 @@ function render(){
   if(animState==='dying'||animState==='respawning'){
     renderDeathRespawnAnimation(ox, oy);
   } else {
-  let pw=P.w, ph=P.h, poffX=0, poffY=0;
+ let pw=P.w, ph=P.h, poffX=0, poffY=0, headOffY=0;
   const fallingFast = P.vy > 3;
   if(P.pushing){
     // Push animation: forward-leaning squash (narrower, slightly compressed)
@@ -1573,14 +1626,21 @@ function render(){
   else if(P.onGround && Math.abs(P.vx)>1){ pw=P.w+3; ph=P.h-2; poffY=2; }
   else if(fallingFast){ pw=P.w-2; ph=P.h+6; poffY=-2; }
 
+  /* Idle head sway (Phase 4.5) */
+  if(P.vx===0 && P.onGround) headOffY=Math.sin(now/800)*0.5;
+  /* Land squish (Phase 4.5) */
+  if(P.landSquish>0){ ph+=3; pw-=2; P.landSquish--; }
+  /* Turn lean (Phase 4.5) */
+  if(P.turnLean>0){ poffX+=P.facing*(P.turnLean/8)*2; P.turnLean--; }
+
   const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
-  X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
+ X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
   X.fillStyle=COLORS.golem;
   X.fillRect(px+2,py+4,pw-4,ph-4);
-  X.fillRect(px+4,py,pw-8,10);
+  X.fillRect(px+4,py+headOffY,pw-8,10);
   X.fillStyle=COLORS.golemEye;
-  X.fillRect(P.facing>0?px+14:px+6, py+3, 4, 3);
+  X.fillRect(P.facing>0?px+14:px+6, py+3+headOffY, 4, 3);
   X.fillStyle=COLORS.golemDark;
   X.fillRect(px+3,py+ph-4,7,4); X.fillRect(px+pw-10,py+ph-4,7,4);
   X.fillStyle=COLORS.golem;
@@ -1589,22 +1649,27 @@ function render(){
   /* Push effort: arms press into block */
   if(P.pushing){
     const effortPulse = Math.sin(now/150)*0.15+0.3;
-    X.fillStyle='rgba(212,168,75,'+effortPulse+')';
+    X.fillStyle='rgba(197,179,145,'+effortPulse+')';
     // Arm/shoulder lines toward push direction
     const armX = P.facing > 0 ? px+pw-2 : px-3;
     X.fillRect(armX, py+8, 5, 3);
     X.fillRect(armX+(P.facing>0?2:-2), py+12, 5, 3);
   }
 
-  /* Glyph lines on body */
-  X.fillStyle='rgba(212,168,75,'+(0.3+Math.sin(now/500)*0.15)+')';
-  for(let i=0;i<glyphsCollected;i++){
-    X.fillRect(px+8, py+12+i*4, 8, 1);
+  /* Hebrew letters on body */
+  if(glyphsCollected>0){
+    const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
+    X.font='10px "Segoe UI", "Arial Hebrew", "David", serif';
+    X.textAlign='center'; X.textBaseline='middle';
+    for(let g=0;g<glyphsCollected;g++){
+      X.fillStyle='rgba(197,179,145,'+(0.6+g*0.1)+')';
+      X.fillText(hebrewLetters[g], px+pw/2, py+8+g*7);
+    }
   }
 
   /* Falling motion lines */
   if(fallingFast){
-    X.fillStyle='rgba(200,168,78,0.4)';
+    X.fillStyle='rgba(168,155,142,0.3)';
     const drop = (now/100)%12;
     for(let i=0;i<3;i++){
       const ly = py + ph + 4 + drop + i*8;
@@ -1614,28 +1679,28 @@ function render(){
   }
 
   /* ── HUD ── */
-  X.fillStyle=COLORS.text; X.font='14px monospace'; X.textAlign='left';
+ X.fillStyle=COLORS.text; X.font=FONT_UI; X.textAlign='left';
   X.fillText('Glyphs: '+glyphsCollected+'/4', 10, 20);
 
-  X.font='11px monospace';
+ X.font=FONT_UI;
   let ay=36;
   for(const [name,req] of ABILITIES){
-    X.fillStyle=glyphsCollected>=req?'#8f8':'#444';
+    X.fillStyle=glyphsCollected>=req?'#5CB3AF':'#A18F75';
     X.fillText(name, 10, ay); ay+=14;
  }
 
  /* Chamber name + portal status */
-  X.fillStyle='#665a4a'; X.font='12px monospace'; X.textAlign='center';
+  X.fillStyle='#A18F75'; X.font=FONT_DISPLAY; X.textAlign='center';
   if(c.flowId){
     const fi = CHAMBER_FLOW.indexOf(c.flowId);
     if(fi >= 0 && fi < CHAMBER_FLOW.length - 1){
       /* Main chambers with portal (not last in flow) */
       const locked = !glyphCollected;
-      const portalStatus = locked ? ' \u{1F512} Portal Sealed' : ' Portal Open \u2714';
+      const portalStatus = locked ? ' \u2014 Sealed' : ' \u2014 Open';
       X.fillText(CHAMBER_NAMES[fi] + portalStatus, W/2, H-10);
     } else if(fi === CHAMBER_FLOW.length - 1){
       /* Last chamber in flow — The Ibis Chamber */
-      X.fillText(CHAMBER_NAMES[fi] + ' \u2605 Path of Wisdom', W/2, H-10);
+      X.fillText(CHAMBER_NAMES[fi] + ' \u2726 Path of Wisdom', W/2, H-10);
     }
   } else {
     /* Test chamber (no flowId) */
@@ -1648,8 +1713,8 @@ function render(){
     let alpha=1;
     if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_FRAMES;
     else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_FRAMES);
-    X.fillStyle='rgba(212,168,75,'+alpha+')';
-    X.font='bold 18px serif'; X.textAlign='center';
+   X.fillStyle='rgba(232,232,240,'+alpha+')';
+    X.font=FONT_DISPLAY; X.textAlign='center';
     X.shadowColor='rgba(0,0,0,0.7)'; X.shadowBlur=4;
     X.fillText(m.text, W/2, H/2-60);
     X.shadowBlur=0;
@@ -1661,20 +1726,153 @@ function render(){
     X.fillRect(0,0,W,H);
   }
 
-  /* ── Ending screen ── */
+ /* ── Ending screen — animated sequence (Phase 5) ── */
   if(gameState==='ending'){
-    X.fillStyle='rgba(0,0,0,0.92)'; X.fillRect(0,0,W,H);
-    X.fillStyle=COLORS.text; X.font='bold 28px serif'; X.textAlign='center';
-    X.fillText('Awakening of the Golem', W/2, H/2-50);
-    X.strokeStyle=COLORS.text; X.lineWidth=1;
-    X.beginPath(); X.moveTo(W/2-100,H/2-35); X.lineTo(W/2+100,H/2-35); X.stroke();
-    X.font='italic 20px serif';
-    X.fillText("The Ibis speaks:", W/2, H/2-5);
-    X.font='italic 22px serif';
-    X.fillText("'You were clay. Now you are Wisdom.'", W/2, H/2+25);
-    X.fillStyle='#555'; X.font='14px monospace';
-   X.fillText('Refresh to play again', W/2, H/2+70);
-    cancelAnimationFrame(animFrameId);
+    // Update screen fade
+    if(screenFade>0){
+      screenAlpha=Math.min(screenAlpha+0.03,1);
+      if(screenAlpha>=1) screenFade=0;
+    }
+
+    // Beat progression (60fps = 60 frames per second)
+    endingFrame++;
+    const elapsed = endingFrame / 60; // seconds
+    if(endingFrame < 120) endingBeat = 1;
+    else if(endingFrame < 240) endingBeat = 2;
+    else if(endingFrame < 360) endingBeat = 3;
+    else if(endingFrame < 480) endingBeat = 4;
+    else if(endingFrame < 540) endingBeat = 5;
+    else endingBeat = 6;
+
+    // Background fade
+    const fadeAlpha = Math.min(endingFrame/60, 0.95);
+    X.fillStyle='rgba(10,10,18,'+fadeAlpha+')';
+    X.fillRect(0,0,W,H);
+
+    // Draw starfield dimly
+    X.fillStyle='rgba(21,21,37,0.5)';
+    for(const [sx,sy] of c.stars) X.fillRect(sx,sy,1,1);
+
+    // Center position for golem
+    const cx = W/2, cy = H/2 - 20;
+
+    // Hero golem render (simplified, centered)
+    const golemAlpha = Math.min(endingFrame/40, 1);
+    X.globalAlpha = golemAlpha;
+    // Body
+    X.fillStyle=COLORS.golem;
+    X.fillRect(cx-12,cy-16,24,32);
+    X.fillRect(cx-8,cy-24,16,12);
+    // Eye
+    X.fillStyle=COLORS.golemEye;
+    X.fillRect(cx+2,cy-20,4,3);
+    // Feet
+    X.fillStyle=COLORS.golemDark;
+    X.fillRect(cx-10,cy+16,8,4); X.fillRect(cx+2,cy+16,8,4);
+
+    const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
+
+    if(endingBeat >= 1){
+      // Beat 1: Letters pulse around golem
+      const pulse = Math.sin(now/300)*0.3+0.7;
+      X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      for(let i=0;i<4;i++){
+        const angle = (i/4)*Math.PI*2 + now/1000;
+        const radius = 50 + Math.sin(now/500+i)*5;
+        const lx = cx + Math.cos(angle)*radius;
+        const ly = cy + Math.sin(angle)*radius;
+        X.fillStyle='rgba(197,179,145,'+(pulse*0.6)+')';
+        X.fillText(hebrewLetters[i], lx, ly);
+      }
+    }
+
+    if(endingBeat >= 2){
+      // Beat 2: Letters orbit faster, message appears
+      const orbitSpeed = (endingFrame-120)/120; // 0-1 over beat 2
+      X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      for(let i=0;i<4;i++){
+        const angle = (i/4)*Math.PI*2 + orbitSpeed*Math.PI*2;
+        const radius = 60 - orbitSpeed*15;
+        const lx = cx + Math.cos(angle)*radius;
+        const ly = cy-30 + Math.sin(angle)*radius*0.5;
+        X.fillStyle='rgba(197,179,145,'+(0.5+orbitSpeed*0.5)+')';
+        X.fillText(hebrewLetters[i], lx, ly);
+      }
+      // Message
+      if(endingFrame > 140){
+        const msgAlpha = Math.min((endingFrame-140)/30, 1);
+        X.fillStyle='rgba(232,232,240,'+msgAlpha+')';
+        X.font=FONT_DISPLAY;
+        X.fillText('The four letters converge.', W/2, H-60);
+      }
+    }
+
+    if(endingBeat >= 3){
+      // Beat 3: Letters converge to forehead as EMET
+      const converge = Math.min((endingFrame-240)/120, 1);
+      const emetAlpha = converge;
+      X.font='24px "Segoe UI", "Arial Hebrew", "David", serif';
+      X.textAlign='center'; X.textBaseline='middle';
+      // Champagne flash during convergence
+      if(converge < 0.5){
+        const flash = Math.sin(converge*Math.PI*4)*0.3;
+        X.fillStyle='rgba(197,179,145,'+flash+')';
+        X.fillRect(0,0,W,H);
+      }
+      // EMET on forehead
+      X.fillStyle='rgba(197,179,145,'+(emetAlpha*0.9)+')';
+      X.fillText('\u05e2\u05de\u05ea', cx, cy-30);
+      // Message
+      const msgAlpha = Math.min((endingFrame-260)/40, 1);
+      X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
+      X.font=FONT_DISPLAY;
+      X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-60);
+    }
+
+    if(endingBeat >= 4){
+      // Beat 4: EMET glows, final text
+      const glow = Math.sin(now/400)*0.3+0.7;
+      X.font='28px "Segoe UI", "Arial Hebrew", "David", serif';
+      X.textAlign='center'; X.textBaseline='middle';
+      X.shadowColor='rgba(197,179,145,'+glow+')';
+      X.shadowBlur=10;
+      X.fillStyle='rgba(197,179,145,'+(0.7+glow*0.3)+')';
+      X.fillText('\u05e2\u05de\u05ea', cx, cy-30);
+      X.shadowBlur=0;
+      // Ibis text
+      if(endingFrame > 380){
+        const textAlpha = Math.min((endingFrame-380)/50, 1);
+        X.fillStyle='rgba(232,232,240,'+textAlpha+')';
+        X.font=FONT_DISPLAY;
+        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-80);
+        X.fillText('You walked the path of initiation. You are the Golem of Truth.', W/2, H-55);
+      }
+    }
+
+    if(endingBeat >= 5){
+      // Beat 5: Stats
+      const timeElapsed = Math.round((Date.now()-gameStartTime)/1000);
+      const statsAlpha = Math.min((endingFrame-480)/30, 1);
+      X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
+      X.font=FONT_UI;
+      X.fillText('Time: '+timeElapsed+'s  |  Deaths: '+totalDeaths, W/2, H-30);
+    }
+
+    if(endingBeat >= 6){
+      // Beat 6: Play Again button
+      const btnAlpha = Math.min((endingFrame-540)/30, 1);
+      const btnX = W/2-60, btnY = H/2+40, btnW = 120, btnH = 28;
+      X.strokeStyle='rgba(92,179,175,'+btnAlpha+')';
+      X.lineWidth=2;
+      X.strokeRect(btnX,btnY,btnW,btnH);
+      X.fillStyle='rgba(92,179,175,'+btnAlpha+')';
+      X.font=FONT_UI;
+      X.textAlign='center'; X.textBaseline='middle';
+      X.fillText('Play Again', W/2, btnY+btnH/2);
+      X.globalAlpha=1;
+    }
+
+    X.globalAlpha = 1;
   }
 }
 
@@ -1706,10 +1904,27 @@ P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy;
 P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
 P.coyoteTime=0; P.onGround=false;
 animState='respawning'; animFrame=0;
-showMessage('I awaken...', 150);
+showMessage('The clay remembers it was shaped.', 150);
+
+/* ── Ending sequence: set game start time ── */
+gameStartTime = Date.now();
+
+/* ── Play Again click handler (Phase 5 ending) ── */
+C.addEventListener('click', function(e){
+  if(gameState==='ending' && endingBeat>=6){
+    const rect = C.getBoundingClientRect();
+    const clickX = (e.clientX - rect.left) * (W / rect.width);
+    const clickY = (e.clientY - rect.top) * (H / rect.height);
+    const btnX = W/2-60, btnY = H/2+40, btnW = 120, btnH = 28;
+    if(clickX >= btnX && clickX <= btnX+btnW &&
+       clickY >= btnY && clickY <= btnY+btnH){
+      location.reload();
+    }
+  }
+});
 
 /* ── Game loop ── */
-function loop(){ update(); render(); if(gameState!=='ending'){ animFrameId = requestAnimationFrame(loop); } }
+function loop(){ update(); render(); animFrameId = requestAnimationFrame(loop); }
 animFrameId = requestAnimationFrame(loop);
 
 </script>

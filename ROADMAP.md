@@ -237,16 +237,20 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 - [x] Chamber 4 — The Ibis Chamber: Replaced placeholder with complex grid (134 walls, 22 pits, 8 platforms, 8 MAGICAL_WALLs, 8 CRACKED, 3 PUSH_SPAWN, 1 END_PORTAL). Spawn at (2,4), END_PORTAL at (1,1), row 13 AIR override. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified, reviewer approved.
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
-### Visual and Story Overhaul (Not Started)
+### Visual and Story Overhaul (Phases 1–5 Complete)
 
-See `docs/Visual-Story-Design.md` for phase breakdown (Phases 1–5 immediate theming; 6–10 future).
+See `docs/Visual-Story-Design.md` for phase breakdown (6–10 future).
 
-- [ ] Phase 1: tholem.ai palette, fonts, messages, chamber names, HUD/particle colors (~38 lines)
-- [ ] Phase 2–3: Hebrew glyph tiles, golem body letters, background runes (~30 lines)
-- [ ] Phase 4–4.5: Tile geometry refinements, golem movement polish (~70 lines)
-- [ ] Phase 5: Animated multi-phase ending screen (~80–100 lines)
+- [x] Phase 1: tholem.ai palette (Midnight/Ink/Temple Stone), FONT_* constants, PARTICLE_COLORS, DASH colors, CHAMBER_NAMES themed, GLYPH_EFFECTS messages themed, death/respawn messages themed, awakening message, HUD fonts/colors, portal status text (em dash), message colors, starfield, body CSS, particle shatter colors, death/respawn colors (~38 lines)
+- [x] Phase 2: Hebrew letter glyph tiles (diamond Champagne halo + Aleph/Mem/He/Tav), golem body Hebrew letters (~15 lines)
+- [x] Phase 3: Background runes — 5–9% opacity geometric overlay (Champagne diamond, Seafoam arc, Muted Gold corner accents), progressive sanctity (~15 lines)
+- [x] Phase 4: Tile geometry refinements — WALL bevel+capstone trim, PLATFORM chamfered, PIT obsidian+teal rim+champagne cracks, DOOR_D Midnight/Champagne locked & Seafoam open, END_PORTAL Emerald glow, CRACKED Champagne fractures, MAGICAL_WALL Seafoam/Teal, push block altar stone, dash charge Seafoam, player effort/falling colors (~45 lines)
+- [x] Phase 4.5: Movement polish — idle head sway, land squish (8-12f), turn lean (6-8f), airborne clay trail, coyote dust puff, landing dust extended to ground (~25 lines)
+- [x] Phase 5: Animated 6-beat ending — hero golem, Hebrew letter orbit, EMET convergence on forehead, Champagne flash, Ibis narration, stats (time+deaths), Play Again button with click handler (~90 lines)
 - [ ] Phases 6–8: Title menu, pause menu, extended HUD bar (future — see ROADMAP pause/responsive items)
 - [ ] Phases 10a–10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
+
+**Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
 
 ### Touch/Mobile Controls (Not Started)
 
@@ -307,7 +311,7 @@ Prepare the project for public repository sharing.
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
 ||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 ||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-||| Visual/story overhaul | Not Started | `docs/Visual-Story-Design.md` Phases 1–5 |
+|||| Visual/story overhaul | Complete | Phases 1–5 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending. RIPER reviewed. ~215 lines added.
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |
 || Open source release prep | Not Started | — |
