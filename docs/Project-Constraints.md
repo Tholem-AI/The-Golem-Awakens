@@ -20,7 +20,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-||| File size | ~2012 lines, ~74 KB | Single-file constraint (Phases 1-5.5 theming added ~298 lines, visual refinements removed ~23 lines) |
+||| File size | ~2149 lines, ~88 KB | Single-file constraint (Phases 1-8 theming, HUD, title/pause menus added ~430 lines net) |
 || Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
 || Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
 || Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |

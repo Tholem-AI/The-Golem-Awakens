@@ -11,12 +11,56 @@ body { background: #0A0A12; display: flex; justify-content: center; align-items:
 #hud-bar .hud-left, #hud-bar .hud-right { display: flex; align-items: center; gap: 12px; }
 #hud-bar .hud-left { direction: rtl; }
 canvas { display: block; image-rendering: pixelated; }
+#game-shell { position: relative; width: 800px; height: 480px; }
+#title-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
+#title-screen .ts-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(26,26,48,1) 0%, rgba(10,10,18,1) 70%); }
+#title-screen .ts-content { position: relative; z-index: 2; text-align: center; display: flex; flex-direction: column; align-items: center; }
+#title-screen .ts-logo { margin-bottom: 16px; }
+#title-screen .ts-logo svg { width: 420px; height: auto; }
+#title-screen .ts-title { font-family: Georgia,'Times New Roman',serif; font-size: 38px; color: #C5B391; letter-spacing: 6px; text-shadow: 0 0 20px rgba(197,179,145,0.4), 0 0 40px rgba(197,179,145,0.15), 0 2px 4px rgba(0,0,0,0.7); margin-bottom: 40px; }
+#title-screen .ts-credits { font-family: Georgia,'Times New Roman',serif; font-size: 14px; color: #6B6B80; margin-bottom: 48px; }
+#title-screen .ts-credits a { color: #C5B391; text-decoration: none; }
+#title-screen .ts-credits a:hover { color: #5CB3AF; }
+#title-screen .ts-credits svg { vertical-align: middle; margin-left: 4px; }
+#title-screen .ts-start { font-family: Georgia,'Times New Roman',serif; font-size: 16px; color: rgba(232,232,240,0.6); letter-spacing: 3px; animation: tsPulse 2.5s ease-in-out infinite; }
+@keyframes tsPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+#pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5; cursor: default; }
+#pause-overlay .po-bg { position: absolute; inset: 0; background: rgba(10,10,18,0.88); z-index: -1; }
+#pause-overlay .po-title { font-family: Georgia,'Times New Roman',serif; font-size: 32px; color: #C5B391; letter-spacing: 8px; text-shadow: 0 0 15px rgba(197,179,145,0.3); margin-bottom: 36px; }
+#pause-overlay button { font-family: Georgia,'Times New Roman',serif; font-size: 16px; color: #C5B391; background: none; border: 1px solid rgba(197,179,145,0.35); padding: 8px 24px; margin: 6px 0; cursor: pointer; letter-spacing: 2px; transition: background 0.2s, color 0.2s; width: 240px; }
+#pause-overlay button:hover { background: rgba(197,179,145,0.1); color: #5CB3AF; border-color: rgba(92,179,175,0.4); }
 </style>
 </head>
 <body>
 <div id="game-wrapper">
   <div id="hud-bar"><div class="hud-left"></div><div class="hud-right"></div></div>
-  <canvas id="c"></canvas>
+  <div id="game-shell">
+    <canvas id="c"></canvas>
+    <div id="title-screen">
+      <div class="ts-bg"></div>
+      <div class="ts-content">
+        <div class="ts-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711 224" width="711" height="224">
+          <path fill="#c5b391" d="M600 67h14c7.187 14.645 14.055 29.41 20.688 44.312l1.082 2.424q1.532 3.436 3.054 6.877l1.784 4.025C642 128 642 128 643 132h2l.825-2.615c1.147-3.304 2.486-6.386 3.976-9.549l1.694-3.613 1.817-3.848 2.819-6 1.937-4.123c2.255-4.798 4.489-9.606 6.713-14.42l1.8-3.894q1.711-3.707 3.418-7.415l1.552-3.355 1.364-2.96C674 68 674 68 675 67c1.998-.099 4-.13 6-.125l3.312-.008C687 67 687 67 688 68c.113 2.13.157 4.264.174 6.396l.04 4.159.016 2.239q.025 3.47.065 6.939.105 9.868.182 19.736.049 6.032.12 12.063c.024 2.267.037 4.534.05 6.801.213 17.949.213 17.949 4.665 23.605 2.54 1.948 4.649 3.107 7.688 4.062v3c-7.758.465-13.557.635-20-4-4.454-5.968-6.074-11.773-6.205-19.157l-.061-3.033-.05-3.236-.063-3.341q-.098-5.272-.183-10.545l-.131-7.159Q674.147 97.765 674 89c-2.267 2.947-3.93 5.733-5.461 9.129l-1.41 3.099-1.504 3.334a1464 1464 0 0 1-13.687 29.188l-1.66 3.44A1128 1128 0 0 1 643 152l-4 1c-5.39-11.495-10.684-23.033-15.945-34.588l-3.02-6.623-1.769-3.884C614.884 100.584 611.433 93.296 608 86l-1 66-6 1c-1.777-1.777-1.12-4.152-1.124-6.519l.01-2.397v-2.513c.001-2.754.009-5.508.016-8.262l.005-5.713q.006-7.534.024-15.067.014-7.681.02-15.363.017-15.083.049-30.166m-327.203 5.086c10.764 9.33 16.16 20.024 17.406 34.23.279 13.35-4.102 24.959-11.39 35.997-8.601 8.218-18.274 12.669-30.125 13.125-11.264-.32-20.527-3.645-28.688-11.438l-1.93-1.81c-9.141-9.434-11.416-21.51-11.453-34.2C206.84 95.076 210.75 84.198 220 75c15.099-12.938 36.426-15.124 52.797-2.914m-42.61 6.664c-8.88 11.14-10.094 23.358-9.187 37.25 1.398 9.905 3.71 19.709 11 27 5.878 4.26 11.694 6.413 19 6 8.475-2.368 14.634-6.265 19-14 6.278-13.482 7.403-30.062 3.03-44.391-3.435-8.694-7.632-14.274-16.03-18.61-9.918-3.305-19.767-.848-26.812 6.75M99 67c2.562-.081 5.125-.139 7.688-.188l4.324-.105c4.95.364 7.499 1.592 10.738 5.293 2.354 3.767 2.429 7.072 2.566 11.418l.116 3.423.13 4.347L125 105h37V67h13q.262 7.593.5 15.188l.074 2.337c.285 9.266.465 18.521.422 27.791l-.011 2.534q-.03 6.075-.11 12.151l-.035 4.452-.051 3.911c.519 8.944.519 8.944 3.211 11.636q3.993.554 8 1v5c-2.562.054-5.125.093-7.688.125l-4.324.07c-4.535-.222-7.548-.704-10.738-4.007-2.561-4.482-2.369-9.183-2.348-14.239l.008-3.653.028-4.608L162 112h-38l.035 8.715.02 8.32q.008 2.9.02 5.8c.013 2.772.018 5.545.023 8.317l.015 2.636c0 2.071-.051 4.142-.113 6.212-1 1-1 1-3.469 1.133l-3.031-.008-3.031.008C112 153 112 153 111 152a160 160 0 0 1-.189-6.811l-.051-4.431-.02-2.385q-.033-3.689-.077-7.377a9112 9112 0 0 1-.163-15.684q-.088-9.06-.192-18.12-.038-3.628-.068-7.255l-.051-4.479-.038-3.934c-.14-3.261-.534-6.322-1.151-9.524l-10-1z"/>
+          <path fill="#5cb3af" d="M379.402 50.176c6.188 1.418 10.862 3.457 14.66 8.637C397.624 70.922 392.32 82.36 387 93c-7.189 6.054-16.064 7.958-25 10-33.74 7.74-33.74 7.74-39 13-.125 3.125-.125 3.125 0 6 4.615 3.024 8.632 5.524 14 7v2c-8.579-.351-14.77-1.633-20.938-8.062-4.254-6.06-3.719-12.786-3.062-19.938 2.57-9.227 6.95-16.905 15.453-21.793 12.07-5.72 25.75-7.942 38.72-10.708l3.924-.85 3.516-.745c3.65-.974 6.953-2.341 10.387-3.904l1-7c-4.208-1.748-8.488-3.196-12.813-4.625l-4.082-1.351L366 51c4.531-3.02 8.192-1.67 13.402-.824"/>
+          <path fill="#c5b391" d="M500 67q12.68-.112 25.36-.165 4.314-.022 8.628-.061c4.133-.037 8.266-.054 12.399-.067l3.899-.047 3.639-.001 3.196-.02c4.121.517 6.726 2.251 9.68 5.095 1.712 3.235 1.487 5.886 1.387 9.516l-.083 3.828L568 88h-5l-1.465-6.738C561 79 561 79 560 76c-7.003-2.675-14.033-2.221-21.438-2.125L525 74v30l35 1v6a112 112 0 0 1-13.809 1.316l-3.392.116-4.237.13L525 113l-1 33 13-.375 4.051-.103c17.153-.568 17.153-.568 23.949-7.522 1.875-3.312 1.875-3.312 3-6l4 1c-1.74 7.762-3.744 13.659-10 19-3.23.807-5.421 1.126-8.661 1.129l-2.78.01-2.977-.006-3.07.003q-3.206 0-6.412-.006-4.928-.005-9.856.007l-6.224-.004-2.996.006c-6.909-.024-6.909-.024-8.024-1.139-.119-2.34-.167-4.684-.189-7.027l-.026-2.227q-.026-2.402-.045-4.804-.033-3.802-.077-7.603-.088-8.076-.163-16.151-.088-9.342-.192-18.682-.038-3.745-.068-7.491-.024-2.3-.051-4.6l-.038-4.055C510 76 510 76 509 72l-9-1z"/>
+          <path fill="#5cb3af" d="M368 110c7.222-.681 12.816 1.204 19 5 3.006 3.066 3.628 5.768 4 10-.453 7.902-2.351 15.51-7 22-6.449 5.394-13.964 6.96-22 9q-4.452 1.129-8.9 2.27-3.05.78-6.104 1.536c-11.797 2.995-11.797 2.995-15.996 7.194-.125 3.125-.125 3.125 0 6 4.304 1.748 8.648 3.377 13 5v1c-6.855.438-13.167-.53-18.438-5.125-3.681-6.774-4.07-12.762-2.453-20.164 2.278-6.933 6.772-12.778 12.891-16.711 9.568-4.391 19.88-6.537 30.116-8.769 6.182-1.391 11.349-3.13 16.884-6.231l-1-4-14-7z"/>
+          <path fill="#c5b391" d="M24.443 66.66h3.882l4.164.047 4.283.012q5.62.022 11.24.075c3.827.03 7.655.044 11.483.06Q70.748 66.902 82 67v6l-27 1-1 79H41l-.031-2.955q-.147-13.752-.308-27.503-.084-7.071-.158-14.142-.072-6.818-.156-13.635-.031-2.607-.056-5.214-.037-3.639-.085-7.278l-.047-4.192c-.16-3.08-.16-3.08-1.16-4.08-7.525-.637-14.146-.265-21 3-1.936 2.874-1.936 2.874-3 6l-1.186 2.874L13 88h-3a387 387 0 0 1-.187-6.188l-.106-3.48c.327-3.72.98-5.427 3.293-8.332 3.903-2.86 6.644-3.369 11.443-3.34M347 10l4.125.875c5.556 1.143 11.134 1.78 16.773 2.367 3.62.885 4.734 1.947 7.102 4.758 3.062 3.419 5.628 4.867 9.938 6.438 5.34 2.109 9.398 4.233 12.062 9.562.136 3.005.043 5.991 0 9l-1.758-1.242C386.816 35.946 380.145 34.624 370 34l-2-4c-9.252-2.666-9.252-2.666-13-1-2.313 2.956-3.814 5.441-5 9l1.391 1.836C357.751 48.522 361.304 56.217 362 67q-2.654.757-5.312 1.5l-2.989.844C351 70 351 70 348 70l-.297-1.906c-1.846-10.569-6.512-20.293-15.156-26.996A119 119 0 0 0 326 37v-2c5.75-5 5.75-5 8-5l2-4a97 97 0 0 1 3.375-3.75c3.445-3.826 5.532-7.561 7.625-12.25m70 57a657 657 0 0 1 8.188-.188l2.33-.076c4.692-.06 7.979.004 11.482 3.264 3.912 7.618 3.383 15.249 3.293 23.656q-.009 2.27-.013 4.54c-.011 3.958-.041 7.917-.074 11.876-.031 4.049-.045 8.098-.06 12.147-.03 7.927-.089 15.854-.146 23.781h45l1 3-2 4q-11.936.037-23.871.055-4.063.008-8.128.02-5.827.018-11.653.023l-3.697.015-3.397.001-3.008.006C430 153 430 153 429 152a126 126 0 0 1-.189-6.058l-.051-3.937-.041-4.302-.085-6.671q-.072-5.891-.134-11.782-.075-6.958-.163-13.916-.055-4.335-.097-8.672c-.103-8.258-.488-16.436-1.24-24.662l-10-1zm-58 95q-.181 6.61-.372 13.22-.095 3.322-.185 6.643c-.792 27.184-.792 27.184-2.443 32.137h-3q-.43-8.966-.854-17.932l-.292-6.093a8608 8608 0 0 1-.416-8.787l-.133-2.726A283 283 0 0 1 351 163c5.75-2.125 5.75-2.125 8-1m0-54 2 2-1 16-10 2q-.502-3.687-1-7.375l-.562-4.148C348 113 348 113 348 111z"/>
+          <path fill="#5cb3af" d="M372.938 169.563c3.673.525 4.764 1.61 7.062 4.438-.497 4.468-.69 5.689-4 9-3.687.186-3.687.186-7 0-1.562-1.626-1.562-1.626-3-4 .21-5.13 1.346-8.606 6.938-9.439M330.563 55.25C334 56 334 56 336 58c.312 3.438.312 3.438 0 7-3 3-3 3-5.938 3.438-3.673-.525-4.765-1.61-7.062-4.438l1-7c3-2 3-2 6.562-1.75"/>
+          </svg>
+        </div>
+        <div class="ts-title">THE GOLEM AWAKENS</div>
+        <div class="ts-credits">made by: <a href="https://tholem.ai" target="_blank" id="tholem-link">THOLEM</a></div>
+        <div class="ts-start">PRESS ANY KEY TO BEGIN</div>
+      </div>
+    </div>
+    <div id="pause-overlay">
+      <div class="po-bg"></div>
+      <div class="po-title">PAUSED</div>
+      <button id="btn-resume">RESUME</button>
+      <button id="btn-menu">RETURN TO MAIN MENU</button>
+    </div>
+  </div>
 </div>
 <script>
 
@@ -453,7 +497,7 @@ const PBlocks = [];
 /* ── Game state globals ── */
 let glyphsCollected = 0;
 let collectedGlyphs = [];          // per-chamber boolean
-let gameState = 'playing';
+let gameState = 'title';
 let animFrameId;                // rAF handle for cancel on game end
 let screenFade = 0;                // 0=off, 1=fade-in, -1=fade-out
 let screenAlpha = 0;
@@ -471,7 +515,7 @@ const ANIM_TOTAL_FRAMES = 90;      // 1.5s at 60fps
 let endingBeat = 0;
 let endingFrame = 0;
 let endingStartTime = Date.now();
-let gameStartTime = Date.now();
+let gameStartTime;
 let totalDeaths = 0;
 let frozenElapsedSec = 0;       // frozen game time for ending stats
 
@@ -484,7 +528,15 @@ let prevKeys = {};
 
 document.addEventListener('keydown', function(e){
   keys[e.code] = true;
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight'].includes(e.code))
+
+  /* Title screen: any key starts the game */
+  if(gameState==='title'){
+    startGame();
+    e.preventDefault();
+    return;
+  }
+
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyP'].includes(e.code))
     e.preventDefault();
 });
 document.addEventListener('keyup', function(e){ keys[e.code] = false; });
@@ -966,7 +1018,14 @@ function transitionEnding(){
    9. UPDATE — physics, input, game logic
    ══════════════════════════════════════════════════ */
 function update(){
-  if(gameState==='ending') return;
+  /* Pause toggle (P-key, fresh edge detection) — checked before guards */
+  if((gameState==='playing'||gameState==='paused') && fresh('KeyP')){
+    togglePause();
+  }
+
+  if(gameState==='title'){ syncPrevKeys(); return; }
+  if(gameState==='paused'){ syncPrevKeys(); return; }
+  if(gameState==='ending'){ syncPrevKeys(); return; }
   if(animState!=='idle'){ updateAnim(); return; }
   _c=chambers[P.chamber]; // cache chamber ref for fast getTile
 
@@ -1758,20 +1817,24 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
  /* ── HUD bar (DOM) ── */
   const hudBar = document.getElementById('hud-bar');
-  const hudLeft = hudBar.querySelector('.hud-left');
-  const hudRight = hudBar.querySelector('.hud-right');
-  const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
-  const glyphSlots = hebrewHUD.map((l,i) =>
-    collectedGlyphs[i]
-      ? '<span style="color:#C5B391;font-family:\'Segoe UI\',\'Arial Hebrew\',\'David\',serif;font-size:16px;">' + l + '</span>'
-      : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
-  ).join(' &nbsp; ');
-  hudLeft.innerHTML = glyphSlots;
-  const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+  if(gameState==='title'){
+    hudBar.style.display = 'none';
+  } else {
+    const hudLeft = hudBar.querySelector('.hud-left');
+    const hudRight = hudBar.querySelector('.hud-right');
+    const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
+    const glyphSlots = hebrewHUD.map((l,i) =>
+      collectedGlyphs[i]
+        ? '<span style="color:#C5B391;font-family:\'Segoe UI\',\'Arial Hebrew\',\'David\',serif;font-size:16px;">' + l + '</span>'
+        : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
+    ).join(' &nbsp; ');
+    hudLeft.innerHTML = glyphSlots;
+    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
   const timeStr = mins + ':' + String(secs).padStart(2, '0');
-  hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span>';
+    hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span>';
+  }
 
  /* Chamber name + portal status */
   X.fillStyle='#A18F75'; X.font=FONT_DISPLAY; X.textAlign='center';
@@ -1982,6 +2045,57 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
   }
 }
 
+/* ── Title & Pause Menu functions (Phase 6/7) ── */
+
+const titleScreen = document.getElementById('title-screen');
+const pauseOverlay = document.getElementById('pause-overlay');
+
+function startGame(){
+  gameState = 'playing';
+  gameStartTime = Date.now();
+  titleScreen.style.display = 'none';
+  pauseOverlay.style.display = 'none';
+  document.getElementById('hud-bar').style.display = 'flex';
+}
+
+function togglePause(){
+  if(gameState === 'playing'){
+    gameState = 'paused';
+    pauseOverlay.style.display = 'flex';
+  } else if(gameState === 'paused'){
+    gameState = 'playing';
+    pauseOverlay.style.display = 'none';
+  }
+}
+
+function returnToMenu(){
+  gameState = 'title';
+  pauseOverlay.style.display = 'none';
+  titleScreen.style.display = 'flex';
+  document.getElementById('hud-bar').style.display = 'none';
+  gameStartTime = undefined;
+  totalDeaths = 0;
+}
+
+/* Resume button */
+document.getElementById('btn-resume').addEventListener('click', function(){
+  if(gameState === 'paused') togglePause();
+});
+
+/* Return to menu button */
+document.getElementById('btn-menu').addEventListener('click', function(){
+  if(gameState === 'paused') returnToMenu();
+});
+
+/* Title screen: click to start (anywhere on overlay) */
+titleScreen.addEventListener('click', function(e){
+  if(gameState === 'title'){
+    /* Prevent clicks on the THOLEM link from starting the game */
+    if(e.target.id === 'tholem-link' || e.target.closest('#tholem-link')) return;
+    startGame();
+  }
+});
+
 /* ══════════════════════════════════════════════════
    11. INIT & GAME LOOP
    ══════════════════════════════════════════════════ */
@@ -2011,9 +2125,6 @@ P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
 P.coyoteTime=0; P.onGround=false;
 animState='respawning'; animFrame=0;
 showMessage('The clay remembers it was shaped.', 150);
-
-/* ── Ending sequence: set game start time ── */
-gameStartTime = Date.now();
 
 /* ── Play Again click handler (Phase 5 ending) ── */
 C.addEventListener('click', function(e){
