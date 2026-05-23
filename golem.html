@@ -84,7 +84,7 @@ const CHAMBER_NAMES = ['The First Breath','The Flowing Deep','The Spirit\'s Mirr
 const CHAMBER_FLOW = ['ch0','ch1','ch2','ch3','ch4'];
 const GLYPH_EFFECTS = [
   { set: () => { P.maxJumps = 2; }, msg: "The First breathes life.", name: "Double Jump" },
-  { set: () => { P.canDash = true; }, msg: "The Waters flow through form.", name: "Dash" },
+  { set: () => { P.canDash = true; }, msg: "The Waters flow through form.", name: "Dash (Shift)" },
   { set: () => { P.canPush = true; }, msg: "The Window opens within.", name: "Push" },
   { set: () => { P.canBreak = true; }, msg: "The Seal completes the Name.", name: "Break" },
 ];
@@ -1798,7 +1798,7 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_FRAMES;
     else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_FRAMES);
    X.fillStyle='rgba(232,232,240,'+alpha+')';
-    X.font=FONT_DISPLAY; X.textAlign='center';
+    X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
     X.shadowColor='rgba(0,0,0,0.7)'; X.shadowBlur=4;
     X.fillText(m.text, W/2, H/2-60);
     X.shadowBlur=0;
