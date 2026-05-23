@@ -1142,8 +1142,11 @@ function update(){
         if(prevY + P.h <= pb.y + 2){
          P.y = pb.y - P.h;
           P.vy = 0;
+          const justLanded = prevY + P.h < pb.y;
           land();
-          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
+          if(justLanded){
+            Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
+          }
         }
       }
     }
