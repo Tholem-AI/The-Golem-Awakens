@@ -219,9 +219,12 @@
 
 ### Sound Effects (Not Started)
 
-- [ ] Add Web Audio API engine with oscillator-based sounds (no external files)
+See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
+
+- [ ] Phase 10a: Web Audio API SFX engine with oscillator-based sounds (no external files)
 - [ ] Sounds for: jump, double jump, dash charge, dash release, glyph collect, pushblock push, cracked break, death
-- [ ] Estimated ~50 lines for engine + call sites
+- [ ] Phase 10b: Temple ambient drone + optional melodic loop (~60 lines additional)
+- [ ] Estimated ~60 lines for 10a engine + call sites; ~120 lines total with 10b
 
 ### Chamber Redesign (Not Started)
 
@@ -236,8 +239,14 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 
 ### Visual and Story Overhaul (Not Started)
 
-- [ ] Rework visual theme to match thome.ai website design/theming
-- [ ] General visual polish: colors, particle effects, HUD aesthetics, golem sprite detail
+See `docs/Visual-Story-Design.md` for phase breakdown (Phases 1–5 immediate theming; 6–10 future).
+
+- [ ] Phase 1: tholem.ai palette, fonts, messages, chamber names, HUD/particle colors (~38 lines)
+- [ ] Phase 2–3: Hebrew glyph tiles, golem body letters, background runes (~30 lines)
+- [ ] Phase 4–4.5: Tile geometry refinements, golem movement polish (~70 lines)
+- [ ] Phase 5: Animated multi-phase ending screen (~80–100 lines)
+- [ ] Phases 6–8: Title menu, pause menu, extended HUD bar (future — see ROADMAP pause/responsive items)
+- [ ] Phases 10a–10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
 
 ### Touch/Mobile Controls (Not Started)
 
@@ -298,7 +307,7 @@ Prepare the project for public repository sharing.
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
 ||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 ||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-||| Visual/story overhaul | Not Started | — |
+||| Visual/story overhaul | Not Started | `docs/Visual-Story-Design.md` Phases 1–5 |
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |
 || Open source release prep | Not Started | — |

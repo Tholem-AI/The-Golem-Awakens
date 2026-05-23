@@ -18,6 +18,7 @@ GOLEM_GAME/
     File-Structure-Reference.md   # This file
     Project-Constraints.md        # Inferred stack and constraints
     Project-Reference.md          # Architecture, physics tuning rationale, push-block design
+    Visual-Story-Design.md        # Visual/narrative theming spec and implementation phases
 ```
 
 ## Key files
@@ -35,3 +36,4 @@ GOLEM_GAME/
 | `tools/chamber_diff.py` | Diff/validation CLI tool with 6 modes: --diff, --validate, --strict, --export-ascii, --diff-proposal, --check-flow |
 | `docs/Project-Constraints.md` | Stack, runtime constraints, design constraints, assumptions. |
 | `docs/Project-Reference.md` | Architecture overview, physics tuning rationale, push-block system design, tile system. |
+| `docs/Visual-Story-Design.md` | tholem.ai theming spec, narrative tables, palette/contrast guardrails, Phases 1–10b checklist, code map. |
