@@ -2,7 +2,7 @@
 
 Context spec for the visual and narrative overhaul of [`golem.html`](../golem.html). All changes are polish and theming only — no gameplay mechanics, chamber layouts, or tile behavior.
 
-**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1–5 (+ 4.5) **implemented and reviewed**. Future Phases 6–10 **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
+**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-5 (+ 4.5, +5.5) **implemented and reviewed**. Future Phases 6-10 **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
 
 ---
 
@@ -220,18 +220,22 @@ Per-tile render goals in Section 10 — no new data structures:
 
 | Tile/entity | Refinement |
 |-------------|------------|
-| WALL | Beveled top + 1px capstone trim |
-| PLATFORM | Chamfered narrow ledge (preserve hitbox) |
-| PIT | Obsidian fill + teal rim + champagne hairline cracks |
-| CRACKED | Bevel + X-pattern fractures + gold breakable glow |
-| DOOR_D | Recessed panel; gold border locked / Seafoam open |
-| MAGICAL_WALL | Seafoam veil + Teal Deep hex pulse |
+| WALL | Beveled top + 1px capstone trim + corner highlight `rgba(197,179,145,0.12)` |
+| PLATFORM | Chamfered edges via path drawing (2px triangle cuts at each end) |
+| PIT | Obsidian fill + teal rim on all 4 edges + champagne hairline cracks |
+| CRACKED | Bevel top + corner highlight + full X-pattern fractures + edge glow when breakable |
+| DOOR_D | Recessed panel; seal icon locked / Seafoam chevron open; rounded rect border |
+| MAGICAL_WALL | Seafoam veil + Cosmic Purple hexagonal core `#7B68EE` + spark particles |
 | END_PORTAL | Emerald layered glow |
-| Golem | Rounded shoulders, defined feet |
-| Push block | Rounded corners; keep golden effort lines |
-| Dash charge | Angular Seafoam segments |
+| Golem | Rounded head top (4px arcTo), splayed trapezoid feet, idle sway 1px |
+| Push block | Rounded corners (4px arcTo); golden effort lines with stroke + spark |
+| Dash charge | 8 angular segments (compass rose) via arc with start/end angles |
+| Particles | Shape distinction: circle (dash), diamond (jump/land/clay), star (glyph/double jump), square (default) |
+| Hebrew glyphs on golem | RTL bottom-up ordering, dark stroke outline for visibility |
 
-**Phase 4.5 movement polish (~20–30 lines, render-only):** idle head sway; land squish 8–12f; turn lean 6–8f; airborne clay trail; coyote dust puff; extend landing dust to ground landings.
+**Phase 4.5 movement polish (~20-30 lines, render-only):** idle head sway (1px amplitude); land squish 8-12f; turn lean 6-8f; airborne clay trail; coyote dust puff; extend landing dust to ground landings.
+
+**Phase 5.5 visual refinements (~103 lines, render-only):** beveled wall highlights, chamfered platform edges, 4-edge pit danger glow, rounded push blocks (arcTo), hexagonal magical wall core (Cosmic Purple `#7B68EE`), X-pattern cracked walls with edge glow, geometric door icons (seal/chevron replacing text), particle shape system (circle/diamond/star/square), dash compass rose (8 segments), golem rounded head (arcTo) + splayed trapezoid feet, push effort stroke lines + spark, glyph RTL ordering + dark stroke outline, ending sequence golem consistent with in-game design + text repositioning, pushblock particle spam fix (removed per-frame spawn).
 
 ### 4.8 Audio stub (Phase 10 — future)
 
@@ -326,6 +330,7 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **4** Geometry | §4.7 checklist | **Complete** | ~45 |
 | **4.5** Movement polish | §4.7 last bullet | **Complete** | ~25 |
 | **5** Ending | §5.3 animated sequence | **Complete** | ~90 |
+| **5.5** Visual refinements | §4.7 geometry refinements (beveled walls, chamfered platforms, danger pits, rounded push blocks, hex magical walls, X-crack walls, geometric door, particle shapes, compass rose dash, rounded golem, Hebrew RTL glyphs, ending cleanup) | **Complete** | ~103 |
 | **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | Future | ~60 |
 | **7** Pause menu | `P` key, skip update, overlay | Future | ~40 |
 | **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | Future | ~40 |

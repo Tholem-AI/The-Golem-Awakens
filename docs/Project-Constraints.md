@@ -20,7 +20,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-|| File size | ~1932 lines, ~70 KB | Single-file constraint (Phases 1-5 theming added ~215 lines) |
+|| File size | ~2035 lines, ~74 KB | Single-file constraint (Phases 1-5.5 theming added ~298 lines) |
 || Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
 || Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
 || Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |
@@ -37,7 +37,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Section 8 | Contains MSG_* message system constants + `showMessage()`, `calcDisplayDuration()` | Section 8 |
 | Section 9.5 | Animation state machine (death/respawn) — between Update and Render | Section 9.5 |
 | Function hoisting | All helpers use `function` declarations; call order within file does not matter | `golem.html` |
-| IIFE encapsulation | Particle system is an IIFE module (`Particles.shatter`, `.spawn`, `.update`) | Section 7 |
+| IIFE encapsulation | Particle system is an IIFE module (`Particles.shatter`, `.spawn(x,y,color,count,shape)`, `.update`). Shape param: 'square' (default), 'circle', 'diamond', 'star'. Render selects shape via path. | Section 7 |
 | Data structures | `PARTICLE_COLORS` object (Section 1), `GLYPH_EFFECTS` array (Section 1) | Section 1 |
 
 ## Design Constraints

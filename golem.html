@@ -733,8 +733,6 @@ function resolvePushBlockCollision(){
       if(dir > 0) P.x = Math.min(P.x, pb.x - P.w + 1);
       else        P.x = Math.max(P.x, pb.x + pb.w - 1);
 
-      Particles.spawn(P.x + P.w/2, P.y + P.h - 4, PARTICLE_COLORS.doubleJump, 2);
-
     } else if(P.canPush && movingToward && !P.onGround){
       // Requirement 5: no push while airborne — separate
       if(dir > 0) P.x = pb.x - P.w;
@@ -816,7 +814,7 @@ const Particles = (function(){
         size:1+Math.random()*2});
   }
 
-  function spawn(x,y,color,count){
+ function spawn(x,y,color,count,shape){
     for(let i=0;i<count;i++)
       pool.push({
         x, y,
@@ -825,7 +823,8 @@ const Particles = (function(){
         life:20+Math.random()*15,
         maxLife:35,
         color,
-        size:2+Math.random()*3
+        size:2+Math.random()*3,
+        shape: shape || 'square'
       });
   }
 
@@ -938,7 +937,7 @@ function checkGlyphs(){
       setTile(ch,gl.x,gl.y,AIR);
       collectedGlyphs[ch]=true;
       glyphsCollected++;
-      Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T, PARTICLE_COLORS.glyph, 15);
+      Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T, PARTICLE_COLORS.glyph, 15, 'star');
       const gi = glyphsCollected - 1;
       if(gi >= 0 && gi < GLYPH_EFFECTS.length){
         GLYPH_EFFECTS[gi].set();
@@ -1037,14 +1036,14 @@ function update(){
       P.vx = P.dashDir * dashSpeed;
       P.vy = 0;
 
-      Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashBurst, 6);
+      Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashBurst, 6, 'circle');
     } else {
       /* Still holding — accumulate charge */
       if(P.dashCharge < DASH_CHARGE_MAX){
         P.dashCharge++;
       }
       /* Charge particles */
-      Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_CHARGE_PARTICLE_COLOR, 2);
+      Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_CHARGE_PARTICLE_COLOR, 2, 'circle');
     }
   } else if(P.canDash && !P.dashing && P.dashCooldown<=0){
     /* Start charging on Shift press */
@@ -1058,7 +1057,7 @@ function update(){
     P.vx = P.dashDir * (P.vx !== 0 ? Math.abs(P.vx) : 10);
     P.vy = 0;
     P.dashTimer--;
-    Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_EXEC_PARTICLE_COLOR, 2);
+    Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_EXEC_PARTICLE_COLOR, 2, 'circle');
     if(P.dashTimer<=0){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
@@ -1079,11 +1078,11 @@ function update(){
   const coyoteWasActive = P.coyoteTime > 0;
   if(coyoteWasActive) P.coyoteTime--;
   /* Coyote dust puff (Phase 4.5) */
-  if(coyoteWasActive && P.coyoteTime===0) Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2);
+  if(coyoteWasActive && P.coyoteTime===0) Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
 
   /* Airborne clay trail (Phase 4.5) */
   if(!P.onGround && Math.floor(Date.now()/17)%4===0)
-    Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 1);
+    Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 1, 'diamond');
 
   /* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
@@ -1132,7 +1131,7 @@ function update(){
         P.vy=0;
         land();
         P.landSquish=10;
-        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
+        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4, 'diamond');
       } else if(P.vy<0){
         P.y=(gy1+1)*T;
         P.vy=0;
@@ -1147,7 +1146,7 @@ function update(){
          P.y = pb.y - P.h;
           P.vy = 0;
           land();
-          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4);
+          Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 4, 'diamond');
         }
       }
     }
@@ -1170,7 +1169,7 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5);
+  Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
   }
   else if(jumpPressed && P.jumps===0 && P.coyoteTime>0){
     P.vy = JUMP_VEL_1;
@@ -1178,13 +1177,13 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5);
+    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
   }
   else if(jumpPressed && P.jumps < P.maxJumps && P.jumps>0){
     P.vy = JUMP_VEL_2;
     P.jumps++;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8);
+    Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star');
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
     P.jumpBuffer = JUMP_BUFFER_FRAMES;
@@ -1437,44 +1436,57 @@ function render(){
   for(const s of c.solidTiles){
     const x=s.x, y=s.y, t=c.tiles[y][x], px=ox+x*T, py=oy+y*T;
 
-    if(t===WALL){
+   if(t===WALL){
       X.fillStyle=COLORS.wall; X.fillRect(px,py,T,T);
       X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
+      X.fillStyle='rgba(197,179,145,0.12)'; X.fillRect(px,py,1,3);
       X.fillStyle=COLORS.wallCapstone; X.fillRect(px,py+3,T,1);
       X.fillStyle='rgba(58,58,82,0.3)';
       if((x+y)%2===0) X.fillRect(px+T/2-1,py,2,T);
       X.fillRect(px,py+T/2-1,T,2);
 
-    } else if(t===PLATFORM){
-      X.fillStyle=COLORS.platform; X.fillRect(px+2,py+2,T-4,3);
-      X.fillStyle=COLORS.wallTop; X.fillRect(px+2,py+1,T-4,2);
+   } else if(t===PLATFORM){
+      X.fillStyle=COLORS.platform;
+      X.beginPath();
+      X.moveTo(px+2,py+2); X.lineTo(px+T-2,py+2);
+      X.lineTo(px+T,py+5); X.lineTo(px+2,py+5);
+      X.lineTo(px,py+2); X.closePath(); X.fill();
+      X.fillStyle=COLORS.wallTop;
+      X.beginPath();
+      X.moveTo(px+2,py+1); X.lineTo(px+T-2,py+1);
+      X.lineTo(px+T-2,py+2); X.lineTo(px+2,py+2);
+      X.closePath(); X.fill();
 
-    } else if(t===PIT){
+  } else if(t===PIT){
       X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
       const glow=Math.sin(now/600+x)*0.3+0.3;
-      X.fillStyle='rgba(92,179,175,'+(glow*0.28)+')'; X.fillRect(px,py,T,1);
+      X.fillStyle='rgba(92,179,175,'+(glow*0.28)+')';
+      X.fillRect(px,py,T,1); X.fillRect(px,py+T-1,T,1);
+      X.fillRect(px,py,1,T); X.fillRect(px+T-1,py,1,T);
       X.fillStyle='rgba(71,158,153,'+(glow*0.15)+')'; X.fillRect(px,py,T,3);
-      // Hairline cracks
       X.strokeStyle='rgba(197,179,145,'+(glow*0.15)+')'; X.lineWidth=1;
       X.beginPath(); X.moveTo(px+5,py); X.lineTo(px+T/2,py+T/3); X.lineTo(px+T-5,py); X.stroke();
 
-    } else if(t===DOOR_D){
+  } else if(t===DOOR_D){
       const locked = !glyphCollected;
+      const pulse=Math.sin(now/500)*0.15+0.7;
+      X.fillStyle=locked ? '#12121F' : 'rgba(92,179,175,'+(pulse*0.2)+')';
+      X.fillRect(px,py,T,T);
+      const borderColor = locked ? 'rgba(197,179,145,'+pulse+')' : 'rgba(92,179,175,'+pulse+')';
+      X.strokeStyle=borderColor; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
+      X.strokeStyle=locked ? 'rgba(197,179,145,'+(pulse*0.3)+')' : 'rgba(92,179,175,'+(pulse*0.3)+')';
+      X.lineWidth=1; X.strokeRect(px+5,py+5,T-10,T-10);
       if(locked){
-      const pulse=Math.sin(now/500)*0.15+0.7;
-      X.fillStyle='#12121F'; X.fillRect(px,py,T,T);
-      X.strokeStyle='rgba(197,179,145,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
-      X.fillStyle='rgba(197,179,145,'+(pulse*0.4)+')'; X.fillRect(px+4,py+4,T-8,T-8);
-      X.fillStyle='rgba(197,179,145,'+pulse+')'; X.font=FONT_DISPLAY;
-      X.textAlign='center'; X.textBaseline='middle';
-      X.fillText('Sealed', px+T/2, py+T/2);
+        X.strokeStyle=borderColor; X.lineWidth=1.5;
+        X.beginPath(); X.arc(px+T/2, py+T/2-2, 6, 0, Math.PI*2); X.stroke();
+        X.fillStyle=borderColor;
+        X.beginPath(); X.arc(px+T/2, py+T/2-2, 2, 0, Math.PI*2); X.fill();
+        X.fillRect(px+T/2-3, py+T/2+2, 6, 3);
       } else {
-      const pulse=Math.sin(now/500)*0.15+0.7;
-      X.fillStyle='rgba(92,179,175,'+(pulse*0.25)+')'; X.fillRect(px,py,T,T);
-      X.strokeStyle='rgba(92,179,175,'+pulse+')'; X.lineWidth=2; X.strokeRect(px+2,py+2,T-4,T-4);
-      X.fillStyle='rgba(92,179,175,'+pulse+')'; X.font=FONT_DISPLAY;
-      X.textAlign='center'; X.textBaseline='middle';
-      X.fillText('Open', px+T/2, py+T/2);
+        X.strokeStyle=borderColor; X.lineWidth=2; X.lineCap='round';
+        X.beginPath();
+        X.moveTo(px+12, py+T/2-6); X.lineTo(px+20, py+T/2); X.lineTo(px+12, py+T/2+6);
+        X.stroke(); X.lineCap='butt';
       }
 
     } else if(t===END_PORTAL){
@@ -1511,25 +1523,37 @@ function render(){
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
       X.fillText(hebrewLetters[gIdx], px+T/2, py+T/2+1);
 
-    } else if(t===CRACKED){
+  } else if(t===CRACKED){
       X.fillStyle=COLORS.cracked; X.fillRect(px,py,T,T);
       X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
+      X.fillStyle='rgba(197,179,145,0.12)'; X.fillRect(px,py,1,3);
       X.strokeStyle='rgba(197,179,145,0.4)'; X.lineWidth=2;
       X.beginPath();
-      X.moveTo(px+4,py+4); X.lineTo(px+T/2,py+T/2);
-      X.lineTo(px+T-4,py+6);
-      X.moveTo(px+T/2,py+T/2); X.lineTo(px+8,py+T-4);
+      X.moveTo(px+3,py+3); X.lineTo(px+T/2,py+T/2); X.lineTo(px+T-3,py+T-3);
+      X.moveTo(px+T-3,py+3); X.lineTo(px+T/2,py+T/2); X.lineTo(px+3,py+T-3);
       X.stroke();
-      if(P.canBreak){ X.fillStyle='rgba(197,179,145,0.15)'; X.fillRect(px,py,T,T); }
+      if(P.canBreak){
+        X.fillStyle='rgba(197,179,145,0.15)'; X.fillRect(px,py,T,T);
+        X.strokeStyle='rgba(197,179,145,0.25)'; X.lineWidth=1; X.strokeRect(px+1,py+1,T-2,T-2);
+      }
 
-    } else if(t===MAGICAL_WALL){
+ } else if(t===MAGICAL_WALL){
       const pulse=Math.sin(now/300+x*0.7+y*0.5)*0.3+0.5;
       const phaseAlpha = P.dashPhase ? 0.2 : 0.6;
       X.fillStyle='rgba(92,179,175,'+(phaseAlpha*0.30)+')'; X.fillRect(px,py,T,T);
       X.strokeStyle='rgba(71,158,153,'+(pulse*phaseAlpha)+')'; X.lineWidth=2;
       X.strokeRect(px+3,py+3,T-6,T-6);
-      X.fillStyle='rgba(71,158,153,'+(pulse*phaseAlpha)+')';
-      X.fillRect(px+10,py+6,12,20); X.fillRect(px+6,py+12,20,8);
+      const hexPulse = 0.4 + pulse * 0.6;
+      const hx = px + T/2, hy = py + T/2, hr = 8;
+      X.fillStyle='rgba(123,104,238,'+(hexPulse*0.6)+')';
+      X.strokeStyle='rgba(123,104,238,'+hexPulse+')'; X.lineWidth=1.5;
+      X.beginPath();
+      for(let i=0;i<6;i++){
+        const a = (i/6)*Math.PI*2 - Math.PI/6;
+        const hx2 = hx + Math.cos(a)*hr, hy2 = hy + Math.sin(a)*hr;
+        i===0 ? X.moveTo(hx2,hy2) : X.lineTo(hx2,hy2);
+      }
+      X.closePath(); X.fill(); X.stroke();
       for(let i=0;i<3;i++){
         const sparkY=(now/200+i*11)%T;
         X.fillStyle='rgba(92,179,175,'+(pulse*0.5)+')';
@@ -1541,69 +1565,99 @@ function render(){
  /* ── Push block entities ── */
   for(const pb of PBlocks){
     if(!pb.active) continue;
-    const bpx=ox+pb.x, bpy=oy+pb.y;
-    X.fillStyle=pb.inSlot ? '#2E2E44' : COLORS.pushBlock;
-    X.fillRect(bpx,bpy,pb.w,pb.h);
-    X.fillStyle=pb.inSlot ? '#454560' : COLORS.pushBlockTop;
-    X.fillRect(bpx+1,bpy+1,pb.w-2,3);
-    X.fillStyle='#454560';
-    X.fillRect(bpx+1,bpy+pb.h-4,pb.w-2,3);
-    /* Hint glow only when pushable (not in slot) */
+    const bpx=ox+pb.x, bpy=oy+pb.y, r=4;
+    const baseColor = pb.inSlot ? '#2E2E44' : COLORS.pushBlock;
+    const topColor = pb.inSlot ? '#454560' : COLORS.pushBlockTop;
+    X.fillStyle=baseColor;
+    X.beginPath();
+    X.moveTo(bpx+r, bpy); X.lineTo(bpx+pb.w-r, bpy);
+    X.arcTo(bpx+pb.w, bpy, bpx+pb.w, bpy+r, r);
+    X.lineTo(bpx+pb.w, bpy+pb.h-r);
+    X.arcTo(bpx+pb.w, bpy+pb.h, bpx+pb.w-r, bpy+pb.h, r);
+    X.lineTo(bpx+r, bpy+pb.h);
+    X.arcTo(bpx, bpy+pb.h, bpx, bpy+pb.h-r, r);
+    X.lineTo(bpx, bpy+r);
+    X.arcTo(bpx, bpy, bpx+r, bpy, r);
+    X.closePath(); X.fill();
+    X.fillStyle=topColor; X.fillRect(bpx+2,bpy+1,pb.w-4,3);
+    X.fillStyle='#454560'; X.fillRect(bpx+2,bpy+pb.h-4,pb.w-4,3);
     if(P.canPush && !pb.inSlot){
       const hintPulse=Math.sin(now/400)*0.2+0.3;
       X.fillStyle='rgba(92,179,175,'+hintPulse+')';
-      X.fillRect(bpx+3,bpy+3,pb.w-6,pb.h-6);
+      X.fillRect(bpx+4,bpy+4,pb.w-8,pb.h-8);
     }
   }
 
-  /* ── Particles (behind player) ── */
+/* ── Particles (behind player) ── */
   for(const p of particles){
     const a=p.life/p.maxLife;
-    X.fillStyle=p.color+(a>0.7?'':'');
     if(a<0.7) X.globalAlpha=a;
-    X.fillRect(ox+p.x-p.size/2, oy+p.y-p.size/2, p.size, p.size);
+    X.fillStyle=p.color;
+    if(p.shape==='circle'){
+      X.beginPath(); X.arc(ox+p.x, oy+p.y, p.size/2, 0, Math.PI*2); X.fill();
+    } else if(p.shape==='diamond'){
+      X.beginPath();
+      X.moveTo(ox+p.x, oy+p.y-p.size/2);
+      X.lineTo(ox+p.x+p.size/2, oy+p.y);
+      X.lineTo(ox+p.x, oy+p.y+p.size/2);
+      X.lineTo(ox+p.x-p.size/2, oy+p.y);
+      X.closePath(); X.fill();
+    } else if(p.shape==='star'){
+      X.save(); X.translate(ox+p.x, oy+p.y);
+      X.beginPath();
+      for(let i=0;i<5;i++){
+        const ang = (i*4*Math.PI/5)-Math.PI/2;
+        const r = i%2===0 ? p.size/2 : p.size/5;
+        i===0 ? X.moveTo(Math.cos(ang)*r, Math.sin(ang)*r) : X.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
+      }
+      X.closePath(); X.fill(); X.restore();
+    } else {
+      X.fillRect(ox+p.x-p.size/2, oy+p.y-p.size/2, p.size, p.size);
+    }
     X.globalAlpha=1;
   }
 
-  /* ── Dash charge indicator (behind player, does not obscure golem) ── */
+/* ── Dash charge indicator (behind player, angular segments) ── */
   if(P.dashCharge > 0){
     const cx = ox + P.x + P.w / 2;
     const cy = oy + P.y + P.h / 2;
     const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
     const radius = DASH_CHARGE_RING_MIN + (DASH_CHARGE_RING_MAX - DASH_CHARGE_RING_MIN) * chargeRatio;
+    const segs = 8, segAngle = Math.PI * 2 / segs;
 
-    X.save();
-    X.lineWidth = 1.5;
+    X.save(); X.lineWidth = 1.5;
 
     if(chargeRatio >= 1){
-      /* Max charge — pulsating ring */
+      /* Max charge — pulsating segmented rings */
       const pulse = Math.sin(now / 150) * 0.5 + 0.5;
       const outerRadius = radius + 3 + pulse * 3;
-      /* Outer pulse ring */
+      /* Outer pulse segments */
       X.strokeStyle = 'rgba(92,179,175,' + (0.15 + pulse * 0.25) + ')';
       X.lineWidth = 2;
-      X.beginPath();
-      X.arc(cx, cy, outerRadius, 0, Math.PI * 2);
-      X.stroke();
-      /* Inner steady ring — brighter at max */
+      for(let s=0;s<segs;s++){
+        const a1 = s*segAngle + 0.15, a2 = (s+1)*segAngle - 0.15;
+        X.beginPath(); X.arc(cx,cy,outerRadius,a1,a2); X.stroke();
+      }
+      /* Inner steady segments — brighter at max */
       X.strokeStyle = 'rgba(92,179,175,' + (0.5 + pulse * 0.2) + ')';
       X.lineWidth = 2;
-      X.beginPath();
-      X.arc(cx, cy, radius, 0, Math.PI * 2);
-      X.stroke();
+      for(let s=0;s<segs;s++){
+        const a1 = s*segAngle + 0.1, a2 = (s+1)*segAngle - 0.1;
+        X.beginPath(); X.arc(cx,cy,radius,a1,a2); X.stroke();
+      }
     } else {
-      /* Charging — ring grows proportionally */
+      /* Charging — segmented ring grows proportionally */
       const alpha = 0.25 + chargeRatio * 0.35;
       X.strokeStyle = 'rgba(92,179,175,' + alpha + ')';
       X.lineWidth = 1.5;
-      X.beginPath();
-      X.arc(cx, cy, radius, 0, Math.PI * 2);
-      X.stroke();
-      /* Subtle fill to give a soft glow */
+      const filledSegs = Math.ceil(chargeRatio * segs);
+      for(let s=0;s<filledSegs;s++){
+        const a1 = s*segAngle + 0.15, a2 = (s+1)*segAngle - 0.15;
+        X.beginPath(); X.arc(cx,cy,radius,a1,a2); X.stroke();
+      }
+      /* Subtle fill glow */
       X.fillStyle = 'rgba(71,158,153,' + (alpha * 0.12) + ')';
-      X.beginPath();
-      X.arc(cx, cy, radius, 0, Math.PI * 2);
-      X.fill();
+      X.beginPath(); X.arc(cx,cy,radius,0,Math.PI*2); X.fill();
     }
 
     X.restore();
@@ -1627,43 +1681,70 @@ function render(){
   else if(fallingFast){ pw=P.w-2; ph=P.h+6; poffY=-2; }
 
   /* Idle head sway (Phase 4.5) */
-  if(P.vx===0 && P.onGround) headOffY=Math.sin(now/800)*0.5;
+  if(P.vx===0 && P.onGround) headOffY=Math.sin(now/800)*1;
   /* Land squish (Phase 4.5) */
   if(P.landSquish>0){ ph+=3; pw-=2; P.landSquish--; }
   /* Turn lean (Phase 4.5) */
   if(P.turnLean>0){ poffX+=P.facing*(P.turnLean/8)*2; P.turnLean--; }
 
-  const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
+const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
  X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
   X.fillStyle=COLORS.golem;
   X.fillRect(px+2,py+4,pw-4,ph-4);
-  X.fillRect(px+4,py+headOffY,pw-8,10);
+  // Head with rounded top (4px radius)
+  const hx=px+4, hy=py+headOffY, hw=pw-8, hh=10, hr=4;
+  X.beginPath();
+  X.moveTo(hx+hr, hy); X.lineTo(hx+hw-hr, hy);
+  X.arcTo(hx+hw, hy, hx+hw, hy+hr, hr);
+  X.lineTo(hx+hw, hy+hh);
+  X.lineTo(hx, hy+hh);
+  X.lineTo(hx, hy+hr);
+  X.arcTo(hx, hy, hx+hr, hy, hr);
+  X.closePath(); X.fill();
   X.fillStyle=COLORS.golemEye;
   X.fillRect(P.facing>0?px+14:px+6, py+3+headOffY, 4, 3);
+  // Splayed trapezoid feet
   X.fillStyle=COLORS.golemDark;
-  X.fillRect(px+3,py+ph-4,7,4); X.fillRect(px+pw-10,py+ph-4,7,4);
+  X.beginPath(); X.moveTo(px+3,py+ph-4); X.lineTo(px+10,py+ph-4); X.lineTo(px+12,py+ph); X.lineTo(px+1,py+ph); X.closePath(); X.fill();
+  X.beginPath(); X.moveTo(px+pw-10,py+ph-4); X.lineTo(px+pw-3,py+ph-4); X.lineTo(px+pw-1,py+ph); X.lineTo(px+pw-12,py+ph); X.closePath(); X.fill();
+  // Arms
   X.fillStyle=COLORS.golem;
- X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
+  X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
 
-  /* Push effort: arms press into block */
+/* Push effort: arms press into block */
   if(P.pushing){
-    const effortPulse = Math.sin(now/150)*0.15+0.3;
-    X.fillStyle='rgba(197,179,145,'+effortPulse+')';
-    // Arm/shoulder lines toward push direction
-    const armX = P.facing > 0 ? px+pw-2 : px-3;
-    X.fillRect(armX, py+8, 5, 3);
-    X.fillRect(armX+(P.facing>0?2:-2), py+12, 5, 3);
+    const effortPulse = Math.sin(now/150)*0.2+0.4;
+    const dir = P.facing;
+    X.strokeStyle='rgba(197,179,145,'+effortPulse+')';
+    X.lineWidth=2;
+    X.beginPath();
+    X.moveTo(dir>0 ? px+pw-1 : px+1, py+7);
+    X.lineTo(dir>0 ? px+pw+4 : px-4, py+7);
+    X.stroke();
+    X.beginPath();
+    X.moveTo(dir>0 ? px+pw-1 : px+1, py+10);
+    X.lineTo(dir>0 ? px+pw+4 : px-4, py+10);
+    X.moveTo(dir>0 ? px+pw-1 : px+1, py+14);
+    X.lineTo(dir>0 ? px+pw+4 : px-4, py+14);
+    X.stroke();
+    X.fillStyle='rgba(197,179,145,'+(effortPulse*0.6)+')';
+    const sparkX = dir>0 ? px+pw+2 : px-4;
+    X.fillRect(sparkX, py+10, 2, 2);
   }
 
-  /* Hebrew letters on body */
+  /* Hebrew letters on body (RTL ordering, dark stroke for visibility) */
   if(glyphsCollected>0){
     const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
     X.font='10px "Segoe UI", "Arial Hebrew", "David", serif';
     X.textAlign='center'; X.textBaseline='middle';
-    for(let g=0;g<glyphsCollected;g++){
+    const baseY = py + ph - 6;
+    for(let g=0; g<glyphsCollected; g++){
+      const ly = baseY - (g * 7);
+      X.strokeStyle='rgba(30,30,50,0.8)'; X.lineWidth=3;
+      X.strokeText(hebrewLetters[g], px+pw/2, ly);
       X.fillStyle='rgba(197,179,145,'+(0.6+g*0.1)+')';
-      X.fillText(hebrewLetters[g], px+pw/2, py+8+g*7);
+      X.fillText(hebrewLetters[g], px+pw/2, ly);
     }
   }
 
@@ -1756,19 +1837,41 @@ function render(){
     // Center position for golem
     const cx = W/2, cy = H/2 - 20;
 
-    // Hero golem render (simplified, centered)
+    // Hero golem render (consistent with in-game design: rounded head + splayed feet)
     const golemAlpha = Math.min(endingFrame/40, 1);
     X.globalAlpha = golemAlpha;
-    // Body
-    X.fillStyle=COLORS.golem;
-    X.fillRect(cx-12,cy-16,24,32);
-    X.fillRect(cx-8,cy-24,16,12);
+    // Torso shadow
+    X.fillStyle=COLORS.golemDark; X.fillRect(cx-8,cy-10,16,24);
+    // Torso body
+    X.fillStyle=COLORS.golem; X.fillRect(cx-10,cy-8,20,28);
+    // Head with rounded top
+    const hx2=cx-8, hy2=cy-20, hw2=16, hh2=12, hr2=4;
+    X.beginPath();
+    X.moveTo(hx2+hr2,hy2); X.lineTo(hx2+hw2-hr2,hy2);
+    X.arcTo(hx2+hw2,hy2,hx2+hw2,hy2+hr2,hr2);
+    X.lineTo(hx2+hw2,hy2+hh2); X.lineTo(hx2,hy2+hh2);
+    X.lineTo(hx2,hy2+hr2);
+    X.arcTo(hx2,hy2,hx2+hr2,hy2,hr2);
+    X.closePath(); X.fill();
     // Eye
-    X.fillStyle=COLORS.golemEye;
-    X.fillRect(cx+2,cy-20,4,3);
-    // Feet
+    X.fillStyle=COLORS.golemEye; X.fillRect(cx+2,cy-18,4,3);
+    // Splayed feet
     X.fillStyle=COLORS.golemDark;
-    X.fillRect(cx-10,cy+16,8,4); X.fillRect(cx+2,cy+16,8,4);
+    X.beginPath(); X.moveTo(cx-9,cy+16); X.lineTo(cx-2,cy+16); X.lineTo(cx, cy+20); X.lineTo(cx-12,cy+20); X.closePath(); X.fill();
+    X.beginPath(); X.moveTo(cx+2,cy+16); X.lineTo(cx+9,cy+16); X.lineTo(cx+12,cy+20); X.lineTo(cx,cy+20); X.closePath(); X.fill();
+    // Arms
+    X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy-2,3,14); X.fillRect(cx+8,cy-2,3,14);
+    // Glyphs on hero
+    X.font='10px "Segoe UI", "Arial Hebrew", "David", serif';
+    X.textAlign='center'; X.textBaseline='middle';
+    const heroBaseY = cy + 12;
+    for(let g=0;g<4;g++){
+      const ly = heroBaseY - (g*7);
+      X.strokeStyle='rgba(30,30,50,0.8)'; X.lineWidth=3;
+      X.strokeText(hebrewLetters[g], cx, ly);
+      X.fillStyle='rgba(197,179,145,'+(0.6+g*0.1)+')';
+      X.fillText(hebrewLetters[g], cx, ly);
+    }
 
     const hebrewLetters = ['\u05d0','\u05de','\u05d4','\u05ea'];
 
@@ -1819,14 +1922,14 @@ function render(){
         X.fillStyle='rgba(197,179,145,'+flash+')';
         X.fillRect(0,0,W,H);
       }
-      // EMET on forehead
+      // EMET above golem forehead
       X.fillStyle='rgba(197,179,145,'+(emetAlpha*0.9)+')';
-      X.fillText('\u05e2\u05de\u05ea', cx, cy-30);
-      // Message
+      X.fillText('\u05e2\u05de\u05ea', cx, cy-40);
+      // Message below golem
       const msgAlpha = Math.min((endingFrame-260)/40, 1);
       X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
       X.font=FONT_DISPLAY;
-      X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-60);
+      X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-65);
     }
 
     if(endingBeat >= 4){
@@ -1837,15 +1940,15 @@ function render(){
       X.shadowColor='rgba(197,179,145,'+glow+')';
       X.shadowBlur=10;
       X.fillStyle='rgba(197,179,145,'+(0.7+glow*0.3)+')';
-      X.fillText('\u05e2\u05de\u05ea', cx, cy-30);
+      X.fillText('\u05e2\u05de\u05ea', cx, cy-40);
       X.shadowBlur=0;
-      // Ibis text
+      // Ibis text — positioned below golem
       if(endingFrame > 380){
         const textAlpha = Math.min((endingFrame-380)/50, 1);
         X.fillStyle='rgba(232,232,240,'+textAlpha+')';
         X.font=FONT_DISPLAY;
-        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-80);
-        X.fillText('You walked the path of initiation. You are the Golem of Truth.', W/2, H-55);
+        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-90);
+        X.fillText('You walked the path of initiation. You are the Golem of Truth.', W/2, H-65);
       }
     }
 
@@ -1855,13 +1958,13 @@ function render(){
       const statsAlpha = Math.min((endingFrame-480)/30, 1);
       X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
       X.font=FONT_UI;
-      X.fillText('Time: '+timeElapsed+'s  |  Deaths: '+totalDeaths, W/2, H-30);
+      X.fillText('Time: '+timeElapsed+'s  |  Deaths: '+totalDeaths, W/2, H-40);
     }
 
     if(endingBeat >= 6){
       // Beat 6: Play Again button
       const btnAlpha = Math.min((endingFrame-540)/30, 1);
-      const btnX = W/2-60, btnY = H/2+40, btnW = 120, btnH = 28;
+      const btnX = W/2-60, btnY = H-25, btnW = 120, btnH = 28;
       X.strokeStyle='rgba(92,179,175,'+btnAlpha+')';
       X.lineWidth=2;
       X.strokeRect(btnX,btnY,btnW,btnH);
@@ -1915,7 +2018,7 @@ C.addEventListener('click', function(e){
     const rect = C.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) * (W / rect.width);
     const clickY = (e.clientY - rect.top) * (H / rect.height);
-    const btnX = W/2-60, btnY = H/2+40, btnW = 120, btnH = 28;
+    const btnX = W/2-60, btnY = H-25, btnW = 120, btnH = 28;
     if(clickX >= btnX && clickX <= btnX+btnW &&
        clickY >= btnY && clickY <= btnY+btnH){
       location.reload();
