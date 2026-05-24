@@ -316,9 +316,41 @@ def parse_js_chambers(filepath):
         # then direct overrides LAST (highest priority).
         # This mirrors how JS executes: boundaries fill the grid,
         # then specific assignments override them.
-        # Order: multi_for -> multi_for_y -> multi_for_y_h2 ->
+#        helpers (sBounds/hLine/vLine) -> multi_for -> multi_for_y -> multi_for_y_h2 ->
         #        for_loop_x -> for_loop_y -> direct_pattern -> special_door
         # ──────────────────────────────────────────────────────────
+
+        # ── 0. helper functions: sBounds, hLine, vLine ──
+        sBounds_pat = re.compile(r'sBounds\s*\(\s*g\s*,\s*w\s*,\s*h\s*\)')
+        for m in sBounds_pat.finditer(exec_body):
+            for x in range(GRID_W):
+                grid[0][x] = CONST_TO_VALUE['WALL']
+                grid[GRID_H - 1][x] = CONST_TO_VALUE['WALL']
+            for y in range(GRID_H):
+                grid[y][0] = CONST_TO_VALUE['WALL']
+                grid[y][GRID_W - 1] = CONST_TO_VALUE['WALL']
+
+        hLine_pat = re.compile(
+            r'hLine\s*\(\s*g\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\w+)\s*\)'
+        )
+        for m in hLine_pat.finditer(exec_body):
+            y, x1, x2, const_name = int(m.group(1)), int(m.group(2)), int(m.group(3)), m.group(4)
+            if const_name in CONST_TO_VALUE:
+                val = CONST_TO_VALUE[const_name]
+                for x in range(x1, x2 + 1):
+                    if 0 <= y < GRID_H and 0 <= x < GRID_W:
+                        grid[y][x] = val
+
+        vLine_pat = re.compile(
+            r'vLine\s*\(\s*g\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\w+)\s*\)'
+        )
+        for m in vLine_pat.finditer(exec_body):
+            x, y1, y2, const_name = int(m.group(1)), int(m.group(2)), int(m.group(3)), m.group(4)
+            if const_name in CONST_TO_VALUE:
+                val = CONST_TO_VALUE[const_name]
+                for y in range(y1, y2 + 1):
+                    if 0 <= y < GRID_H and 0 <= x < GRID_W:
+                        grid[y][x] = val
 
         # ── 1. multi_for: for(let x=0;x<w;x++){g[r1][x]=C;g[r2][x]=C;...} ──
         multi_for = re.compile(

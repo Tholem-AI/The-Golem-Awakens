@@ -230,7 +230,7 @@ function playerGridPos() {
 
 /* End dash state cleanly */
 function endDash() {
-  P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN_ACTUAL; P.dashPhase=false; P._dashSfx=false;
+  cancelDash(); P.dashCooldown=DASH_COOLDOWN_ACTUAL; P.dashPhase=false; P._dashSfx=false;
 }
 
 /* Land on ground — reset jumps and coyote */
@@ -265,25 +265,12 @@ function advanceTimers() {
 
 /* Reset all dash state — used on death/transition to fully clear */
 function fullDashReset() {
-  P.dashing=false; P.dashTimer=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
-}
+  cancelDash(); P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
 
+}
 /* Cancel an active dash without resetting cooldown — used on immediate death */
 function cancelDash() {
   P.dashing=false; P.dashTimer=0;
-}
-
-/* Caption fade timing helper for ending sequence */
-function captionAlpha(f, start, fadeIn, hold, fadeOut) {
-  if (f < start) return 0;
-  let t = f - start;
-  if (fadeIn > 0 && t < fadeIn) return t / fadeIn;
-  t -= fadeIn;
-  if (hold > 0 && t < hold) return 1;
-  t -= hold;
-  if (fadeOut > 0 && t < fadeOut) return 1 - (t / fadeOut);
-  if (fadeOut === 0) return 1;
-  return 0;
 }
 
 /* Caption fade timing (wall-clock seconds) — for ending sequence */
@@ -320,18 +307,17 @@ function killAndRespawn(msg, duration) {
    ══════════════════════════════════════════════════ */
 
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
+function sBounds(g,w,h){for(let x=0;x<w;x++){g[0][x]=WALL;g[h-1][x]=WALL;}for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;} }
+function hLine(g,y,x1,x2,v){for(let x=x1;x<=x2;x++)g[y][x]=v;}
+function vLine(g,x,y1,y2,v){for(let y=y1;y<=y2;y++)g[y][x]=v;}
 
 const chambers = [];
 
 // Chamber 0: Awakening — learn movement, get Glyph 1 (Double Jump)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;}
-  for(let y=0;y<2;y++){g[y][w-1]=WALL;}
-  for(let y=3;y<5;y++){g[y][w-1]=WALL;}
-  for(let y=8;y<15;y++){g[y][w-1]=WALL;}
+ /* Step 1: Boundaries */
+  sBounds(g,w,h); /* right-wall gaps: door(y=2) set Step 3, pits(y=5-7) set Step 2 */
   /* Step 2: Pits */
   for(let x=9;x<=11;x++) g[13][x]=PIT;
   for(let y=5;y<=7;y++){g[y][16]=PIT;g[y][w-1]=PIT;}
@@ -366,9 +352,8 @@ const chambers = [];
 // Chamber 1: Need double jump, get Glyph 2 (Dash)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
+ /* Step 1: Boundaries */
+  sBounds(g,w,h);
   /* Step 2: Pits */
   for(let y=1;y<4;y++) g[y][8]=PIT;
   g[3][13]=PIT;
@@ -410,15 +395,9 @@ const chambers = [];
 // Chamber 2: The Hall of Echoes — push block and magical walls
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[14][x]=WALL;g[0][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;}
-  for(let y=0;y<=4;y++){g[y][24]=WALL;}
-  for(let y=5;y<13;y++){g[y][24]=WALL;}
-  for(let y=13;y<h;y++){g[y][24]=WALL;}
-  for(let x=0;x<=7;x++) g[13][x]=WALL;
-  g[13][17]=WALL;
-  for(let x=19;x<=24;x++) g[13][x]=WALL;
+/* Step 1: Boundaries */
+  sBounds(g,w,h);
+  hLine(g,13,0,7,WALL);g[13][17]=WALL;hLine(g,13,19,24,WALL);
   /* Step 2: Pits */
   g[4][18]=PIT;
   g[10][0]=PIT;
@@ -456,9 +435,8 @@ const chambers = [];
 // Chamber 3: The Weight of Wisdom — push blocks, magical walls, cracked barriers
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;g[13][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
+/* Step 1: Boundaries */
+  sBounds(g,w,h);hLine(g,13,0,24,WALL);
   /* Step 2: Pits */
   g[0][1]=PIT; g[0][2]=PIT;
   g[3][21]=PIT;
@@ -504,9 +482,8 @@ const chambers = [];
 // Chamber 4: The Ibis Chamber — final chamber, END_PORTAL triggers ending
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;g[13][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][24]=WALL;}
+/* Step 1: Boundaries */
+  sBounds(g,w,h);hLine(g,13,0,24,WALL);
   /* Step 2: Pits */
   for(let x=1;x<=6;x++) g[14][x]=PIT;
   for(let x=20;x<=21;x++) g[3][x]=PIT;
@@ -554,9 +531,8 @@ const chambers = [];
 // Ch.T: Test chamber — entered by pressing KeyT (no flowId)
 (function(){
   const w=25,h=15,g=mkGrid(w,h);
-  /* Step 1: Boundaries */
-  for(let x=0;x<w;x++){g[0][x]=WALL;g[14][x]=WALL;}
-  for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;}
+/* Step 1: Boundaries */
+  sBounds(g,w,h);
   for(let x=2;x<=22;x++) g[13][x]=WALL;
   /* Step 2: Pits */
   g[13][1]=PIT;
@@ -596,9 +572,10 @@ const P = {
  facing:1, chamber:0, respawnX:0, respawnY:0,
   coyoteTime:0, jumpBuffer:0,
   pushing:false,
-  landSquish:0,      // Phase 4.5: squash frame counter
+ landSquish:0,      // Phase 4.5: squash frame counter
   turnLean:0,        // Phase 4.5: turn lean frame counter
-  lastFacing:1       // Phase 4.5: track facing for turn detection
+  lastFacing:1,      // Phase 4.5: track facing for turn detection
+  _pushF:0           // push block frame counter
 };
 
 /* ── Push block entities (array — supports multiple blocks) ── */
@@ -619,14 +596,20 @@ let _c;                            // cached chambers[P.chamber] for getTile opt
 let _transitionTarget = -1;        // stores target chamber during async fade cycle
 let animState = 'idle';            // 'idle' | 'dying' | 'respawning'
 let animFrame = 0;
-const ANIM_TOTAL_FRAMES = 90;      // 1.5s at 60fps
-
 /* ── Ending sequence state (Phase 5) ── */
 let endingBeat = 0;
 let endingStartTime = performance.now();
 let gameStartTime;
 let totalDeaths = 0;
 let frozenElapsedSec = 0;       // frozen game time for ending stats
+
+let hudBar, hudLeft, hudRight;
+let lastHudTime = -1, lastHudDeaths = -1, lastHudGlyphs = '', lastHudPace = '';
+function initHUD() {
+  hudBar = document.getElementById('hud-bar');
+  hudLeft = hudBar.querySelector('.hud-left');
+  hudRight = hudBar.querySelector('.hud-right');
+}
 
 /* ── Ending timeline (wall-clock seconds, independent of sim Hz) ── */
 const ENDING = {
@@ -640,6 +623,15 @@ const ENDING = {
   FADE_OUT: 0.6,  // caption fade-out duration (sec)
   HOLD: 3.5,      // caption hold duration (sec)
 };
+
+const TRANSITION_FADE_SPEED = 0.06;    // screen fade per frame
+const ENDING_FADE_SPEED = 0.03;        // ending screen fade per frame
+const SIM_ACCUMULATOR_CAP = 128;       // max ms accumulator cap
+const MAX_TICKS_PER_FRAME = 8;         // max update ticks per frame
+const SHADOW_BLUR = 4;                 // default text shadow blur
+const LAND_SQUISH_FRAMES = 10;         // land squish animation duration
+const TURN_LEAN_FRAMES = 8;            // turn lean animation duration
+const STARS_PER_CHAMBER = 40;          // star count per chamber
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -1195,9 +1187,8 @@ function showMessage(txt, dur) {
 function _doTransition(toChamber){
   P.chamber = toChamber;
   const nc = chambers[toChamber];
-  P.x = nc.spawnPx; P.y = nc.spawnPy;
- P.respawnX = nc.spawnPx; P.respawnY = nc.spawnPy;
-  P.vx=0; P.vy=0; P.jumps=0;
+  P.respawnX = nc.spawnPx; P.respawnY = nc.spawnPy;
+  resetPlayerToRespawn();
   fullDashReset();
   P.onGround=false; P.coyoteTime=0;
   P.pushing=false;
@@ -1280,6 +1271,19 @@ function transitionEnding(){
   frozenElapsedSec = Math.round((Date.now()-gameStartTime)/1000);
 }
 
+/* ── Grid bounds for player AABB (X uses P.h-1, Y uses P.h for platform detection) ── */
+function playerGridBounds() {
+  return { gx1:Math.floor(P.x/T), gx2:Math.floor((P.x+P.w-1)/T), gy1:Math.floor(P.y/T), gy2:Math.floor((P.y+P.h-1)/T) };
+}
+
+/* ── Jump helper (deduplicates shared boilerplate across jump branches) ── */
+function doJump(vel, jx, jy, color, count, shape, sfx, fromGround) {
+  P.vy = vel; P.jumps++; P.jumpBuffer = 0;
+  if(fromGround){ P.onGround = false; P.coyoteTime = 0; }
+  Particles.spawn(jx, jy, color, count, shape);
+  Sound.play(sfx);
+}
+
 /* ══════════════════════════════════════════════════
    9. UPDATE — physics, input, game logic
    ══════════════════════════════════════════════════ */
@@ -1289,9 +1293,8 @@ function update(){
     togglePause();
   }
 
-  if(gameState==='title'){ syncPrevKeys(); return; }
-  if(gameState==='paused'){ syncPrevKeys(); return; }
-  if(gameState==='ending'){ syncPrevKeys(); return; }
+ /* State guard — only 'playing' proceeds; title/paused/ending just sync keys */
+  if(gameState !== 'playing'){ syncPrevKeys(); return; }
   if(animState!=='idle'){ updateAnim(); return; }
   _c=chambers[P.chamber]; // cache chamber ref for fast getTile
 
@@ -1319,10 +1322,8 @@ function update(){
     return;
   }
 
-  /* Screen fade */
- if(screenFade===1){ screenAlpha+=0.06; if(screenAlpha>=1){screenAlpha=1; if(_transitionTarget>=0){_doTransition(_transitionTarget);_c=chambers[P.chamber];_transitionTarget=-1;} screenFade=-1;} }
-  if(screenFade===-1){ screenAlpha-=0.06; if(screenAlpha<=0){screenAlpha=0;screenFade=0;} }
- if(screenFade===1){ syncPrevKeys(); return; }
+ /* Screen fade */
+  if(screenFade){screenAlpha+=screenFade*TRANSITION_FADE_SPEED;screenAlpha=Math.max(0,Math.min(screenAlpha,1));if(screenFade===1){if(screenAlpha>=1){screenAlpha=1;if(_transitionTarget>=0){_doTransition(_transitionTarget);_c=chambers[P.chamber];_transitionTarget=-1;}screenFade=-1;}syncPrevKeys();return;}if(screenAlpha<=0){screenAlpha=0;screenFade=0;}}
 
   advanceTimers();
 
@@ -1333,7 +1334,7 @@ function update(){
   let inputX = 0;
   if(inputLeft()) inputX=-1;
   if(inputRight()) inputX=1;
-  if(inputX!==0 && P.facing!==inputX && P.onGround){ P.turnLean=8; P.lastFacing=P.facing; }
+  if(inputX!==0 && P.facing!==inputX && P.onGround){ P.turnLean=TURN_LEAN_FRAMES; P.lastFacing=P.facing; }
   if(inputX!==0) P.facing=inputX;  /* facing always updates — allows aiming dash */
 
   if(!isCharging && !P.dashing){
@@ -1414,14 +1415,12 @@ function update(){
 
 /* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
-  P._pushF = P._pushF || 0;
   const prevX = P.x;
   P.x += P.vx;
 
-  /* 1. Resolve against static tiles */
+ /* 1. Resolve against static tiles */
   {
-    const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
-    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h-1)/T);
+    const {gx1,gx2,gy1,gy2} = playerGridBounds();
     const colFn = P.dashPhase ? collidesDash : collidesNoPlat;
     if(colFn(gx1,gy1,gx2,gy2,P.chamber,P.y)){
      if(P.dashPhase){
@@ -1449,18 +1448,18 @@ function update(){
   updatePushBlock();
 
  /* ── Move Y + collide (platforms = one-way) ── */
-  const prevY = P.y;
+ const prevY = P.y;
   P.y += P.vy;
   {
-    const gx1=Math.floor(P.x/T), gx2=Math.floor((P.x+P.w-1)/T);
-    const gy1=Math.floor(P.y/T), gy2=Math.floor((P.y+P.h)/T);
+    const {gx1,gx2,gy1} = playerGridBounds();
+    const gy2=Math.floor((P.y+P.h)/T); // Y collision uses P.h (not P.h-1) for platform detection
     const colFn = P.dashPhase ? collidesDash : collides;
   if(colFn(gx1,gy1,gx2,gy2,P.chamber,prevY,P.y)){
      if(P.vy>0){
         P.y=gy2*T-P.h;
         P.vy=0;
         land();
-        P.landSquish=10;
+        P.landSquish=LAND_SQUISH_FRAMES;
       Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
         Sound.play('land');
       } else if(P.vy<0){
@@ -1499,29 +1498,13 @@ function update(){
   const jx=P.x+P.w/2, jy=P.y+P.h; // precompute jump particle coords
 
   if(P.onGround && P.jumpBuffer>0 && P.jumps<P.maxJumps){
-    P.vy = P.jumps===0 ? JUMP_VEL_1 : JUMP_VEL_2;
-    P.jumps++;
-    P.onGround=false;
-    P.coyoteTime=0;
-    P.jumpBuffer=0;
-     Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
-      Sound.play('jump');
+    doJump(P.jumps===0 ? JUMP_VEL_1 : JUMP_VEL_2, jx, jy, PARTICLE_COLORS.jump, 5, 'diamond', 'jump', true);
   }
   else if(jumpPressed && P.jumps===0 && P.coyoteTime>0){
-    P.vy = JUMP_VEL_1;
-    P.jumps++;
-    P.onGround=false;
-    P.coyoteTime=0;
-    P.jumpBuffer=0;
-   Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
-    Sound.play('jump');
+    doJump(JUMP_VEL_1, jx, jy, PARTICLE_COLORS.jump, 5, 'diamond', 'jump', true);
   }
   else if(jumpPressed && P.jumps < P.maxJumps && P.jumps>0){
-    P.vy = JUMP_VEL_2;
-    P.jumps++;
-    P.jumpBuffer=0;
-   Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star');
-    Sound.play('jumpHi');
+    doJump(JUMP_VEL_2, jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star', 'jumpHi', false);
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
     P.jumpBuffer = JUMP_BUFFER_ACTUAL;
@@ -1803,6 +1786,27 @@ function renderDeathRespawnAnimation(ox, oy){
   }
 }
 
+/* Draw shared wall base appearance (used by WALL and CRACKED tiles) */
+function drawWallBase(ctx, px, py, baseColor) {
+  ctx.fillStyle = baseColor; ctx.fillRect(px, py, T, T);
+  ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, T, 3);
+  ctx.fillStyle = 'rgba(197,179,145,0.12)'; ctx.fillRect(px, py, 1, 3);
+}
+
+/* ── Shadow text helper (deduplicates shadowColor/shadowBlur/shadowBlur=0) ── */
+function shadowText(ctx, text, x, y, color) {
+  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = SHADOW_BLUR;
+  ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.shadowBlur = 0;
+}
+/* Draw segmented arc for dash charge ring */
+function drawSegArcs(cx,cy,r,count,gap){
+  const a=Math.PI*2/count;
+  for(let s=0;s<count;s++){
+    const a1=s*a+gap,a2=(s+1)*a-gap;
+    X.beginPath();X.arc(cx,cy,r,a1,a2);X.stroke();
+  }
+}
+
 function render(){
   const now=Date.now(); // B1: cache time once per frame
   const ch=P.chamber, c=chambers[ch];
@@ -1850,10 +1854,8 @@ function render(){
   for(const s of c.solidTiles){
     const x=s.x, y=s.y, t=c.tiles[y][x], px=ox+x*T, py=oy+y*T;
 
-   if(t===WALL){
-      X.fillStyle=COLORS.wall; X.fillRect(px,py,T,T);
-      X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
-      X.fillStyle='rgba(197,179,145,0.12)'; X.fillRect(px,py,1,3);
+  if(t===WALL){
+      drawWallBase(X, px, py, COLORS.wall);
       X.fillStyle=COLORS.wallCapstone; X.fillRect(px,py+3,T,1);
       X.fillStyle='rgba(58,58,82,0.3)';
       if((x+y)%2===0) X.fillRect(px+T/2-1,py,2,T);
@@ -1941,10 +1943,8 @@ function render(){
       X.direction='rtl';
       X.fillText(hebrewLetters[gIdx], px+T/2, py+T/2+1);
 
-  } else if(t===CRACKED){
-      X.fillStyle=COLORS.cracked; X.fillRect(px,py,T,T);
-      X.fillStyle=COLORS.wallTop; X.fillRect(px,py,T,3);
-      X.fillStyle='rgba(197,179,145,0.12)'; X.fillRect(px,py,1,3);
+ } else if(t===CRACKED){
+      drawWallBase(X, px, py, COLORS.cracked);
       X.strokeStyle='rgba(197,179,145,0.4)'; X.lineWidth=2;
       X.beginPath();
       X.moveTo(px+3,py+3); X.lineTo(px+T/2,py+T/2); X.lineTo(px+T-3,py+T-3);
@@ -2045,35 +2045,17 @@ function render(){
 
     X.save(); X.lineWidth = 1.5;
 
-    if(chargeRatio >= 1){
-      /* Max charge — pulsating segmented rings */
+   if(chargeRatio >= 1){
       const pulse = Math.sin(now / 150) * 0.5 + 0.5;
-      const outerRadius = radius + 3 + pulse * 3;
-      /* Outer pulse segments */
-      X.strokeStyle = 'rgba(92,179,175,' + (0.15 + pulse * 0.25) + ')';
-      X.lineWidth = 2;
-      for(let s=0;s<segs;s++){
-        const a1 = s*segAngle + 0.15, a2 = (s+1)*segAngle - 0.15;
-        X.beginPath(); X.arc(cx,cy,outerRadius,a1,a2); X.stroke();
-      }
-      /* Inner steady segments — brighter at max */
+      const outerR = radius + 3 + pulse * 3;
+      X.strokeStyle = 'rgba(92,179,175,' + (0.15 + pulse * 0.25) + ')'; X.lineWidth = 2;
+      drawSegArcs(cx,cy,outerR,segs,0.15);
       X.strokeStyle = 'rgba(92,179,175,' + (0.5 + pulse * 0.2) + ')';
-      X.lineWidth = 2;
-      for(let s=0;s<segs;s++){
-        const a1 = s*segAngle + 0.1, a2 = (s+1)*segAngle - 0.1;
-        X.beginPath(); X.arc(cx,cy,radius,a1,a2); X.stroke();
-      }
+      drawSegArcs(cx,cy,radius,segs,0.1);
     } else {
-      /* Charging — segmented ring grows proportionally */
       const alpha = 0.25 + chargeRatio * 0.35;
-      X.strokeStyle = 'rgba(92,179,175,' + alpha + ')';
-      X.lineWidth = 1.5;
-      const filledSegs = Math.ceil(chargeRatio * segs);
-      for(let s=0;s<filledSegs;s++){
-        const a1 = s*segAngle + 0.15, a2 = (s+1)*segAngle - 0.15;
-        X.beginPath(); X.arc(cx,cy,radius,a1,a2); X.stroke();
-      }
-      /* Subtle fill glow */
+      X.strokeStyle = 'rgba(92,179,175,' + alpha + ')'; X.lineWidth = 1.5;
+      drawSegArcs(cx,cy,radius,Math.ceil(chargeRatio*segs),0.15);
       X.fillStyle = 'rgba(71,158,153,' + (alpha * 0.12) + ')';
       X.beginPath(); X.arc(cx,cy,radius,0,Math.PI*2); X.fill();
     }
@@ -2144,24 +2126,27 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
   }
 
 /* ── HUD bar (DOM) ── */
-  const hudBar = document.getElementById('hud-bar');
   if(gameState==='title'){
     hudBar.style.display = 'none';
   } else {
-    const hudLeft = hudBar.querySelector('.hud-left');
-    const hudRight = hudBar.querySelector('.hud-right');
-    const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
-    const glyphSlots = hebrewHUD.map((l,i) =>
-      collectedGlyphs[i]
-        ? '<span style="color:#C5B391;font-family:\'Segoe UI\',\'Arial Hebrew\',\'David\',serif;font-size:16px;">' + l + '</span>'
-        : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
-    ).join(' &nbsp; ');
-    hudLeft.innerHTML = glyphSlots;
+    hudBar.style.display = '';
     const elapsed = gameState === 'ending' ? frozenElapsedSec : Math.floor((Date.now() - gameStartTime) / 1000);
-  const mins = Math.floor(elapsed / 60);
-  const secs = elapsed % 60;
-  const timeStr = mins + ':' + String(secs).padStart(2, '0');
-    hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span><span style="color:' + (paceMode === 'easy' ? '#5CB3AF' : '#C5B391') + ';margin-left:8px;font-size:10px;">' + (paceMode === 'easy' ? 'Clay Weight' : 'Temple Pace') + '</span><span style="color:#454560;margin-left:12px;font-size:10px;">P to pause</span>';
+    const glyphState = collectedGlyphs.join('');
+    /* Only update DOM when state actually changes — saves 95%+ of DOM writes */
+    if(elapsed !== lastHudTime || totalDeaths !== lastHudDeaths || glyphState !== lastHudGlyphs || paceMode !== lastHudPace){
+      const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
+      const glyphSlots = hebrewHUD.map((l,i) =>
+        collectedGlyphs[i]
+          ? '<span style="color:#C5B391;font-family:\'Segoe UI\',\'Arial Hebrew\',\'David\',serif;font-size:16px;">' + l + '</span>'
+          : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
+      ).join(' &nbsp; ');
+      hudLeft.innerHTML = glyphSlots;
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      const timeStr = mins + ':' + String(secs).padStart(2, '0');
+      hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span><span style="color:' + (paceMode === 'easy' ? '#5CB3AF' : '#C5B391') + ';margin-left:8px;font-size:10px;">' + (paceMode === 'easy' ? 'Clay Weight' : 'Temple Pace') + '</span><span style="color:#454560;margin-left:12px;font-size:10px;">P to pause</span>';
+      lastHudTime = elapsed; lastHudDeaths = totalDeaths; lastHudGlyphs = glyphState; lastHudPace = paceMode;
+    }
   }
 
  /* Chamber name + portal status */
@@ -2188,11 +2173,8 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
     let alpha=1;
   if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_ACTUAL;
     else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_ACTUAL);
-   X.fillStyle='rgba(232,232,240,'+alpha+')';
-    X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
-    X.shadowColor='rgba(0,0,0,0.7)'; X.shadowBlur=4;
-    X.fillText(m.text, W/2, H/2-60);
-    X.shadowBlur=0;
+  X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
+    shadowText(X, m.text, W/2, H/2-60, 'rgba(232,232,240,'+alpha+')');
   }
 
   /* Screen fade overlay */
@@ -2299,13 +2281,20 @@ function getEndingGlyphState(endSec, cx, cy) {
 if (gameState === 'ending') {
     /* Screen fade */
     if(screenFade>0){
-      screenAlpha=Math.min(screenAlpha+0.03,1);
+      screenAlpha=Math.min(screenAlpha+ENDING_FADE_SPEED,1);
       if(screenAlpha>=1) screenFade=0;
     }
 
     /* Wall-clock progression */
     const endSec = (performance.now() - endingStartTime) / 1000;
     const fi = ENDING.FADE_IN, ho = ENDING.HOLD, fo = ENDING.FADE_OUT;
+    const endingMessages = [
+      { beat: 2, text: 'The four glyphs converge.', y: H - 155, start: ENDING.BEAT_2 + 0.3, type: 'caption' },
+      { beat: 3, text: 'EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', y: H - 130, start: ENDING.BEAT_3 + 0.3, type: 'caption' },
+      { beat: 4, text: 'The Ibis watches. What Thoth began, the clay completed itself.', y: H - 155, start: ENDING.BEAT_4 + 0.5, type: 'ibis' },
+      { beat: 4, text: 'You walked the path of initiation.', y: H - 130, start: ENDING.BEAT_4 + 2.0, type: 'ibis' },
+      { beat: 4, text: 'You are the Golem of Truth.', y: H - 105, start: ENDING.BEAT_4 + 3.5, type: 'ibis' },
+    ];
 
     if(endSec < ENDING.BEAT_2) endingBeat = 1;
     else if(endSec < ENDING.BEAT_3) endingBeat = 2;
@@ -2371,48 +2360,14 @@ if (gameState === 'ending') {
       X.direction = 'ltr';
     }
 
-    /* Message — exclusive to beat 2, different Y to avoid overlap */
-    if (endingBeat === 2) {
-      const msgAlpha = captionAlphaSec(endSec, ENDING.BEAT_2 + 0.3, fi, ho, fo);
-      if (msgAlpha > 0) {
-        X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
-        X.fillStyle = 'rgba(232,232,240,' + msgAlpha + ')';
-        X.font = FONT_DISPLAY;
-        X.fillText('The four glyphs converge.', W / 2, H - 155);
-        X.shadowBlur = 0;
-      }
-    }
-
-    /* Message — exclusive to beat 3, different Y from beat 2 */
-    if (endingBeat === 3) {
-      const msgAlpha2 = captionAlphaSec(endSec, ENDING.BEAT_3 + 0.3, fi, ho, fo);
-      if (msgAlpha2 > 0) {
-        X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
-        X.fillStyle = 'rgba(232,232,240,' + msgAlpha2 + ')';
-        X.font = FONT_DISPLAY;
-        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W / 2, H - 130);
-        X.shadowBlur = 0;
-      }
-    }
-
-    /* Ibis lines — fade in then persist through end */
-    if (endingBeat >= 4) {
-      const ibisLines = [
-        { text: 'The Ibis watches. What Thoth began, the clay completed itself.', y: H - 155, start: ENDING.BEAT_4 + 0.5 },
-        { text: 'You walked the path of initiation.', y: H - 130, start: ENDING.BEAT_4 + 2.0 },
-        { text: 'You are the Golem of Truth.', y: H - 105, start: ENDING.BEAT_4 + 3.5 },
-      ];
-      X.font = FONT_DISPLAY;
-      X.textAlign = 'center';
-      for (const line of ibisLines) {
-        const a = Math.min((endSec - line.start) / 0.6, 1);
-        if (a > 0) {
-          X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
-          X.fillStyle = 'rgba(232,232,240,' + a + ')';
-          X.fillText(line.text, W / 2, line.y);
-          X.shadowBlur = 0;
-        }
-      }
+    /* All ending messages — unified data-driven rendering */
+    X.font = FONT_DISPLAY; X.textAlign = 'center';
+    for (const m of endingMessages) {
+      if (endingBeat < m.beat) continue;
+      const a = m.type === 'caption'
+        ? captionAlphaSec(endSec, m.start, fi, ho, fo)
+        : Math.min((endSec - m.start) / 0.6, 1);
+      if (a > 0) shadowText(X, m.text, W / 2, m.y, 'rgba(232,232,240,' + a + ')');
     }
 
     /* Beat 5: Stats */
@@ -2459,7 +2414,8 @@ function restoreAllChambers(){
 function resetGameState(){
   if(animFrameId){ cancelAnimationFrame(animFrameId); }
   restoreAllChambers();
-  P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy; P.vx=0; P.vy=0;
+  P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
+  resetPlayerToRespawn();
   P.onGround=false; P.jumps=0; P.maxJumps=1;
   P.canDash=false; P.dashing=false; P.dashTimer=0; P.dashDir=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
   P.canPush=false; P.canBreak=false;
@@ -2574,11 +2530,12 @@ collectedGlyphs = new Array(chambers.length).fill(false);
 
 loadPace();
 updatePaceUI();
+initHUD();
 
 /* B4: Precompute starfield per chamber */
 chambers.forEach((c, i) => {
   c.stars = [];
-  for(let j=0; j<40; j++)
+  for(let j=0; j<STARS_PER_CHAMBER; j++)
     c.stars.push([(j*137+i*50)%W, (j*97+i*30)%H]);
 });
 
@@ -2633,9 +2590,9 @@ function loop(ts){
 
   if(gameState === 'playing'){
     simAcc += dt;
-    if(simAcc > 128) simAcc = 128;
+    if(simAcc > SIM_ACCUMULATOR_CAP) simAcc = SIM_ACCUMULATOR_CAP;
     let ticks = 0;
-    while(simAcc >= simDt && ticks < 8){
+    while(simAcc >= simDt && ticks < MAX_TICKS_PER_FRAME){
       update();
       simAcc -= simDt;
       ticks++;

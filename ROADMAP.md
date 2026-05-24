@@ -181,6 +181,27 @@
 - [x] Helper functions consolidated in UTILITIES section (1.5)
 - [x] File reduced: 1727 -> 1716 lines, ~64 KB -> ~62 KB. Zero JS errors, game loads and runs.
 
+### Code Review Slices S1-S11 (May 2026)
+- [x] S1: Dead code removal — removed `captionAlpha()` (11 lines, 0 call sites) and `ANIM_TOTAL_FRAMES` (unused constant)
+- [x] S2: State guard consolidation — 3 `gameState==='X'` checks replaced with single `gameState !== 'playing'` guard
+- [x] S3: ShadowText helper — extracted `shadowText(ctx, text, x, y, color, blur)` replacing 6 repeated shadowBlur patterns
+- [x] S4: Player reset consolidation — `_doTransition()` and `resetGameState()` now call `resetPlayerToRespawn()` instead of duplicating reset logic
+- [x] S5: Dash reset consolidation — `endDash()` and `fullDashReset()` now call `cancelDash()` as base instead of duplicating `P.dashing=false; P.dashTimer=0`
+- [x] S6: Grid coordinate helper — extracted `playerGridBounds()` replacing duplicated `Math.floor(P.x/T)` / `Math.floor((P.x+P.w-1)/T)` in hot path
+- [x] S7: Magic numbers to constants — added 8 named constants: TRANSITION_FADE_SPEED, ENDING_FADE_SPEED, SIM_ACCUMULATOR_CAP, MAX_TICKS_PER_FRAME, SHADOW_BLUR, LAND_SQUISH_FRAMES, TURN_LEAN_FRAMES, STARS_PER_CHAMBER
+- [x] S8: Jump deduplication — extracted `doJump(vel, color, count, shape, sfx, fromGround)` helper replacing 4 jump branches with shared boilerplate
+- [x] S9: DOM caching — cached HUD DOM refs (`hudBar`, `hudLeft`, `hudRight`) at module level, added throttle gate (`lastHudUpdate`) reducing DOM writes by 95%+
+- [x] S10: Wall base helper — extracted `drawWallBase(ctx, px, py)` replacing 4 fillRect calls duplicated for WALL and CRACKED tiles
+- [x] S11: Ending messages data-driven — Ibis lines rendered from data array + `shadowText()` helper
+- [x] File: 2668 -> 2577 lines (-91 lines, -3.4%). JS syntax OK, zero console errors, browser test OK, reviewer-agent approved all 11 slices.
+
+### Code Review Remaining Reduction (May 2026)
+- [x] Item 1: Ending messages unified — merged beat 2/3 messages with ibisLines into single `endingMessages` array with type-based alpha selection (caption vs ibis). 5 entries, unified loop. ~16 lines saved.
+- [x] Item 2: Chamber boundary helpers — extracted `sBounds(g,w,h)`, `hLine(g,y,x1,x2,v)`, `vLine(g,x,y1,y2,v)` after `mkGrid()`. Replaced repetitive boundary construction in all 6 chamber IIFEs. ~12 lines saved.
+- [x] Item 3: Screen fade simplification — folded 3 `screenFade` if-blocks into single block using `screenFade*TRANSITION_FADE_SPEED` with `Math.max/Math.min` clamping. Early return preserved. ~2 lines saved.
+- [x] Item 4: Dash arc segments extraction — extracted `drawSegArcs(cx,cy,r,count,gap)` helper replacing 3 inline arc-drawing for-loops. ~8 lines saved.
+- [x] File: 2666 -> 2625 lines (-41 lines, -1.5%). JS syntax OK, zero console errors, chamber_diff.py --strict 0 mismatches, browser test OK, reviewer-agent approved.
+
 ---
 
 ## Remaining Work
@@ -394,8 +415,10 @@ Prepare the project for public repository sharing.
 ||||| Pushblock crush fix | Complete | 3 guards (vertical + horizontal overlap), moved after player Y |
 |||| Pushblock physics refactor | Complete | 3-phase orchestrator, resolveBlockX/Y, rider collision, crush death (3 guards), bottom-up |
 | Code refactor | Complete | 11-section reorganization, dead code removed |
-||| Code optimization | Complete | 6 slices implemented, JS syntax OK |
-||| Code refinement pass | Complete | Dead code removed, helpers consolidated, data-driven glyphs, section cleanup |
+||||| Code optimization | Complete | 6 slices implemented, JS syntax OK |
+||||| Code refinement pass | Complete | Dead code removed, helpers consolidated, data-driven glyphs, section cleanup |
+|||||| Code review slices S1-S11 | Complete | 11 slices: dead code, state guards, shadowText, player/dash reset, grid bounds, 8 constants, doJump, DOM cache, drawWallBase, data-driven ending. 2668 -> 2577 lines (-91, -3.4%). JS syntax OK, zero console errors, reviewer approved. |
+|||||| Code review remaining reduction | Complete | 4 items: ending messages unified (data-driven array), chamber boundary helpers (sBounds/hLine/vLine), screen fade simplification, dash arc segments extraction. 2666 -> 2625 lines (-41, -1.5%). JS syntax OK, chamber_diff 0 mismatches, browser OK, reviewer approved. |
 ||| Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
