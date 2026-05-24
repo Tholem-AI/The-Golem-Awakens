@@ -2064,15 +2064,16 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     // Center position for golem
     const cx = W/2, cy = H/2 - 20;
 
-    // Hero golem render (consistent with in-game design: rounded head + splayed feet)
+    // Hero golem render — exact match to in-game idle sprite (P.w=24, P.h=28)
+    // Body: 20x24, shadow: 16x18 inset (4,6), head: 16x10, arms: 3x10 at py+10, feet: trapezoid at ph-4
     const golemAlpha = Math.min(endingFrame/40, 1);
     X.globalAlpha = golemAlpha;
-    // Torso shadow
-    X.fillStyle=COLORS.golemDark; X.fillRect(cx-8,cy-10,16,24);
-    // Torso body
-    X.fillStyle=COLORS.golem; X.fillRect(cx-10,cy-8,20,28);
-    // Head with rounded top
-    const hx2=cx-8, hy2=cy-20, hw2=16, hh2=12, hr2=4;
+    // Torso shadow (pw-8 x ph-10 = 16x18, inset by 4px sides, 6px top)
+    X.fillStyle=COLORS.golemDark; X.fillRect(cx-8,cy-10,16,18);
+    // Torso body (pw-4 x ph-4 = 20x24)
+    X.fillStyle=COLORS.golem; X.fillRect(cx-10,cy-8,20,24);
+    // Head with rounded top (pw-8 x 10 = 16x10)
+    const hx2=cx-8, hy2=cy-18, hw2=16, hh2=10, hr2=4;
     X.beginPath();
     X.moveTo(hx2+hr2,hy2); X.lineTo(hx2+hw2-hr2,hy2);
     X.arcTo(hx2+hw2,hy2,hx2+hw2,hy2+hr2,hr2);
@@ -2080,24 +2081,25 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     X.lineTo(hx2,hy2+hr2);
     X.arcTo(hx2,hy2,hx2+hr2,hy2,hr2);
     X.closePath(); X.fill();
-    // Eye
-    X.fillStyle=COLORS.golemEye; X.fillRect(cx+2,cy-18,4,3);
-    // Splayed feet
+    // Eye (px+14, py+3 relative to body top-left → cx+2, cy-16)
+    X.fillStyle=COLORS.golemEye; X.fillRect(cx+2,cy-16,4,3);
+    // Splayed feet (trapezoid starting at ph-4=24 from body top → cy+12)
     X.fillStyle=COLORS.golemDark;
-    X.beginPath(); X.moveTo(cx-9,cy+16); X.lineTo(cx-2,cy+16); X.lineTo(cx, cy+20); X.lineTo(cx-12,cy+20); X.closePath(); X.fill();
-    X.beginPath(); X.moveTo(cx+2,cy+16); X.lineTo(cx+9,cy+16); X.lineTo(cx+12,cy+20); X.lineTo(cx,cy+20); X.closePath(); X.fill();
-    // Arms
-    X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy-2,3,14); X.fillRect(cx+8,cy-2,3,14);
+    X.beginPath(); X.moveTo(cx-7,cy+12); X.lineTo(cx, cy+12); X.lineTo(cx+2, cy+16); X.lineTo(cx-11,cy+16); X.closePath(); X.fill();
+    X.beginPath(); X.moveTo(cx,cy+12); X.lineTo(cx+7,cy+12); X.lineTo(cx+11,cy+16); X.lineTo(cx-2, cy+16); X.closePath(); X.fill();
+    // Arms (3x10 extending 1px beyond body edges, at py+10)
+    X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy+2,3,10); X.fillRect(cx+10,cy+2,3,10);
     // Glyphs on hero -- removed (count shown in HUD)
 
     const allGlyphs = ['\u05d0','\u05de','\u05d4','\u05ea']; // Aleph, Mem, He, Tav — all 4
     const emetLetters = ['\u05d0','\u05de','\u05ea']; // Aleph, Mem, Tav — EMET only
-      X.direction='rtl'; // RTL for all Hebrew text in ending
+    X.direction='ltr'; // Default LTR; switch to rtl for Hebrew glyphs only
 
-    if(endingBeat >= 1){
+   if(endingBeat >= 1){
       // Beat 1: All 4 glyphs pulse around golem
       const pulse = Math.sin(now/300)*0.3+0.7;
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      X.direction='rtl';
       for(let i=0;i<4;i++){
         const angle = (i/4)*Math.PI*2 + now/1000;
         const radius = 50 + Math.sin(now/500+i)*5;
@@ -2106,12 +2108,14 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         X.fillStyle='rgba(197,179,145,'+(pulse*0.6)+')';
         X.fillText(allGlyphs[i], lx, ly);
       }
+      X.direction='ltr';
     }
 
     if(endingBeat >= 2){
       // Beat 2: All 4 glyphs orbit faster, message appears
       const orbitSpeed = (endingFrame-120)/120; // 0-1 over beat 2
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
+      X.direction='rtl';
       for(let i=0;i<4;i++){
         const angle = (i/4)*Math.PI*2 + orbitSpeed*Math.PI*2;
         const radius = 60 - orbitSpeed*15;
@@ -2120,12 +2124,13 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         X.fillStyle='rgba(197,179,145,'+(0.5+orbitSpeed*0.5)+')';
         X.fillText(allGlyphs[i], lx, ly);
       }
-      // Message
-      if(endingFrame > 140){
+      X.direction='ltr';
+      // Message — hide when beat 3 starts (fade-out guard)
+      if(endingBeat < 3 && endingFrame > 140){
         const msgAlpha = Math.min((endingFrame-140)/30, 1);
         X.fillStyle='rgba(232,232,240,'+msgAlpha+')';
         X.font=FONT_DISPLAY;
-        X.fillText('The four glyphs converge.', W/2, H-60);
+        X.fillText('The four glyphs converge.', W/2, H-130);
       }
     }
 
@@ -2135,8 +2140,6 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       const emetAlpha = converge;
       X.font='24px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
-      // RTL rendering for Hebrew text
-      X.direction='rtl';
       // Champagne flash during convergence
       if(converge < 0.5){
         const flash = Math.sin(converge*Math.PI*4)*0.3;
@@ -2144,16 +2147,18 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         X.fillRect(0,0,W,H);
       }
       // EMET above golem forehead — outline + fill for contrast
+      X.direction='rtl';
       X.strokeStyle='rgba(10,10,18,'+emetAlpha+')'; X.lineWidth=3;
-      X.strokeText('\u05d0\u05de\u05ea', cx, cy-40);
+      X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
       X.fillStyle='rgba(197,179,145,'+(emetAlpha*0.9)+')';
-      X.fillText('\u05d0\u05de\u05ea', cx, cy-40);
+      X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
+      X.direction='ltr';
       // Message below golem — only during beat 3, fades out when beat 4 starts
       if(endingBeat < 4){
         const msgAlpha = Math.min((endingFrame-260)/40, 1);
         X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
         X.font=FONT_DISPLAY;
-        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-65);
+        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-130);
       }
     }
 
@@ -2162,21 +2167,23 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       const glow = Math.sin(now/400)*0.3+0.7;
       X.font='28px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
-      X.direction='rtl'; // RTL for Hebrew
       X.shadowColor='rgba(197,179,145,'+glow+')';
       X.shadowBlur=10;
+      X.direction='rtl';
       X.strokeStyle='rgba(10,10,18,0.8)'; X.lineWidth=3;
-      X.strokeText('\u05d0\u05de\u05ea', cx, cy-40);
+      X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
       X.fillStyle='rgba(197,179,145,'+(0.7+glow*0.3)+')';
-      X.fillText('\u05d0\u05de\u05ea', cx, cy-40);
+      X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
       X.shadowBlur=0;
+      X.direction='ltr';
       // Ibis text — positioned below golem
       if(endingFrame > 380){
         const textAlpha = Math.min((endingFrame-380)/50, 1);
         X.fillStyle='rgba(232,232,240,'+textAlpha+')';
         X.font=FONT_DISPLAY;
-        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-90);
-        X.fillText('You walked the path of initiation. You are the Golem of Truth.', W/2, H-65);
+        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-130);
+        X.fillText('You walked the path of initiation.', W/2, H-105);
+        X.fillText('You are the Golem of Truth.', W/2, H-80);
       }
     }
 
@@ -2185,13 +2192,13 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       const statsAlpha = Math.min((endingFrame-480)/30, 1);
       X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
       X.font=FONT_UI;
-      X.fillText('Time: '+frozenElapsedSec+'s  |  Deaths: '+totalDeaths, W/2, H-40);
+      X.fillText('Time: '+frozenElapsedSec+'s  |  Deaths: '+totalDeaths, W/2, H-55);
     }
 
     if(endingBeat >= 6){
       // Beat 6: Play Again button
       const btnAlpha = Math.min((endingFrame-540)/30, 1);
-      const btnX = W/2-60, btnY = H-25, btnW = 120, btnH = 28;
+      const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
       X.strokeStyle='rgba(92,179,175,'+btnAlpha+')';
       X.lineWidth=2;
       X.strokeRect(btnX,btnY,btnW,btnH);
@@ -2327,7 +2334,7 @@ C.addEventListener('click', function(e){
     const rect = C.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) * (W / rect.width);
     const clickY = (e.clientY - rect.top) * (H / rect.height);
-    const btnX = W/2-60, btnY = H-25, btnW = 120, btnH = 28;
+    const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
     if(clickX >= btnX && clickX <= btnX+btnW &&
        clickY >= btnY && clickY <= btnY+btnH){
       returnToMenu();
@@ -2336,7 +2343,7 @@ C.addEventListener('click', function(e){
 });
 
 /* ── Game loop ── */
-function loop(){ update(); render(); if(gameState==='playing'||gameState==='paused') animFrameId = requestAnimationFrame(loop); }
+function loop(){ update(); render(); if(gameState==='playing'||gameState==='paused'||gameState==='ending') animFrameId = requestAnimationFrame(loop); }
 animFrameId = requestAnimationFrame(loop);
 
 /* ── Responsive scaling (Phase 9) ── */
