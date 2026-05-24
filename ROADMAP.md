@@ -266,9 +266,26 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 - [x] Removed dead endingFrame variable; endingStartTime uses performance.now() consistently
 - [x] Validation: JS syntax OK, file 2561 lines ~104KB, all existing functionality preserved
 
+### Ending Glyph Sequence Smoothing (May 2026)
+
+- [x] Easing helpers: `easeOutQuint`, `lerp`, `smoothStep` added to Section 1.5 utilities (complement existing `easeOutCubic`)
+- [x] `getEndingGlyphState(endSec, cx, cy)` function — continuous glyph/EMET state machine replacing 4 exclusive per-beat blocks
+- [x] Unified ending renderer — single `getEndingGlyphState()` call drives glyph positions, alpha, EMET alpha/fontSize/glow, flash bloom, and convergence progress
+- [x] Glyph orbit: speed ramps from 0.6 to 2.2 rad/s with `easeOutCubic`; radius shrinks 50→35; center shifts toward `cy-30` — all time-driven from B2
+- [x] Glyph convergence: `easeOutQuint` from orbit to target positions over 2.5s; He (index 2) dissolves first starting at converge=0.4
+- [x] EMET cross-fade: starts at converge=0.6, `easeOutCubic` ramp to full alpha
+- [x] Flash bloom: Gaussian bell curve (`exp(-t²)`) centered at converge≈0.7, width 0.15, peak alpha 0.25
+- [x] Font size: smooth lerp 24→28px during convergence (`easeOutCubic`, converge 0.5→1.0)
+- [x] EMET glow: ramps in after converge complete, `Math.max(baseGlow, baseGlow + pulse)` floors pulse at base so glow never dims below base
+- [x] Ibis lines: changed from fade-in/fade-out (`captionAlphaSec`) to fade-in-then-persist (`Math.min((endSec - start)/0.6, 1)`)
+- [x] Ibis lines guard: changed `endingBeat === 4` to `endingBeat >= 4` so lines render through all later beats
+- [x] Glow pulse: deterministic `endSec` instead of `performance.now()` — no frame-rate artifacts
+- [x] Stats and Play Again alpha: `easeOutCubic` instead of linear `Math.min()` for smoother fade-in
+- [x] All 8 discontinuities from research plan resolved: 2 HIGH (orbit jump, glyph vanish/EMET blink), 4 MEDIUM (font size jump, linear fades, sin strobe flash, exclusive beat rendering), 2 LOW (ibis overlap, fade/timing mismatch)
+- [x] Validation: JS syntax OK, zero console errors, timing verified against wall-clock timeline
+
 #### Known Issues / Future Work
 
-- [ ] Ending glyph transitions choppy/harsh — exclusive beat rendering (`===`) creates abrupt visual jumps between beats; consider overlap windows or cross-fade between adjacent beats
 - [ ] `MSG_CHARS_PER_FRAME` doesn't scale with `SIM_HZ` (minor — text scroll speed differs slightly between paces)
 
 ### Chamber Redesign (Not Started)
@@ -390,6 +407,7 @@ Prepare the project for public repository sharing.
 ||||||||| Visual/story overhaul | Complete | Phases 1-10b implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling, Web Audio SFX (9 sounds, 11 call sites), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), mute toggle. RIPER reviewed. ~310 lines net. |
 ||||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 ||||||||| Ending sequence overhaul | Complete | Extracted drawGolemSprite() shared function (gameplay + ending), fixed ending sprite proportions (center-to-top-left math), 2x scale + glow + front-facing variant on ending screen, captionAlpha() timing helper, staggered Ibis lines (3s read each), extended beat timing (~9s -> ~15s), skip-on-click, caption shadow. RIPER reviewed.
+||||||| Ending glyph smoothing | Complete | easeOutQuint/lerp/smoothStep helpers, getEndingGlyphState() continuous state machine replacing per-beat hard cuts, unified ending renderer, orbit speed/radius/center ramps, easeOutQuint convergence, EMET cross-fade, Gaussian flash bloom, font size lerp 24-28px, deterministic glow pulse, Ibis fade-in-then-persist, easeOutCubic stats/PlayAgain alpha. 8 discontinuities resolved (2 HIGH, 4 MEDIUM, 2 LOW). |
 ||| Touch/mobile controls | Not Started | — |
 ||| Website integration prep | Not Started | — |
 ||| Open source release prep | Not Started | — |

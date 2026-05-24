@@ -6,14 +6,14 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, pus
 
 ## Architecture
 
-Single HTML file (~2561 lines, ~104 KB) organized into 13 sections with delimiter comments.
+Single HTML file (~2655 lines, ~108 KB) organized into 13 sections with delimiter comments.
 
 ### Section Map
 
 | # | Section | Functions |
 |---|---------|-----------|
 | 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays, SIM_HZ, derived frame constants, pace system, ENDING timeline |
-| 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn`, `captionAlpha`, `captionAlphaSec` |
+| 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `easeOutQuint`, `lerp`, `smoothStep`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn`, `captionAlpha`, `captionAlphaSec`, `startGame`, `returnToMenu`, `getEndingGlyphState` |
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
 | 4 | INPUT | Key listeners, `fresh()`, `shiftHeld()`, 5 input helper functions |
@@ -24,7 +24,7 @@ Single HTML file (~2561 lines, ~104 KB) organized into 13 sections with delimite
 | 8 | GAME FLOW | `MSG_*` constants, `showMessage`, `calcDisplayDuration`, `_doTransition`, `transition`, `checkDoors`, `checkGlyphs`, `transitionEnding` |
 | 9 | UPDATE | Main physics/input/game logic loop |
 | 9.5 | ANIMATION STATE MACHINE | Death/respawn animations (idle -> dying -> respawning -> idle) |
-| 10 | RENDER | `COLORS`, `drawGolemSprite`, `renderDeathRespawnAnimation`, `render()` — all drawing |
+| 10 | RENDER | `COLORS`, `drawGolemSprite`, `renderDeathRespawnAnimation`, `render()` — all drawing (tholem.ai palette, background runes, themed tile geometry, golem entity, HUD, messages, ending sequence with `getEndingGlyphState()` unified renderer) |
 | 11 | INIT & GAME LOOP | Init code, `loop()`, `requestAnimationFrame`, responsive scaling IIFE |
 
 ### Key Design Decisions
@@ -182,10 +182,14 @@ Used for all ending captions — wall-clock based, unlike the frame-based `capti
 
 ### Beat Rendering Logic
 
-- **Beats 1-4:** Exclusive rendering (`if(endingBeat === N)`) — only one beat's content draws at a time.
+- **Continuous state machine:** `getEndingGlyphState(endSec, cx, cy)` replaces per-beat hard cuts — computes glyph positions, alpha, EMET state, flash bloom, and convergence progress in a single pass.
+- **Beats 1-4:** Exclusive rendering (`if(endingBeat === N)`) for beat-specific messages only.
 - **Beats 5-6:** Persistent rendering (`if(endingBeat >= N)`) — stays visible through end of sequence.
+- **Ibis lines:** `endingBeat >= 4` guard with fade-in-then-persist (no fade-out) — lines remain visible through stats and Play Again.
 - **Caption Y positions:** Beat 2 at `H-155`, Beat 3 at `H-130`, Beat 4 ibis lines at `H-155/H-130/H-105` — staggered to avoid overlap.
 - **Skip-on-click:** Click after beat 3 (endSec > 5s) jumps to beat 5. Click "Play Again" button calls `returnToMenu()`.
+- **Deterministic timing:** All ending visuals use `endSec` (derived from `performance.now() - endingStartTime`) — no `Date.now()` calls, no frame-rate artifacts.
+- **Easing:** `easeOutQuint` for glyph convergence (slow start, fast finish), `easeOutCubic` for orbit ramps/EMET cross-fade/stats, `Math.exp(-t²)` for Gaussian flash bloom.
 
 ---
 
@@ -199,7 +203,10 @@ All shared helper functions consolidated in a dedicated section between Setup/Co
 | `playerGridPos()` | Return player center as grid coordinates `{gx, gy}` |
 | `endDash()` | End dash state cleanly; sets cooldown to `DASH_COOLDOWN_ACTUAL` |
 | `land()` | Land on ground — reset jumps and coyote timer |
-| `easeOutCubic(t)` | Easing function for death/respawn animations |
+| `easeOutCubic(t)` | Easing function for death/respawn animations, ending ramps, stats/PlayAgain alpha |
+| `easeOutQuint(t)` | Easing function for glyph convergence (slow start, fast finish) |
+| `lerp(a, b, t)` | Linear interpolation — used for orbit center/radius, font size, glyph convergence |
+| `smoothStep(t)` | Smoothstep interpolation (S-curve) — available for future easing needs |
 | `syncPrevKeys()` | Snapshot `prevKeys = { ...keys }` (replaces unbounded `for...in` copy) |
 | `advanceTimers()` | Advance message queue phases + decrement portal lock timer |
 | `fullDashReset()` | Reset all dash state — used on death/transition (clears charge too) |
@@ -207,7 +214,10 @@ All shared helper functions consolidated in a dedicated section between Setup/Co
 | `resetPlayerToRespawn()` | Restore player position and velocity to respawn point |
 | `killAndRespawn(msg, duration)` | Kill and respawn player; triggers death animation (no `onGround` param) |
 | `captionAlpha(f, start, fadeIn, hold, fadeOut)` | Frame-based caption fade helper |
-| `captionAlphaSec(t, start, fadeIn, hold, fadeOut)` | Wall-clock seconds caption fade helper (ending sequence) |
+| `captionAlphaSec(t, start, fadeIn, hold, fadeOut)` | Wall-clock seconds caption fade helper (ending messages) |
+| `startGame()` | Initialize game state and start rAF loop |
+| `returnToMenu()` | Full game reset and return to title screen |
+| `getEndingGlyphState(endSec, cx, cy)` | Continuous ending state machine — returns glyph positions/alpha, EMET alpha/fontSize/glow, flash bloom, convergence progress |
 
 ### API Change Notes
 

@@ -2,7 +2,7 @@
 
 Context spec for the visual and narrative overhaul of [`golem.html`](../golem.html). All changes are polish and theming only — no gameplay mechanics, chamber layouts, or tile behavior.
 
-**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-9 (+ 4.5, +5.5, +5.6, +5.6.1) **implemented and reviewed**. Future Phases 10a-10b **not started**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
+**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-9 (+ 4.5, +5.5, +5.6, +5.6.1, +5.6.2) **implemented and reviewed**. Phases 10a-10b **implemented**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
 
 ---
 
@@ -35,7 +35,7 @@ Systems already in code that theming must respect or hook into:
 | Platform drop-down | 5. COLLISION — `inputDown()`, `platSolid()` | Down/S phases through platform from above; geometry pass must preserve behavior |
 | Push block visuals | 6. PUSH BLOCK + 10. RENDER | Golden arm/shoulder lines, forward lean squash when pushing |
 | Chamber flow HUD | 8. GAME FLOW — `CHAMBER_FLOW`, `flowId` | Bottom-center name from `CHAMBER_NAMES[fi]`; final chamber shows `★ Path of Wisdom` |
-| Static ending | 10. RENDER — `gameState==='ending'` | Dark overlay, serif quote, "Refresh to play again"; rAF cancelled |
+| Animated ending | 10. RENDER — `gameState==='ending'`, `getEndingGlyphState()` | Continuous glyph/EMET state machine, wall-clock timing, deterministic easing; rAF continues during ending |
 
 **Current palette** (`COLORS` in Section 10): `bg #0d0d1a`, brown walls `#4a4035`/`#6b5d4f`, clay golem `#8a7d6b`, gold text `#d4a84b`, magenta dash particles `rgba(220,120,255,…)`.
 
@@ -306,7 +306,7 @@ Logo on title menu only — not persistent in-game HUD.
 | 5 | 8s+ | Stats line | Time \| Deaths |
 | 6 | — | "Play Again" button | Seafoam outline; reload or full state reset |
 
-Implementation: hero golem render; orbit via sin/cos; lerp convergence; `messageQueue` timed reveals; ~80–100 lines.
+Implementation: hero golem render; orbit via sin/cos with speed/radius ramps (`easeOutCubic`); `getEndingGlyphState()` continuous state machine (Section 1.5) replacing per-beat hard cuts; `easeOutQuint` convergence; EMET cross-fade (converge 0.6→1.0); Gaussian flash bloom (peak at converge≈0.7); font size lerp 24→28px; deterministic glow pulse (`endSec` not `performance.now()`); Ibis lines fade-in-then-persist; `easeOutCubic` stats/PlayAgain alpha; `messageQueue` timed reveals; ~180 lines total (Phase 5 base + 5.6.2 smoothing).
 
 ### 5.4 Responsive canvas (Phase 9)
 
@@ -339,6 +339,7 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **9** Responsive CSS | §5.4 | **Complete** | ~13 |
 | **10a** SFX | Web Audio primitives + call sites, 9 sounds, 11 call sites, Section 7.5 IIFE | **Complete** | ~60 |
 | **10b** Ambient | Drone (D2 73.42Hz) + D minor arpeggio 75 BPM, mute toggle | **Complete** | ~60 |
+| **5.6.2** Ending glyph smoothing | `getEndingGlyphState()` continuous state machine, easing helpers (easeOutQuint, lerp, smoothStep), unified renderer, orbit/convergence ramps, EMET cross-fade, Gaussian flash bloom, font size lerp, deterministic glow pulse, Ibis fade-in-then-persist | **Complete** | ~90 |
 
 ---
 

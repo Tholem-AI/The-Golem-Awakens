@@ -225,8 +225,11 @@ function land() {
   P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES_ACTUAL;
 }
 
-/* ── Easing function for death/respawn animations ── */
+/* ── Easing functions for animations ── */
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function smoothStep(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
 
 /* ── Sync prevKeys with current keys (spread, no unbounded growth) ── */
 function syncPrevKeys() { prevKeys = { ...keys }; }
@@ -2186,7 +2189,101 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
   }
 
 /* ── Ending screen — wall-clock animated sequence ── */
-  if(gameState==='ending'){
+
+/* Continuous ending glyph state — replaces per-beat hard cuts */
+function getEndingGlyphState(endSec, cx, cy) {
+  const B2 = ENDING.BEAT_2, B3 = ENDING.BEAT_3, B4 = ENDING.BEAT_4;
+  const allGlyphs = ['\u05d0', '\u05de', '\u05d4', '\u05ea'];
+  const PI2 = Math.PI * 2;
+  const glyphs = [];
+  let emetAlpha = 0, emetFontSize = 24, emetGlowIntensity = 0;
+  let emetY = cy - 50, flashAlpha = 0, convergeProgress = 0;
+
+  /* ── Phase A: Orbit (0-5s) ── */
+  const orbitEnd = B3; // 5s
+  const orbitPhase = Math.min(endSec / orbitEnd, 1); // 0→1 over orbit
+
+  // Speed ramps: slow start, accelerates after 2s (B2)
+  const speedPhase = Math.min(Math.max((endSec - B2) / 1, 0), 1); // 0-1 over [2,3]
+  const orbitRate = lerp(0.6, 2.2, easeOutCubic(speedPhase));
+
+  // Center shifts from (cx,cy) toward (cx, cy-30) starting at B2
+  const centerPhase = Math.min(Math.max((endSec - B2) / 2, 0), 1);
+  const orbitCX = cx;
+  const orbitCY = lerp(cy, cy - 30, easeOutCubic(centerPhase));
+
+  // Radius shrinks from ~50 to ~35 starting at B2
+  const radius = lerp(50, 35, easeOutCubic(centerPhase));
+
+  /* ── Phase B: Convergence (5-7.5s) ── */
+  const convergeStart = B3;
+  const convergeDur = B4 - convergeStart; // 9 - 5 = 4s, but glyphs converge in first 2.5s
+  const rawConverge = Math.min(Math.max((endSec - convergeStart) / 2.5, 0), 1);
+  convergeProgress = rawConverge;
+  const easedConverge = easeOutQuint(rawConverge);
+
+  /* ── Compute glyph positions ── */
+  for (let i = 0; i < 4; i++) {
+    // Orbit position (deterministic, uses endSec not Date.now())
+    const angle = (i / 4) * PI2 + endSec * orbitRate;
+    const ox = cx + Math.cos(angle) * radius;
+    const oy = orbitCY + Math.sin(angle) * radius;
+
+    // EMET target positions: Aleph/Mem/Tav spread across center
+    // RTL: \u05ea\u05de\u05d0 (Tav right, Mem center, Aleph left)
+    const letterSpacing = 20;
+    const targetX = cx + (i - 1.5) * letterSpacing; // Aleph=-30, Mem=-10, He=+10, Tav=+30
+    const targetY = emetY;
+
+    let x, y, alpha;
+
+    if (rawConverge <= 0) {
+      // Pure orbit
+      x = ox; y = oy; alpha = 0.6 + Math.sin(endSec / 300) * 0.3 + 0.1;
+    } else if (rawConverge < 1) {
+      // Converging: lerp from orbit to target
+      x = lerp(ox, targetX, easedConverge);
+      y = lerp(oy, targetY, easedConverge);
+      // He (index 2) dissolves starting at converge=0.5
+      if (i === 2) {
+        alpha = 1 - easeOutCubic(Math.min((rawConverge - 0.4) / 0.6, 1));
+      } else {
+        alpha = lerp(1, 0, easeOutCubic(Math.max((rawConverge - 0.7) / 0.3, 0)));
+      }
+    } else {
+      // Converged
+      x = targetX; y = targetY;
+      alpha = (i === 2) ? 0 : 0; // All faded, He gone first
+    }
+
+    glyphs.push({ x, y, alpha: Math.max(0, alpha) });
+  }
+
+  /* ── EMET cross-fade (starts at converge=0.6) ── */
+  if (rawConverge >= 0.6) {
+    emetAlpha = easeOutCubic(Math.min((rawConverge - 0.6) / 0.4, 1));
+  }
+
+  /* ── Phase C: Flash bloom (Gaussian bell at converge≈0.7) ── */
+  const flashCenter = 0.7, flashWidth = 0.15;
+  const flashT = (rawConverge - flashCenter) / flashWidth;
+  flashAlpha = Math.exp(-flashT * flashT) * 0.25;
+
+  /* ── Phase 4: Font size smoothing ── */
+  emetFontSize = lerp(24, 28, easeOutCubic(Math.min(Math.max((rawConverge - 0.5) / 0.5, 0), 1)));
+
+  /* ── Phase D: Glow (7.5s+) — EMET persists at full brightness ── */
+  if (endSec >= B3 + 2.5) {
+    const glowPhase = Math.min((endSec - (B3 + 2.5)) / 1.5, 1);
+    const baseGlow = easeOutCubic(glowPhase) * 0.7;
+    const pulse = Math.sin(endSec / 0.4) * 0.15;
+    emetGlowIntensity = Math.max(baseGlow, baseGlow + pulse);
+  }
+
+  return { glyphs, emetAlpha, emetFontSize, emetGlowIntensity, emetY, flashAlpha, convergeProgress };
+}
+
+if (gameState === 'ending') {
     /* Screen fade */
     if(screenFade>0){
       screenAlpha=Math.min(screenAlpha+0.03,1);
@@ -2220,105 +2317,86 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
       alpha: golemAlpha, facing: 1, twoEyes: true, glow: 0.4, scale: 2
     });
 
-    const allGlyphs = ['\u05d0','\u05de','\u05d4','\u05ea'];
+    const allGlyphs = ['\u05d0', '\u05de', '\u05d4', '\u05ea'];
 
-    /* Beat 1: glyphs orbit (exclusive to beat 1 only) */
-    if(endingBeat === 1){
-      const pulse = Math.sin(now/300)*0.3+0.7;
-      X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
-      X.direction='rtl';
-      for(let i=0;i<4;i++){
-        const angle = (i/4)*Math.PI*2 + now/1000;
-        const radius = 50 + Math.sin(now/500+i)*5;
-        const lx = cx + Math.cos(angle)*radius;
-        const ly = cy + Math.sin(angle)*radius;
-        X.fillStyle='rgba(197,179,142,'+(pulse*0.6)+')';
-        X.fillText(allGlyphs[i], lx, ly);
-      }
-      X.direction='ltr';
+    /* Unified ending renderer — continuous glyph/EMET state */
+    const state = getEndingGlyphState(endSec, cx, cy);
+
+    /* Flash bloom overlay */
+    if (state.flashAlpha > 0.01) {
+      X.fillStyle = 'rgba(197,179,142,' + state.flashAlpha + ')';
+      X.fillRect(0, 0, W, H);
     }
 
-    /* Beat 2: glyphs orbit faster + message (exclusive) */
-    if(endingBeat === 2){
-      const orbitSpeed = Math.min((endSec-ENDING.BEAT_1)/1.5, 1);
-      X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
-      X.direction='rtl';
-      for(let i=0;i<4;i++){
-        const angle = (i/4)*Math.PI*2 + orbitSpeed*Math.PI*2;
-        const radius = 60 - orbitSpeed*15;
-        const lx = cx + Math.cos(angle)*radius;
-        const ly = cy-30 + Math.sin(angle)*radius*0.5;
-        X.fillStyle='rgba(197,179,142,'+(0.5+orbitSpeed*0.5)+')';
-        X.fillText(allGlyphs[i], lx, ly);
+    /* Individual glyphs (Hebrew RTL) */
+    X.font = FONT_HEBREW; X.textAlign = 'center'; X.textBaseline = 'middle';
+    X.direction = 'rtl';
+    for (let i = 0; i < 4; i++) {
+      const g = state.glyphs[i];
+      if (g.alpha > 0.01) {
+        X.fillStyle = 'rgba(197,179,142,' + g.alpha + ')';
+        X.fillText(allGlyphs[i], g.x, g.y);
       }
-      X.direction='ltr';
-      /* Message — exclusive to beat 2, different Y to avoid overlap */
+    }
+    X.direction = 'ltr';
+
+    /* EMET word (Hebrew RTL) */
+    if (state.emetAlpha > 0.01) {
+      X.font = state.emetFontSize + 'px "Segoe UI", "Arial Hebrew", "David", serif';
+      X.textAlign = 'center'; X.textBaseline = 'middle';
+      if (state.emetGlowIntensity > 0.01) {
+        X.shadowColor = 'rgba(197,179,142,' + state.emetGlowIntensity + ')';
+        X.shadowBlur = 10;
+      }
+      X.direction = 'rtl';
+      X.strokeStyle = 'rgba(10,10,18,' + (state.emetAlpha * 0.8) + ')';
+      X.lineWidth = 3;
+      X.strokeText('\u05d0\u05de\u05ea', cx, state.emetY);
+      X.fillStyle = 'rgba(197,179,142,' + (state.emetAlpha * 0.9) + ')';
+      X.fillText('\u05d0\u05de\u05ea', cx, state.emetY);
+      X.shadowBlur = 0;
+      X.direction = 'ltr';
+    }
+
+    /* Message — exclusive to beat 2, different Y to avoid overlap */
+    if (endingBeat === 2) {
       const msgAlpha = captionAlphaSec(endSec, ENDING.BEAT_2 + 0.3, fi, ho, fo);
       if (msgAlpha > 0) {
         X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
-        X.fillStyle='rgba(232,232,240,'+msgAlpha+')';
-        X.font=FONT_DISPLAY;
-        X.fillText('The four glyphs converge.', W/2, H-155);
+        X.fillStyle = 'rgba(232,232,240,' + msgAlpha + ')';
+        X.font = FONT_DISPLAY;
+        X.fillText('The four glyphs converge.', W / 2, H - 155);
         X.shadowBlur = 0;
       }
     }
 
-    /* Beat 3: EMET convergence + message (exclusive, different Y) */
-    if(endingBeat === 3){
-      const converge = Math.min((endSec-ENDING.BEAT_2)/1.5, 1);
-      const emetAlpha = converge;
-      X.font='24px "Segoe UI", "Arial Hebrew", "David", serif';
-      X.textAlign='center'; X.textBaseline='middle';
-      if(converge < 0.5){
-        const flash = Math.sin(converge*Math.PI*4)*0.3;
-        X.fillStyle='rgba(197,179,142,'+flash+')';
-        X.fillRect(0,0,W,H);
-      }
-      X.direction='rtl';
-      X.strokeStyle='rgba(10,10,18,'+emetAlpha+')'; X.lineWidth=3;
-      X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.fillStyle='rgba(197,179,142,'+(emetAlpha*0.9)+')';
-      X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.direction='ltr';
-      /* Message — exclusive to beat 3, different Y from beat 2 */
+    /* Message — exclusive to beat 3, different Y from beat 2 */
+    if (endingBeat === 3) {
       const msgAlpha2 = captionAlphaSec(endSec, ENDING.BEAT_3 + 0.3, fi, ho, fo);
       if (msgAlpha2 > 0) {
         X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
-        X.fillStyle='rgba(232,232,240,'+msgAlpha2+')';
-        X.font=FONT_DISPLAY;
-        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-130);
+        X.fillStyle = 'rgba(232,232,240,' + msgAlpha2 + ')';
+        X.font = FONT_DISPLAY;
+        X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W / 2, H - 130);
         X.shadowBlur = 0;
       }
     }
 
-    /* Beat 4: EMET glow + ibis lines (exclusive, staggered Y) */
-    if(endingBeat === 4){
-      const glow = Math.sin(now/400)*0.3+0.7;
-      X.font='28px "Segoe UI", "Arial Hebrew", "David", serif';
-      X.textAlign='center'; X.textBaseline='middle';
-      X.shadowColor='rgba(197,179,142,'+glow+')';
-      X.shadowBlur=10;
-      X.direction='rtl';
-      X.strokeStyle='rgba(10,10,18,0.8)'; X.lineWidth=3;
-      X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.fillStyle='rgba(197,179,142,'+(0.7+glow*0.3)+')';
-      X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.shadowBlur=0;
-      X.direction='ltr';
-      /* Ibis lines — exclusive, staggered with non-overlapping timing */
+    /* Ibis lines — fade in then persist through end */
+    if (endingBeat >= 4) {
       const ibisLines = [
-        { text: 'The Ibis watches. What Thoth began, the clay completed itself.', y: H-155, start: ENDING.BEAT_4 + 0.5 },
-        { text: 'You walked the path of initiation.', y: H-130, start: ENDING.BEAT_4 + 2.0 },
-        { text: 'You are the Golem of Truth.', y: H-105, start: ENDING.BEAT_4 + 3.5 },
+        { text: 'The Ibis watches. What Thoth began, the clay completed itself.', y: H - 155, start: ENDING.BEAT_4 + 0.5 },
+        { text: 'You walked the path of initiation.', y: H - 130, start: ENDING.BEAT_4 + 2.0 },
+        { text: 'You are the Golem of Truth.', y: H - 105, start: ENDING.BEAT_4 + 3.5 },
       ];
       X.font = FONT_DISPLAY;
       X.textAlign = 'center';
       for (const line of ibisLines) {
-        const a = captionAlphaSec(endSec, line.start, fi, ho, fo);
+        const a = Math.min((endSec - line.start) / 0.6, 1);
         if (a > 0) {
           X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
           X.fillStyle = 'rgba(232,232,240,' + a + ')';
-          X.fillText(line.text, W/2, line.y);
+          X.fillText(line.text, W / 2, line.y);
           X.shadowBlur = 0;
         }
       }
@@ -2326,7 +2404,7 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
 
     /* Beat 5: Stats */
     if(endingBeat >= 5){
-      const statsAlpha = Math.min((endSec - ENDING.BEAT_4)/0.5, 1);
+      const statsAlpha = easeOutCubic(Math.max(0, Math.min((endSec - ENDING.BEAT_4)/0.5, 1)));
       X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
       X.font=FONT_UI;
       X.fillText('Time: '+frozenElapsedSec+'s  |  Deaths: '+totalDeaths, W/2, H-55);
@@ -2334,7 +2412,7 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
 
     /* Beat 6: Play Again */
     if(endingBeat >= 6){
-      const btnAlpha = Math.min((endSec - ENDING.BEAT_5)/0.5, 1);
+      const btnAlpha = easeOutCubic(Math.max(0, Math.min((endSec - ENDING.BEAT_5)/0.5, 1)));
       const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
       X.strokeStyle='rgba(92,179,175,'+btnAlpha+')';
       X.lineWidth=2;
