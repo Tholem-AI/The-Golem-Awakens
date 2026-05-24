@@ -245,6 +245,32 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 - [x] Reviewer improvements: pre-allocated noise buffer, ctx.resume() in startMusic()
 - [x] File: 2195 -> 2322 lines, ~96KB -> ~91KB. JS syntax PASS, zero browser errors.
 
+### Fixed Timestep + Wall-Clock Ending + Pace Toggle (May 2026)
+
+- [x] Fixed simulation timestep: configurable Hz (SIM_HZ_DEFAULT=240 Hard, SIM_HZ_EASY=144 Easy) via accumulator pattern with performance.now()
+- [x] Accumulator: simAcc (ms) + simDt (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death
+- [x] Accumulator only during 'playing' state — not paused, not ending, not title
+- [x] Derived frame-count constants scaled by simHz ratio: COYOTE/JUMP_BUFFER/DASH/ANIM/MSG_ACTUAL via applyPaceAssists()
+- [x] Original per-tick physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, JUMP_VEL_1=-5, etc.) preserved AS-IS
+- [x] Wall-clock ending timeline: ENDING constants (BEAT_1-6 at 0s/2s/5s/9s/14s/16s), independent of difficulty
+- [x] captionAlphaSec() helper for time-based caption fades in ending (vs frame-based captionAlpha())
+- [x] Exclusive beat rendering (===) for beats 1-4, persistent (>=) for beats 5-6
+- [x] Fixed caption Y overlaps: Beat 2 at H-155, Beat 3 at H-130, Beat 4 ibis lines staggered
+- [x] Ending uses performance.now() - endingStartTime for wall-clock timing
+- [x] Pace toggle on title screen: "Clay Weight" (Easy, 144Hz) and "Temple Pace" (Hard, 240Hz)
+- [x] localStorage persistence with key 'golem_pace', defaults to 'easy'
+- [x] Seafoam (#5CB3AF) color highlight for active pace mode
+- [x] updatePaceUI() function updates button colors and description label
+- [x] Integration: simAcc reset in togglePause() and resetGameState(), lastSimTime=performance.now() in startGame()
+- [x] HUD uses frozenElapsedSec during 'ending' state
+- [x] Removed dead endingFrame variable; endingStartTime uses performance.now() consistently
+- [x] Validation: JS syntax OK, file 2561 lines ~104KB, all existing functionality preserved
+
+#### Known Issues / Future Work
+
+- [ ] Ending glyph transitions choppy/harsh — exclusive beat rendering (`===`) creates abrupt visual jumps between beats; consider overlap windows or cross-fade between adjacent beats
+- [ ] `MSG_CHARS_PER_FRAME` doesn't scale with `SIM_HZ` (minor — text scroll speed differs slightly between paces)
+
 ### Chamber Redesign (Not Started)
 
 Redesign each chamber for better experience using `chamber-proposal.md` as staging area.
@@ -255,6 +281,20 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 - [x] Chamber 3 — The Weight of Wisdom: Replaced placeholder with complex grid (30+ walls, 15 pits, 6 platforms, 13 MAGICAL_WALLs, 1 GLYPH, 3 PUSH_SPAWNs, 5 CRACKED). Extended push block system to PBlocks[] array supporting N blocks with backward-compatible pushSpawn wrapper. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified.
 - [x] Chamber 4 — The Ibis Chamber: Replaced placeholder with complex grid (134 walls, 22 pits, 8 platforms, 8 MAGICAL_WALLs, 8 CRACKED, 3 PUSH_SPAWN, 1 END_PORTAL). Spawn at (2,4), END_PORTAL at (1,1), row 13 AIR override. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified, reviewer approved.
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
+
+### Ending Sequence Overhaul (May 2026)
+
+- [x] Extracted `drawGolemSprite(ctx, px, py, opts)` shared rendering function — single source of truth for golem sprite proportions
+- [x] Fixed ending sprite proportions: replaced hand-calculated offsets with center-to-top-left math (`px = cx - P.w/2, py = cy - P.h/2`)
+- [x] Ending golem: 2x scale, soft glow (shadowBlur 4.8), front-facing variant (twoEyes), alpha via drawGolemSprite save/restore
+- [x] In-game idle sprite: replaced 24-line inline drawing with single drawGolemSprite call (pixel-identical)
+- [x] `captionAlpha(frame, start, fadeIn, hold, fadeOut)` helper — decouples caption timing from visual beats
+- [x] Staggered Ibis lines: 3 captions revealed sequentially (start frames 380/440/500, 60-frame fadeIn, 180-frame hold, 60-frame fadeOut)
+- [x] Extended beat timing: beats 4-6 stretched (480->800, 540->920) — total ending ~15s (from ~9s)
+- [x] Caption shadow for readability over glyph animation (shadowBlur 4)
+- [x] Skip-on-click: click anywhere after beat 3 jumps to Play Again
+- [x] Death/respawn animations preserved (not converted — progressive reveal doesn't map to drawGolemSprite)
+- [x] Validation: JS syntax OK, zero console errors, RIPER reviewed, timing verified
 
 ### Glyph Ordering & Ending Animation Fixes (May 2026)
 
@@ -348,7 +388,9 @@ Prepare the project for public repository sharing.
 |||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 |||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 ||||||||| Visual/story overhaul | Complete | Phases 1-10b implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling, Web Audio SFX (9 sounds, 11 call sites), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), mute toggle. RIPER reviewed. ~310 lines net. |
-|||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
-|| Touch/mobile controls | Not Started | — |
-|| Website integration prep | Not Started | — |
-|| Open source release prep | Not Started | — |
+||||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
+||||||||| Ending sequence overhaul | Complete | Extracted drawGolemSprite() shared function (gameplay + ending), fixed ending sprite proportions (center-to-top-left math), 2x scale + glow + front-facing variant on ending screen, captionAlpha() timing helper, staggered Ibis lines (3s read each), extended beat timing (~9s -> ~15s), skip-on-click, caption shadow. RIPER reviewed.
+||| Touch/mobile controls | Not Started | — |
+||| Website integration prep | Not Started | — |
+||| Open source release prep | Not Started | — |
+||| Fixed timestep + wall-clock ending + pace toggle | Complete | SIM_HZ_DEFAULT=240/SIM_HZ_EASY=144, accumulator pattern (simAcc+simDt, max 8 ticks, 128ms clamp), derived frame constants scaled by applyPaceAssists(), ENDING wall-clock timeline (0s/2s/5s/9s/14s/16s), captionAlphaSec() helper, pace toggle with localStorage 'golem_pace', default 'easy'. All per-tick physics constants preserved.

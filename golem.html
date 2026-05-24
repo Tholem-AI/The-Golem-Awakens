@@ -54,7 +54,12 @@ canvas { display: block; image-rendering: pixelated; }
         </div>
         <div class="ts-title">THE GOLEM AWAKENS</div>
         <div class="ts-credits">made by <a href="https://tholem.ai" target="_blank" id="tholem-link">Tholem Labs</a></div>
-        <div class="ts-blurb"><a href="https://github.com/Tholem-AI" target="_blank" id="github-link">Fully open source</a> &bull; Built entirely with local AI models on a single RTX 3090 Ti</div>
+       <div class="ts-blurb"><a href="https://github.com/Tholem-AI" target="_blank" id="github-link">Fully open source</a> &bull; Built entirely with local AI models on a single RTX 3090 Ti</div>
+        <div class="ts-pace" style="margin-bottom:24px;">
+          <button id="btn-easy" style="font-family:Georgia,serif;font-size:14px;color:#C5B391;background:none;border:1px solid rgba(197,179,145,0.35);padding:6px 16px;cursor:pointer;letter-spacing:2px;transition:background 0.2s,color 0.2s;">Clay Weight</button>
+          <button id="btn-hard" style="font-family:Georgia,serif;font-size:14px;color:#C5B391;background:none;border:1px solid rgba(197,179,145,0.35);padding:6px 16px;cursor:pointer;letter-spacing:2px;transition:background 0.2s,color 0.2s;">Temple Pace</button>
+        </div>
+        <div class="ts-pace-label" style="font-family:Georgia,serif;font-size:11px;color:#4A4A5C;margin-bottom:16px;"></div>
         <div class="ts-start">PRESS ANY KEY TO BEGIN</div>
       </div>
     </div>
@@ -103,9 +108,66 @@ const TERMINAL_VEL = 2.5;       // terminal velocity (both X and Y)
 const JUMP_VEL_1 = -5;          // first jump velocity
 const JUMP_VEL_2 = -4.33;       // double jump velocity
 const JUMP_CUT_VEL = -2;        // variable jump cut velocity (release to short-hop)
-const COYOTE_FRAMES = 12;       // coyote time in frames (200ms)
-const JUMP_BUFFER_FRAMES = 12;  // jump buffer in frames (200ms)
+const COYOTE_FRAMES = 12;       // coyote time in frames (200ms at 240Hz)
+const JUMP_BUFFER_FRAMES = 12;  // jump buffer in frames (200ms at 240Hz)
 const CHARGE_FRICTION = 0.85;   // dash charge state friction
+
+/* ── Simulation timing ── */
+const SIM_HZ_DEFAULT    = 240;        // Hard: 240 Hz (preserves tuned constants)
+const SIM_HZ_EASY       = 144;        // Easy: 144 Hz (slower, more forgiving)
+let simHz               = SIM_HZ_DEFAULT;
+let simDt               = 1000 / simHz; // ms per tick
+let simAcc              = 0;           // accumulator in ms
+let lastSimTime         = 0;          // last performance.now() for accumulator
+
+/* ── Derived frame-count constants (scaled by SIM_HZ, computed in applyPaceAssists) ── */
+let COYOTE_FRAMES_ACTUAL  = 12;
+let JUMP_BUFFER_ACTUAL    = 12;
+let DASH_CHARGE_MAX_ACTUAL = 180;
+let DASH_DURATION_ACTUAL  = 10;
+let DASH_COOLDOWN_ACTUAL  = 20;
+let ANIM_TOTAL_ACTUAL     = 90;
+let MSG_FADE_IN_ACTUAL    = 180;
+let MSG_FADE_OUT_ACTUAL   = 180;
+let MSG_MIN_HOLD_ACTUAL   = 90;
+let MSG_MAX_HOLD_ACTUAL   = 360;
+
+function applyPaceAssists(){
+  const r = simHz / SIM_HZ_DEFAULT;
+  COYOTE_FRAMES_ACTUAL   = Math.ceil(12 * r);
+  JUMP_BUFFER_ACTUAL     = Math.ceil(12 * r);
+  DASH_CHARGE_MAX_ACTUAL = Math.ceil(180 * r);
+  DASH_DURATION_ACTUAL   = Math.ceil(10 * r);
+  DASH_COOLDOWN_ACTUAL   = Math.ceil(20 * r);
+  ANIM_TOTAL_ACTUAL      = Math.ceil(90 * r);
+  MSG_FADE_IN_ACTUAL     = Math.ceil(180 * r);
+  MSG_FADE_OUT_ACTUAL    = Math.ceil(180 * r);
+  MSG_MIN_HOLD_ACTUAL    = Math.ceil(90 * r);
+  MSG_MAX_HOLD_ACTUAL    = Math.ceil(360 * r);
+}
+applyPaceAssists();
+
+/* ── Pace (difficulty) persistence ── */
+let paceMode = 'hard';
+
+function loadPace(){
+  const saved = localStorage.getItem('golem_pace');
+  if(saved === 'easy' || saved === 'hard') paceMode = saved;
+  else paceMode = 'easy';
+  applyPace();
+}
+
+function applyPace(){
+  simHz = paceMode === 'easy' ? SIM_HZ_EASY : SIM_HZ_DEFAULT;
+  simDt = 1000 / simHz;
+  applyPaceAssists();
+}
+
+function togglePace(){
+  paceMode = paceMode === 'easy' ? 'hard' : 'easy';
+  localStorage.setItem('golem_pace', paceMode);
+  applyPace();
+}
 
 /* ── Push block physics constants ── */
 const PB_GRAVITY = 0.3;         // push block gravity
@@ -155,12 +217,12 @@ function playerGridPos() {
 
 /* End dash state cleanly */
 function endDash() {
-  P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false; P._dashSfx=false;
+  P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN_ACTUAL; P.dashPhase=false; P._dashSfx=false;
 }
 
 /* Land on ground — reset jumps and coyote */
 function land() {
-  P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES;
+  P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES_ACTUAL;
 }
 
 /* ── Easing function for death/respawn animations ── */
@@ -174,11 +236,11 @@ function advanceTimers() {
   if(messageQueue.length>0){
     const m=messageQueue[0];
     m.elapsed++;
-    if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_FRAMES){
+   if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_ACTUAL){
       m.phase='display'; m.elapsed=0;
     } else if(m.phase==='display' && m.elapsed>=m.hold){
       m.phase='fadeOut'; m.elapsed=0;
-    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_FRAMES){
+    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_ACTUAL){
       messageQueue.shift();
     }
   }
@@ -193,6 +255,32 @@ function fullDashReset() {
 /* Cancel an active dash without resetting cooldown — used on immediate death */
 function cancelDash() {
   P.dashing=false; P.dashTimer=0;
+}
+
+/* Caption fade timing helper for ending sequence */
+function captionAlpha(f, start, fadeIn, hold, fadeOut) {
+  if (f < start) return 0;
+  let t = f - start;
+  if (fadeIn > 0 && t < fadeIn) return t / fadeIn;
+  t -= fadeIn;
+  if (hold > 0 && t < hold) return 1;
+  t -= hold;
+  if (fadeOut > 0 && t < fadeOut) return 1 - (t / fadeOut);
+  if (fadeOut === 0) return 1;
+  return 0;
+}
+
+/* Caption fade timing (wall-clock seconds) — for ending sequence */
+function captionAlphaSec(t, start, fadeIn, hold, fadeOut) {
+  if (t < start) return 0;
+  let elapsed = t - start;
+  if (fadeIn > 0 && elapsed < fadeIn) return elapsed / fadeIn;
+  elapsed -= fadeIn;
+  if (hold > 0 && elapsed < hold) return 1;
+  elapsed -= hold;
+  if (fadeOut > 0 && elapsed < fadeOut) return 1 - (elapsed / fadeOut);
+  if (fadeOut === 0) return 1;
+  return 0;
 }
 
 /* Restore player position and velocity to respawn point */
@@ -519,11 +607,23 @@ const ANIM_TOTAL_FRAMES = 90;      // 1.5s at 60fps
 
 /* ── Ending sequence state (Phase 5) ── */
 let endingBeat = 0;
-let endingFrame = 0;
-let endingStartTime = Date.now();
+let endingStartTime = performance.now();
 let gameStartTime;
 let totalDeaths = 0;
 let frozenElapsedSec = 0;       // frozen game time for ending stats
+
+/* ── Ending timeline (wall-clock seconds, independent of sim Hz) ── */
+const ENDING = {
+  BEAT_1: 0,      // glyphs orbit
+  BEAT_2: 2.0,    // message: "The four glyphs converge."
+  BEAT_3: 5.0,    // EMET convergence + message
+  BEAT_4: 9.0,    // ibis lines staggered
+  BEAT_5: 14.0,   // stats
+  BEAT_6: 16.0,   // play again button
+  FADE_IN: 0.6,   // caption fade-in duration (sec)
+  FADE_OUT: 0.6,  // caption fade-out duration (sec)
+  HOLD: 3.5,      // caption hold duration (sec)
+};
 
 /* ══════════════════════════════════════════════════
    4. INPUT
@@ -1060,8 +1160,8 @@ const MSG_FOREVER_THRESHOLD = 99999;
 /* ── Message queue system ── */
 function calcDisplayDuration(text, providedDur) {
     const auto = Math.floor(text.length / MSG_CHARS_PER_FRAME);
-    const dur = providedDur || MSG_MIN_HOLD;
-    return Math.min(MSG_MAX_HOLD, Math.max(dur, auto));
+    const dur = providedDur || MSG_MIN_HOLD_ACTUAL;
+    return Math.min(MSG_MAX_HOLD_ACTUAL, Math.max(dur, auto));
 }
 function showMessage(txt, dur) {
     const isForever = (dur || 0) >= MSG_FOREVER_THRESHOLD;
@@ -1157,12 +1257,11 @@ function checkGlyphs(){
 function transitionEnding(){
   if(animState!=='idle') return;
   endingBeat = 0;
-  endingFrame = 0;
-  endingStartTime = Date.now();
+  endingStartTime = performance.now();
   gameState='ending';
   Sound.stopMusic();
   screenFade=1; screenAlpha=0;
-  frozenElapsedSec = Math.round((Date.now()-gameStartTime)/1000); // freeze elapsed time
+  frozenElapsedSec = Math.round((Date.now()-gameStartTime)/1000);
 }
 
 /* ══════════════════════════════════════════════════
@@ -1238,13 +1337,13 @@ function update(){
 
     if(!shiftHeld()){
       /* Shift released — execute dash */
-      const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
+     const chargeRatio = P.dashCharge / DASH_CHARGE_MAX_ACTUAL;
       const dashDist = DASH_DISTANCE_MIN + (DASH_DISTANCE_MAX - DASH_DISTANCE_MIN) * chargeRatio;
-      const moveFrames = DASH_DURATION;
+      const moveFrames = DASH_DURATION_ACTUAL;
       const dashSpeed = dashDist / moveFrames;
 
       P.dashing = true;
-      P.dashTimer = DASH_DURATION;
+      P.dashTimer = DASH_DURATION_ACTUAL;
       P.dashDir = P.facing;
       P.dashPhase = true;
       P.dashCharge = 0;
@@ -1256,7 +1355,7 @@ function update(){
       Sound.play('dash');
     } else {
       /* Still holding — accumulate charge */
-      if(P.dashCharge < DASH_CHARGE_MAX){
+      if(P.dashCharge < DASH_CHARGE_MAX_ACTUAL){
         P.dashCharge++;
       }
       /* Charge particles */
@@ -1409,7 +1508,7 @@ function update(){
     Sound.play('jumpHi');
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
-    P.jumpBuffer = JUMP_BUFFER_FRAMES;
+    P.jumpBuffer = JUMP_BUFFER_ACTUAL;
   }
 
   /* Variable jump height: cut upward velocity on release */
@@ -1437,17 +1536,17 @@ function updateAnim(){
   advanceTimers();
   Particles.update();
   animFrame++;
-  const progress = animFrame / ANIM_TOTAL_FRAMES;
+ const progress = animFrame / ANIM_TOTAL_ACTUAL;
  // Dying -> transition to respawning
-  if(animState==='dying' && animFrame>=ANIM_TOTAL_FRAMES){
+  if(animState==='dying' && animFrame>=ANIM_TOTAL_ACTUAL){
     resetPlayerToRespawn();
     animState='respawning'; animFrame=0;
     showMessage('Clay reforms...', 60);
   }
- // Respawning -> transition back to idle
-  if(animState==='respawning' && animFrame>=ANIM_TOTAL_FRAMES){
+// Respawning -> transition back to idle
+  if(animState==='respawning' && animFrame>=ANIM_TOTAL_ACTUAL){
     resetPlayerToRespawn();
-    P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
+    P.onGround=true; P.coyoteTime=COYOTE_FRAMES_ACTUAL;
     fullDashReset();
     resetPushBlock();
   animState='idle'; animFrame=0;
@@ -1466,13 +1565,88 @@ const COLORS = {
   glyph:'#C5B391', glyphGlow:'rgba(197,179,145,0.45)',
   cracked:'#2E2840',
   golem:'#A89B8E', golemDark:'#4A4858', golemEye:'#C5B391',
-  text:'#E8E8F0', pushBlock:'#2E2E44', pushBlockTop:'#454560'
+ text:'#E8E8F0', pushBlock:'#2E2E44', pushBlockTop:'#454560'
 };
+
+/* ── Shared golem sprite renderer ── */
+function drawGolemSprite(ctx, px, py, opts) {
+  opts = opts || {};
+  const pw = opts.pw !== undefined ? opts.pw : P.w;
+  const ph = opts.ph !== undefined ? opts.ph : P.h;
+  const facing = opts.facing || 1;
+  const headOffY = opts.headOffY || 0;
+  const alpha = opts.alpha !== undefined ? opts.alpha : 1;
+  const showArms = opts.showArms !== false;
+  const showFeet = opts.showFeet !== false;
+  const showShadow = opts.showShadow !== false;
+  const glow = opts.glow || 0;
+  const scale = opts.scale || 1;
+  const twoEyes = opts.twoEyes || false;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (scale !== 1) {
+    const cpx = px + pw/2, cpy = py + ph/2;
+    ctx.translate(cpx, cpy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cpx, -cpy);
+  }
+
+  if (glow > 0) {
+    ctx.shadowColor = 'rgba(197,179,142,' + (glow * 0.5) + ')';
+    ctx.shadowBlur = glow * 12;
+  }
+
+  if (showShadow) {
+    ctx.fillStyle = COLORS.golemDark;
+    ctx.fillRect(px+4, py+6, pw-8, ph-10);
+  }
+
+  ctx.fillStyle = COLORS.golem;
+  ctx.fillRect(px+2, py+4, pw-4, ph-4);
+
+  const hx = px+4, hy = py+headOffY, hw = pw-8, hh = 10, hr = 4;
+  ctx.beginPath();
+  ctx.moveTo(hx+hr, hy); ctx.lineTo(hx+hw-hr, hy);
+  ctx.arcTo(hx+hw, hy, hx+hw, hy+hr, hr);
+  ctx.lineTo(hx+hw, hy+hh); ctx.lineTo(hx, hy+hh);
+  ctx.lineTo(hx, hy+hr);
+  ctx.arcTo(hx, hy, hx+hr, hy, hr);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = COLORS.golemEye;
+  ctx.fillRect(facing > 0 ? px+14 : px+6, py+3+headOffY, 4, 3);
+
+  if (twoEyes) {
+    ctx.fillRect(facing > 0 ? px+6 : px+14, py+3+headOffY, 4, 3);
+  }
+
+  if (showFeet) {
+    ctx.fillStyle = COLORS.golemDark;
+    ctx.beginPath();
+    ctx.moveTo(px+3,py+ph-4); ctx.lineTo(px+10,py+ph-4);
+    ctx.lineTo(px+12,py+ph); ctx.lineTo(px+1,py+ph);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px+pw-10,py+ph-4); ctx.lineTo(px+pw-3,py+ph-4);
+    ctx.lineTo(px+pw-1,py+ph); ctx.lineTo(px+pw-12,py+ph);
+    ctx.closePath(); ctx.fill();
+  }
+
+  if (showArms) {
+    ctx.fillStyle = COLORS.golem;
+    ctx.fillRect(px-1, py+10, 3, 10);
+    ctx.fillRect(px+pw-2, py+10, 3, 10);
+  }
+
+  ctx.restore();
+}
 
 /* ── Death/Respawn animation renderer ── */
 function renderDeathRespawnAnimation(ox, oy){
   const now = Date.now();
-  const progress = animFrame / ANIM_TOTAL_FRAMES;
+ const progress = animFrame / ANIM_TOTAL_ACTUAL;
   const cx = ox + P.respawnX + P.w/2;
   const cy = oy + P.respawnY + P.h/2;
   const pw = P.w, ph = P.h;
@@ -1849,7 +2023,7 @@ function render(){
   if(P.dashCharge > 0){
     const cx = ox + P.x + P.w / 2;
     const cy = oy + P.y + P.h / 2;
-    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
+    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX_ACTUAL;
     const radius = DASH_CHARGE_RING_MIN + (DASH_CHARGE_RING_MAX - DASH_CHARGE_RING_MIN) * chargeRatio;
     const segs = 8, segAngle = Math.PI * 2 / segs;
 
@@ -1917,30 +2091,7 @@ function render(){
 
 const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
 
- X.fillStyle=COLORS.golemDark; X.fillRect(px+4,py+6,pw-8,ph-10);
-  X.fillStyle=COLORS.golem;
-  X.fillRect(px+2,py+4,pw-4,ph-4);
-  // Head with rounded top (4px radius)
-  const hx=px+4, hy=py+headOffY, hw=pw-8, hh=10, hr=4;
-  X.beginPath();
-  X.moveTo(hx+hr, hy); X.lineTo(hx+hw-hr, hy);
-  X.arcTo(hx+hw, hy, hx+hw, hy+hr, hr);
-  X.lineTo(hx+hw, hy+hh);
-  X.lineTo(hx, hy+hh);
-  X.lineTo(hx, hy+hr);
-  X.arcTo(hx, hy, hx+hr, hy, hr);
-  X.closePath(); X.fill();
-  X.fillStyle=COLORS.golemEye;
-  X.fillRect(P.facing>0?px+14:px+6, py+3+headOffY, 4, 3);
-  // Splayed trapezoid feet
-  X.fillStyle=COLORS.golemDark;
-  X.beginPath(); X.moveTo(px+3,py+ph-4); X.lineTo(px+10,py+ph-4); X.lineTo(px+12,py+ph); X.lineTo(px+1,py+ph); X.closePath(); X.fill();
-  X.beginPath(); X.moveTo(px+pw-10,py+ph-4); X.lineTo(px+pw-3,py+ph-4); X.lineTo(px+pw-1,py+ph); X.lineTo(px+pw-12,py+ph); X.closePath(); X.fill();
-  // Arms (hidden during push animation to avoid 4-arm illusion)
-  if(!P.pushing){
-  X.fillStyle=COLORS.golem;
-  X.fillRect(px-1,py+10,3,10); X.fillRect(px+pw-2,py+10,3,10);
-  }
+drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pushing });
 
 /* Push effort: arms press into block */
   if(P.pushing){
@@ -1976,7 +2127,7 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
   }
   }
 
- /* ── HUD bar (DOM) ── */
+/* ── HUD bar (DOM) ── */
   const hudBar = document.getElementById('hud-bar');
   if(gameState==='title'){
     hudBar.style.display = 'none';
@@ -1990,7 +2141,7 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         : '<span style="color:#454560;font-size:16px;">\u25cb</span>'
     ).join(' &nbsp; ');
     hudLeft.innerHTML = glyphSlots;
-    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+    const elapsed = gameState === 'ending' ? frozenElapsedSec : Math.floor((Date.now() - gameStartTime) / 1000);
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
   const timeStr = mins + ':' + String(secs).padStart(2, '0');
@@ -2019,8 +2170,8 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
   if(messageQueue.length>0){
     const m=messageQueue[0];
     let alpha=1;
-    if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_FRAMES;
-    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_FRAMES);
+  if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_ACTUAL;
+    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_ACTUAL);
    X.fillStyle='rgba(232,232,240,'+alpha+')';
     X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
     X.shadowColor='rgba(0,0,0,0.7)'; X.shadowBlur=4;
@@ -2034,69 +2185,45 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
     X.fillRect(0,0,W,H);
   }
 
- /* ── Ending screen — animated sequence (Phase 5) ── */
+/* ── Ending screen — wall-clock animated sequence ── */
   if(gameState==='ending'){
-    // Update screen fade
+    /* Screen fade */
     if(screenFade>0){
       screenAlpha=Math.min(screenAlpha+0.03,1);
       if(screenAlpha>=1) screenFade=0;
     }
 
-    // Beat progression (60fps = 60 frames per second)
-    endingFrame++;
-    const elapsed = endingFrame / 60; // seconds
-    if(endingFrame < 120) endingBeat = 1;
-    else if(endingFrame < 240) endingBeat = 2;
-    else if(endingFrame < 360) endingBeat = 3;
-    else if(endingFrame < 480) endingBeat = 4;
-    else if(endingFrame < 540) endingBeat = 5;
+    /* Wall-clock progression */
+    const endSec = (performance.now() - endingStartTime) / 1000;
+    const fi = ENDING.FADE_IN, ho = ENDING.HOLD, fo = ENDING.FADE_OUT;
+
+    if(endSec < ENDING.BEAT_2) endingBeat = 1;
+    else if(endSec < ENDING.BEAT_3) endingBeat = 2;
+    else if(endSec < ENDING.BEAT_4) endingBeat = 3;
+    else if(endSec < ENDING.BEAT_5) endingBeat = 4;
+    else if(endSec < ENDING.BEAT_6) endingBeat = 5;
     else endingBeat = 6;
 
-    // Background fade
-    const fadeAlpha = Math.min(endingFrame/60, 0.95);
+    /* Background */
+    const fadeAlpha = Math.min(endSec/2, 0.95);
     X.fillStyle='rgba(10,10,18,'+fadeAlpha+')';
     X.fillRect(0,0,W,H);
-
-    // Draw starfield dimly
     X.fillStyle='rgba(21,21,37,0.5)';
     for(const [sx,sy] of c.stars) X.fillRect(sx,sy,1,1);
 
-    // Center position for golem
-    const cx = W/2, cy = H/2 - 20;
+    /* Center golem */
+    const cx = W/2, cy = H/2 - 40;
+    const golemAlpha = Math.min(endSec/0.7, 1);
+    const epw = P.w, eph = P.h;
+    const epx = cx - epw/2, epy = cy - eph/2;
+    drawGolemSprite(X, epx, epy, {
+      alpha: golemAlpha, facing: 1, twoEyes: true, glow: 0.4, scale: 2
+    });
 
-    // Hero golem render — exact match to in-game idle sprite (P.w=24, P.h=28)
-    // Body: 20x24, shadow: 16x18 inset (4,6), head: 16x10, arms: 3x10 at py+10, feet: trapezoid at ph-4
-    const golemAlpha = Math.min(endingFrame/40, 1);
-    X.globalAlpha = golemAlpha;
-    // Torso shadow (pw-8 x ph-10 = 16x18, inset by 4px sides, 6px top)
-    X.fillStyle=COLORS.golemDark; X.fillRect(cx-8,cy-10,16,18);
-    // Torso body (pw-4 x ph-4 = 20x24)
-    X.fillStyle=COLORS.golem; X.fillRect(cx-10,cy-8,20,24);
-    // Head with rounded top (pw-8 x 10 = 16x10)
-    const hx2=cx-8, hy2=cy-18, hw2=16, hh2=10, hr2=4;
-    X.beginPath();
-    X.moveTo(hx2+hr2,hy2); X.lineTo(hx2+hw2-hr2,hy2);
-    X.arcTo(hx2+hw2,hy2,hx2+hw2,hy2+hr2,hr2);
-    X.lineTo(hx2+hw2,hy2+hh2); X.lineTo(hx2,hy2+hh2);
-    X.lineTo(hx2,hy2+hr2);
-    X.arcTo(hx2,hy2,hx2+hr2,hy2,hr2);
-    X.closePath(); X.fill();
-    // Eye (px+14, py+3 relative to body top-left → cx+2, cy-16)
-    X.fillStyle=COLORS.golemEye; X.fillRect(cx+2,cy-16,4,3);
-    // Splayed feet (trapezoid starting at ph-4=24 from body top → cy+12)
-    X.fillStyle=COLORS.golemDark;
-    X.beginPath(); X.moveTo(cx-7,cy+12); X.lineTo(cx, cy+12); X.lineTo(cx+2, cy+16); X.lineTo(cx-11,cy+16); X.closePath(); X.fill();
-    X.beginPath(); X.moveTo(cx,cy+12); X.lineTo(cx+7,cy+12); X.lineTo(cx+11,cy+16); X.lineTo(cx-2, cy+16); X.closePath(); X.fill();
-    // Arms (3x10 extending 1px beyond body edges, at py+10)
-    X.fillStyle=COLORS.golem; X.fillRect(cx-11,cy+2,3,10); X.fillRect(cx+10,cy+2,3,10);
-    // Glyphs on hero -- removed (count shown in HUD)
+    const allGlyphs = ['\u05d0','\u05de','\u05d4','\u05ea'];
 
-    const allGlyphs = ['\u05d0','\u05de','\u05d4','\u05ea']; // Aleph, Mem, He, Tav — all 4
-    const emetLetters = ['\u05d0','\u05de','\u05ea']; // Aleph, Mem, Tav — EMET only
-    X.direction='ltr'; // Default LTR; switch to rtl for Hebrew glyphs only
-
-   if(endingBeat >= 1){
-      // Beat 1: All 4 glyphs pulse around golem
+    /* Beat 1: glyphs orbit (exclusive to beat 1 only) */
+    if(endingBeat === 1){
       const pulse = Math.sin(now/300)*0.3+0.7;
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
       X.direction='rtl';
@@ -2105,15 +2232,15 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         const radius = 50 + Math.sin(now/500+i)*5;
         const lx = cx + Math.cos(angle)*radius;
         const ly = cy + Math.sin(angle)*radius;
-        X.fillStyle='rgba(197,179,145,'+(pulse*0.6)+')';
+        X.fillStyle='rgba(197,179,142,'+(pulse*0.6)+')';
         X.fillText(allGlyphs[i], lx, ly);
       }
       X.direction='ltr';
     }
 
-    if(endingBeat >= 2){
-      // Beat 2: All 4 glyphs orbit faster, message appears
-      const orbitSpeed = (endingFrame-120)/120; // 0-1 over beat 2
+    /* Beat 2: glyphs orbit faster + message (exclusive) */
+    if(endingBeat === 2){
+      const orbitSpeed = Math.min((endSec-ENDING.BEAT_1)/1.5, 1);
       X.font=FONT_HEBREW; X.textAlign='center'; X.textBaseline='middle';
       X.direction='rtl';
       for(let i=0;i<4;i++){
@@ -2121,83 +2248,93 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
         const radius = 60 - orbitSpeed*15;
         const lx = cx + Math.cos(angle)*radius;
         const ly = cy-30 + Math.sin(angle)*radius*0.5;
-        X.fillStyle='rgba(197,179,145,'+(0.5+orbitSpeed*0.5)+')';
+        X.fillStyle='rgba(197,179,142,'+(0.5+orbitSpeed*0.5)+')';
         X.fillText(allGlyphs[i], lx, ly);
       }
       X.direction='ltr';
-      // Message — hide when beat 3 starts (fade-out guard)
-      if(endingBeat < 3 && endingFrame > 140){
-        const msgAlpha = Math.min((endingFrame-140)/30, 1);
+      /* Message — exclusive to beat 2, different Y to avoid overlap */
+      const msgAlpha = captionAlphaSec(endSec, ENDING.BEAT_2 + 0.3, fi, ho, fo);
+      if (msgAlpha > 0) {
+        X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
         X.fillStyle='rgba(232,232,240,'+msgAlpha+')';
         X.font=FONT_DISPLAY;
-        X.fillText('The four glyphs converge.', W/2, H-130);
+        X.fillText('The four glyphs converge.', W/2, H-155);
+        X.shadowBlur = 0;
       }
     }
 
-    if(endingBeat >= 3){
-      // Beat 3: Letters converge to forehead as EMET
-      const converge = Math.min((endingFrame-240)/120, 1);
+    /* Beat 3: EMET convergence + message (exclusive, different Y) */
+    if(endingBeat === 3){
+      const converge = Math.min((endSec-ENDING.BEAT_2)/1.5, 1);
       const emetAlpha = converge;
       X.font='24px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
-      // Champagne flash during convergence
       if(converge < 0.5){
         const flash = Math.sin(converge*Math.PI*4)*0.3;
-        X.fillStyle='rgba(197,179,145,'+flash+')';
+        X.fillStyle='rgba(197,179,142,'+flash+')';
         X.fillRect(0,0,W,H);
       }
-      // EMET above golem forehead — outline + fill for contrast
       X.direction='rtl';
       X.strokeStyle='rgba(10,10,18,'+emetAlpha+')'; X.lineWidth=3;
       X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.fillStyle='rgba(197,179,145,'+(emetAlpha*0.9)+')';
+      X.fillStyle='rgba(197,179,142,'+(emetAlpha*0.9)+')';
       X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
       X.direction='ltr';
-      // Message below golem — only during beat 3, fades out when beat 4 starts
-      if(endingBeat < 4){
-        const msgAlpha = Math.min((endingFrame-260)/40, 1);
-        X.fillStyle='rgba(232,232,240,'+Math.min(msgAlpha,emetAlpha)+')';
+      /* Message — exclusive to beat 3, different Y from beat 2 */
+      const msgAlpha2 = captionAlphaSec(endSec, ENDING.BEAT_3 + 0.3, fi, ho, fo);
+      if (msgAlpha2 > 0) {
+        X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
+        X.fillStyle='rgba(232,232,240,'+msgAlpha2+')';
         X.font=FONT_DISPLAY;
         X.fillText('EMET \u2014 Truth \u2014 inscribes itself upon the forehead of clay.', W/2, H-130);
+        X.shadowBlur = 0;
       }
     }
 
-    if(endingBeat >= 4){
-      // Beat 4: EMET glows, final text
+    /* Beat 4: EMET glow + ibis lines (exclusive, staggered Y) */
+    if(endingBeat === 4){
       const glow = Math.sin(now/400)*0.3+0.7;
       X.font='28px "Segoe UI", "Arial Hebrew", "David", serif';
       X.textAlign='center'; X.textBaseline='middle';
-      X.shadowColor='rgba(197,179,145,'+glow+')';
+      X.shadowColor='rgba(197,179,142,'+glow+')';
       X.shadowBlur=10;
       X.direction='rtl';
       X.strokeStyle='rgba(10,10,18,0.8)'; X.lineWidth=3;
       X.strokeText('\u05d0\u05de\u05ea', cx, cy-50);
-      X.fillStyle='rgba(197,179,145,'+(0.7+glow*0.3)+')';
+      X.fillStyle='rgba(197,179,142,'+(0.7+glow*0.3)+')';
       X.fillText('\u05d0\u05de\u05ea', cx, cy-50);
       X.shadowBlur=0;
       X.direction='ltr';
-      // Ibis text — positioned below golem
-      if(endingFrame > 380){
-        const textAlpha = Math.min((endingFrame-380)/50, 1);
-        X.fillStyle='rgba(232,232,240,'+textAlpha+')';
-        X.font=FONT_DISPLAY;
-        X.fillText('The Ibis watches. What Thoth began, the clay completed itself.', W/2, H-130);
-        X.fillText('You walked the path of initiation.', W/2, H-105);
-        X.fillText('You are the Golem of Truth.', W/2, H-80);
+      /* Ibis lines — exclusive, staggered with non-overlapping timing */
+      const ibisLines = [
+        { text: 'The Ibis watches. What Thoth began, the clay completed itself.', y: H-155, start: ENDING.BEAT_4 + 0.5 },
+        { text: 'You walked the path of initiation.', y: H-130, start: ENDING.BEAT_4 + 2.0 },
+        { text: 'You are the Golem of Truth.', y: H-105, start: ENDING.BEAT_4 + 3.5 },
+      ];
+      X.font = FONT_DISPLAY;
+      X.textAlign = 'center';
+      for (const line of ibisLines) {
+        const a = captionAlphaSec(endSec, line.start, fi, ho, fo);
+        if (a > 0) {
+          X.shadowColor = 'rgba(0,0,0,0.7)'; X.shadowBlur = 4;
+          X.fillStyle = 'rgba(232,232,240,' + a + ')';
+          X.fillText(line.text, W/2, line.y);
+          X.shadowBlur = 0;
+        }
       }
     }
 
+    /* Beat 5: Stats */
     if(endingBeat >= 5){
-      // Beat 5: Stats (timer frozen at ending start)
-      const statsAlpha = Math.min((endingFrame-480)/30, 1);
+      const statsAlpha = Math.min((endSec - ENDING.BEAT_4)/0.5, 1);
       X.fillStyle='rgba(161,143,117,'+statsAlpha+')';
       X.font=FONT_UI;
       X.fillText('Time: '+frozenElapsedSec+'s  |  Deaths: '+totalDeaths, W/2, H-55);
     }
 
+    /* Beat 6: Play Again */
     if(endingBeat >= 6){
-      // Beat 6: Play Again button
-      const btnAlpha = Math.min((endingFrame-540)/30, 1);
+      const btnAlpha = Math.min((endSec - ENDING.BEAT_5)/0.5, 1);
       const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
       X.strokeStyle='rgba(92,179,175,'+btnAlpha+')';
       X.lineWidth=2;
@@ -2206,10 +2343,8 @@ const px=ox+P.x+(P.w-pw)/2+poffX, py=oy+P.y+poffY;
       X.font=FONT_UI;
       X.textAlign='center'; X.textBaseline='middle';
       X.fillText('Play Again', W/2, btnY+btnH/2);
-      X.globalAlpha=1;
     }
 
-    X.globalAlpha = 1;
   }
 }
 
@@ -2239,18 +2374,21 @@ function resetGameState(){
   testChamberSrc=-1;
   _c=undefined;
   _transitionTarget=-1;
-  animState='idle'; animFrame=0;
-  endingBeat=0; endingFrame=0;
-  endingStartTime=Date.now();
+ animState='idle'; animFrame=0;
+ endingBeat=0;
+  endingStartTime=performance.now();
   frozenElapsedSec=0;
   gameStartTime=undefined;
   totalDeaths=0;
+  simAcc=0; lastSimTime=0;
   keys={}; prevKeys={};
 }
 
 function startGame(){
   gameState = 'playing';
   Sound.init();
+  applyPace();
+  lastSimTime = performance.now();
   Sound.startMusic();
   gameStartTime = Date.now();
   titleScreen.style.display = 'none';
@@ -2264,6 +2402,7 @@ function togglePause(){
     gameState = 'paused';
     pauseOverlay.style.display = 'flex';
     Sound.stopMusic();
+    simAcc = 0; lastSimTime = 0;
   } else if(gameState === 'paused'){
     gameState = 'playing';
     pauseOverlay.style.display = 'none';
@@ -2294,8 +2433,32 @@ titleScreen.addEventListener('click', function(e){
   if(gameState === 'title'){
     /* Prevent clicks on the THOLEM link from starting the game */
     if(e.target.id === 'tholem-link' || e.target.closest('#tholem-link') || e.target.id === 'github-link' || e.target.closest('#github-link')) return;
+    if(e.target.id === 'btn-easy' || e.target.id === 'btn-hard') return;
     startGame();
   }
+});
+
+/* Pace toggle buttons */
+const paceLabel = document.querySelector('.ts-pace-label');
+const btnEasy = document.getElementById('btn-easy');
+const btnHard = document.getElementById('btn-hard');
+
+function updatePaceUI(){
+  btnEasy.style.color = paceMode === 'easy' ? '#5CB3AF' : '#C5B391';
+  btnEasy.style.borderColor = paceMode === 'easy' ? 'rgba(92,179,175,0.5)' : 'rgba(197,179,145,0.35)';
+  btnHard.style.color = paceMode === 'hard' ? '#5CB3AF' : '#C5B391';
+  btnHard.style.borderColor = paceMode === 'hard' ? 'rgba(92,179,175,0.5)' : 'rgba(197,179,145,0.35)';
+  paceLabel.textContent = paceMode === 'easy' ? '144 Hz \u2014 slower, more forgiving' : '240 Hz \u2014 faithful to the original weight';
+}
+
+btnEasy.addEventListener('click', function(e){
+  e.stopPropagation();
+  if(paceMode !== 'easy'){ togglePace(); updatePaceUI(); }
+});
+
+btnHard.addEventListener('click', function(e){
+  e.stopPropagation();
+  if(paceMode !== 'hard'){ togglePace(); updatePaceUI(); }
 });
 
 /* ══════════════════════════════════════════════════
@@ -2304,6 +2467,9 @@ titleScreen.addEventListener('click', function(e){
 
 /* ── Init ── */
 collectedGlyphs = new Array(chambers.length).fill(false);
+
+loadPace();
+updatePaceUI();
 
 /* B4: Precompute starfield per chamber */
 chambers.forEach((c, i) => {
@@ -2330,20 +2496,51 @@ showMessage('The clay remembers it was shaped.', 150);
 
 /* ── Play Again click handler (Phase 5 ending) ── */
 C.addEventListener('click', function(e){
-  if(gameState==='ending' && endingBeat>=6){
+  if(gameState==='ending'){
     const rect = C.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) * (W / rect.width);
     const clickY = (e.clientY - rect.top) * (H / rect.height);
-    const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
-    if(clickX >= btnX && clickX <= btnX+btnW &&
-       clickY >= btnY && clickY <= btnY+btnH){
-      returnToMenu();
+    const endSec = (performance.now() - endingStartTime) / 1000;
+
+    /* Skip forward after beat 3 */
+    if(endSec > ENDING.BEAT_3 && endingBeat < 6){
+      endingStartTime = performance.now() - ENDING.BEAT_5 * 1000;
+      return;
+    }
+
+    if(endingBeat>=6){
+      const btnX = W/2-60, btnY = H-30, btnW = 120, btnH = 28;
+      if(clickX >= btnX && clickX <= btnX+btnW &&
+         clickY >= btnY && clickY <= btnY+btnH){
+        returnToMenu();
+      }
     }
   }
 });
 
 /* ── Game loop ── */
-function loop(){ update(); render(); if(gameState==='playing'||gameState==='paused'||gameState==='ending') animFrameId = requestAnimationFrame(loop); }
+function loop(ts){
+  if(!lastSimTime) lastSimTime = ts;
+  const dt = ts - lastSimTime;
+  lastSimTime = ts;
+
+  if(gameState === 'playing'){
+    simAcc += dt;
+    if(simAcc > 128) simAcc = 128;
+    let ticks = 0;
+    while(simAcc >= simDt && ticks < 8){
+      update();
+      simAcc -= simDt;
+      ticks++;
+    }
+  }
+
+  render();
+
+  if(gameState==='playing'||gameState==='paused'||gameState==='ending'){
+    animFrameId = requestAnimationFrame(loop);
+  }
+}
 animFrameId = requestAnimationFrame(loop);
 
 /* ── Responsive scaling (Phase 9) ── */
