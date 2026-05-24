@@ -233,14 +233,17 @@
 - [x] Tested: 1920x1080 (2.109x), 375x812 (0.469x), 320x568 (0.4x), 3440x1440 (2.8125x)
 - [x] Validation: zero JS errors, zero console errors, browser test OK, reviewer approved
 
-### Sound Effects (Not Started)
+### Sound Effects (May 2026) — COMPLETED
 
 See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 
-- [ ] Phase 10a: Web Audio API SFX engine with oscillator-based sounds (no external files)
-- [ ] Sounds for: jump, double jump, dash charge, dash release, glyph collect, pushblock push, cracked break, death
-- [ ] Phase 10b: Temple ambient drone + optional melodic loop (~60 lines additional)
-- [ ] Estimated ~60 lines for 10a engine + call sites; ~120 lines total with 10b
+- [x] Phase 10a: Web Audio API SFX engine with oscillator-based sounds (no external files). Data-driven SFX config (SFX object with 9 sound definitions: 4 oscillator types — triangle, square, chord, noise). Sound IIFE module (Section 7.5) with init(), play(), setMute(), isMuted().
+- [x] 11 SFX call sites wired: jump (x2), double jump, dash release, glyph collect, cracked break, push block (with spam guard), landing (x2: ground + pushblock), death, respawn
+- [x] Phase 10b: Temple ambient drone (D2, 73.42 Hz sine) + D minor arpeggio loop at 75 BPM with look-ahead scheduler
+- [x] Mute toggle: M key with fresh() edge detection + HUD mute indicator via Sound.isMuted()
+- [x] Music lifecycle: startGame/init+start, togglePause/stop+start, transitionEnding/stop, returnToMenu/stop
+- [x] Reviewer improvements: pre-allocated noise buffer, ctx.resume() in startMusic()
+- [x] File: 2195 -> 2322 lines, ~96KB -> ~91KB. JS syntax PASS, zero browser errors.
 
 ### Chamber Redesign (Not Started)
 
@@ -281,7 +284,7 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [x] Phase 6: Title menu — THOLEM SVG logo (6 paths), "THE GOLEM AWAKENS" title, "made by Tholem Labs" link to tholem.ai, "Fully open source" link to GitHub + AI blurb, pulse animation prompt. Timer deferred until gameplay starts.
 - [x] Phase 7: Pause menu — P key toggle (fresh edge detection), "PAUSED" overlay, RESUME + RETURN TO MAIN MENU buttons, HUD visible during pause, full game reset on return to menu (resetGameState()), loop restart on startGame().
 - [x] Phase 9: Responsive CSS scaling — `transform-origin: center center` on `#game-wrapper`, JS IIFE calculates `min(viewportWidth/800, viewportHeight/512)` scale factor, window resize listener, scales entire game (canvas + HUD + overlays + fonts + SVG). Zero JS errors, browser verified, reviewer approved. ~13 lines net.
-- [ ] Phases 10a-10b: Web Audio SFX and ambient drone (future — see Sound Effects below)
+- [x] Phases 10a-10b: Web Audio SFX (9 sounds, 11 call sites, Section 7.5) + ambient drone (D2 73.42Hz) + D minor arpeggio at 75 BPM. M-key mute toggle with HUD indicator. Music lifecycle wired to game state transitions. JS syntax OK, zero browser errors.
 
 **Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
 
@@ -337,14 +340,14 @@ Prepare the project for public repository sharing.
 ||| Chamber data management | Complete | chamber_diff.py (6 modes), 0 mismatches, 0 strict errors, grids match exactly |
 ||| Pause toggle (Phase 6 + 7) | Complete | Title menu (THOLEM SVG + Tholem Labs credit + GitHub link + AI blurb, press-any-key start), P-key pause (fresh edge detection), RESUME + RETURN TO MAIN MENU, HUD hidden on title / visible during pause, full reset via resetGameState() on return to menu, loop guard stops rAF during title/ending, startGame() restarts loop. Play Again -> returnToMenu(). 0 browser errors, full flow verified. |
 || Responsive canvas scaling | Complete | Phase 9: JS-based transform scale, zero errors, reviewer approved |
-| Sound effects | Not Started | — |
+| Sound effects | Complete | Phase 10a/10b: Web Audio API SFX (9 sounds, 11 call sites, Section 7.5 IIFE), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), M-key mute + HUD indicator, music lifecycle wired to game state |
 ||||| Chamber 0 redesign | Complete | 0 tile mismatches, flow checks pass, JS syntax OK, browser verified |
 ||||| Chamber 1 redesign (The Library) | Complete | 0 tile mismatches, flow check pass, JS syntax OK, browser verified |
 |||||| Chamber 2 redesign (The Hall of Echoes) | Complete | 0 tile mismatches, flow check OK, JS syntax OK, browser verified |
 ||||||| Chamber 3 redesign (The Weight of Wisdom) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, multi-block push system |
 |||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 |||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
-||||||||| Visual/story overhaul | Complete | Phases 1-9 implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling. RIPER reviewed. ~310 lines net. |
+||||||||| Visual/story overhaul | Complete | Phases 1-10b implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling, Web Audio SFX (9 sounds, 11 call sites), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), mute toggle. RIPER reviewed. ~310 lines net. |
 |||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 || Touch/mobile controls | Not Started | — |
 || Website integration prep | Not Started | — |

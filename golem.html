@@ -155,7 +155,7 @@ function playerGridPos() {
 
 /* End dash state cleanly */
 function endDash() {
-  P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false;
+  P.dashing=false; P.dashTimer=0; P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false; P._dashSfx=false;
 }
 
 /* Land on ground — reset jumps and coyote */
@@ -204,7 +204,9 @@ function resetPlayerToRespawn() {
 function killAndRespawn(msg, duration) {
   if(animState!=='idle') return; // prevent double-trigger
   cancelDash();
-  animState='dying'; animFrame=0;
+ animState='dying'; animFrame=0;
+  Sound.play('death');
+  Sound.duckMusic(1.5);
   totalDeaths++;
   showMessage(msg, duration);
 }
@@ -540,8 +542,11 @@ document.addEventListener('keydown', function(e){
     return;
   }
 
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyP'].includes(e.code))
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyP','KeyM'].includes(e.code))
     e.preventDefault();
+
+  /* Mute toggle */
+  if(fresh('KeyM')) Sound.setMute(!Sound.isMuted());
 });
 document.addEventListener('keyup', function(e){ keys[e.code] = false; });
 
@@ -757,7 +762,7 @@ function resetPushBlock(){
   const spawns=c.pushSpawns||(c.pushSpawn?[c.pushSpawn]:null);
   if(!spawns) return;
   for(const sp of spawns){
-    PBlocks.push({x:sp.x*T,y:sp.y*T,w:T,h:T,vx:0,vy:0,active:true,inSlot:false});
+    PBlocks.push({x:sp.x*T,y:sp.y*T,w:T,h:T,vx:0,vy:0,active:true,inSlot:false,_snd:false});
   }
 }
 
@@ -781,9 +786,11 @@ function resolvePushBlockCollision(){
 
     if(P.canPush && P.onGround && movingToward){
       // ── Active push: velocity-based ──
-      P.pushing = true;
+     P.pushing = true;
+      P._pushF++;
+      if(P._pushF % 2 === 0){ Sound.play('push'); }
 
-      // Apply push velocity to the block (half walk speed)
+      // Apply push velocity
       pb.vx = dir * PUSH_SPEED;
 
       // Clamp golem to same push speed (don't zero, just limit)
@@ -900,6 +907,144 @@ const Particles = (function(){
 })();
 
 /* ══════════════════════════════════════════════════
+   7.5. SOUND ENGINE (IIFE — encapsulated module)
+   ══════════════════════════════════════════════════ */
+
+const SFX = {
+  jump:         { t:'square',   f:220,  f2:120, dur:0.15, g:0.07 },
+  jumpHi:       { t:'square',   f:440,  f2:260, dur:0.12, g:0.06 },
+  dash:         { t:'square',   f:330,  f2:160, dur:0.08, g:0.07 },
+  dashWhoosh:   { t:'square',   f:180,  f2:60,  dur:0.12, g:0.04 },
+  glyph:        { t:'chord',    fs:[294, 440, 587], dur:0.25, g:0.04 },
+  respawn:      { t:'chord',    fs:[147, 220, 294], dur:0.35, g:0.03 },
+  push:         { t:'triangle', f:90,  f2:50,   dur:0.12, g:0.06 },
+  land:         { t:'triangle', f:120,        dur:0.06, g:0.08 },
+  break:        { t:'noise',            dur:0.30, g:0.15, ff:2000, fq:4 },
+  death:        { t:'chord',    fs:[110,165,220], dur:1.15, g:0.05, wt:'triangle', fall:0.6, crack:0.07 },
+};
+
+const MUSIC_NOTES = [
+  { f: 146.83, w: 'sine' },      // D3
+  { f: 220.00, w: 'sine' },      // A3
+  { f: 293.66, w: 'triangle' },  // D4
+  { f: 349.23, w: 'sine' },      // F4
+  { f: 440.00, w: 'sine' },      // A4
+  { f: 349.23, w: 'sine' },      // F4
+  { f: 293.66, w: 'triangle' },  // D4
+  { f: 261.63, w: 'sine' },      // C4 (tension)
+  { f: 220.00, w: 'sine' },      // A3
+  { f: 293.66, w: 'triangle' },  // D4
+  { f: 220.00, w: 'sine' },      // A3 (pickup)
+  { f: 146.83, w: 'sine' },      // D3 (resolve)
+];
+
+const Sound = (function(){
+  let ctx, mg, muted=false, drone, dGain, mTimer, mNext=0, mTime=0, nBuf, musicDuck=0;
+  const BPM=75, BEAT=60/BPM/2, AHEAD=0.1, TICK=25;
+
+  function init(){
+    if(ctx) return;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    mg = ctx.createGain(); mg.gain.value=1; mg.connect(ctx.destination);
+    mTime = ctx.currentTime;
+    nBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  }
+
+  function setMute(v){
+    muted=!!v;
+    if(mg) mg.gain.value = muted?0:1;
+  }
+
+  function isMuted(){ return muted; }
+
+  function play(n){
+    if(!ctx||muted) return;
+    if(ctx.state==='suspended') ctx.resume();
+    const s=SFX[n]; if(!s) return;
+    const now=ctx.currentTime;
+    const gn=ctx.createGain();
+    gn.gain.setValueAtTime(s.g||0.1, now);
+    gn.gain.exponentialRampToValueAtTime(0.001, now+(s.dur||0.1));
+    gn.connect(mg);
+
+    if(s.crack){
+      var gn2=ctx.createGain(); gn2.gain.setValueAtTime(s.crack,now);
+      gn2.gain.exponentialRampToValueAtTime(0.001,now+0.08); gn2.connect(mg);
+      var d2=nBuf.getChannelData(0); for(var j=0;j<ctx.sampleRate*0.08;j++) d2[j]=Math.random()*2-1;
+      var src2=ctx.createBufferSource(); src2.buffer=nBuf;
+      var bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1200; bp.Q.value=4;
+      src2.connect(bp); bp.connect(gn2); src2.start(0,0,0.08);
+    }
+
+    if(s.t==='chord'){
+      (s.fs||[]).forEach(function(f){
+        var o=ctx.createOscillator(); o.type=s.wt||'sine'; o.frequency.value=f;
+        if(s.fall) o.frequency.exponentialRampToValueAtTime(f*s.fall, now+(s.dur||0.25));
+        o.connect(gn); o.start(now); o.stop(now+(s.dur||0.25));
+      });
+    } else if(s.t==='noise'){
+      var len=Math.floor(ctx.sampleRate*Math.max(s.dur||0.2,0.01));
+      var d=nBuf.getChannelData(0);
+      for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+      var src=ctx.createBufferSource(); src.buffer=nBuf; src.playbackRate.value=1;
+      var flt=ctx.createBiquadFilter();
+      flt.type='bandpass'; flt.frequency.value=s.ff||800; flt.Q.value=s.fq||2;
+      src.connect(flt); flt.connect(gn); src.start(0,0,s.dur||0.2);
+    } else {
+      var o=ctx.createOscillator(); o.type=s.t; o.frequency.value=s.f;
+      if(s.f2) o.frequency.linearRampToValueAtTime(s.f2, now+(s.dur||0.1));
+      o.connect(gn); o.start(now); o.stop(now+(s.dur||0.1));
+    }
+  }
+
+  function startMusic(){
+    if(!ctx||drone) return;
+    if(ctx.state==='suspended') ctx.resume();
+    dGain=ctx.createGain(); dGain.gain.value=0.025; dGain.connect(mg);
+    drone=ctx.createOscillator(); drone.type='sine'; drone.frequency.value=73.42;
+    drone.connect(dGain); drone.start();
+    mNext=0; mTime=ctx.currentTime;
+    _sched(); mTimer=setInterval(_sched, TICK);
+  }
+
+  function _sched(){
+    if(!ctx) return;
+    var now=ctx.currentTime;
+    while(mTime<now+AHEAD){
+      var nt=MUSIC_NOTES[mNext%MUSIC_NOTES.length];
+      var vol=(musicDuck>now)?0.012:0.03;
+      var o=ctx.createOscillator(); o.type=nt.w||'sine'; o.frequency.value=nt.f;
+      var ng=ctx.createGain();
+      ng.gain.setValueAtTime(vol, mTime);
+      ng.gain.exponentialRampToValueAtTime(0.001, mTime+BEAT*1.5);
+      o.connect(ng); ng.connect(mg);
+      o.start(mTime); o.stop(mTime+BEAT*1.5);
+      if(mNext%2===0){
+        var b=ctx.createOscillator(); b.type=nt.w||'sine'; b.frequency.value=nt.f/2;
+        var bg=ctx.createGain(); bg.gain.setValueAtTime(vol*0.4,mTime); bg.gain.exponentialRampToValueAtTime(0.001,mTime+BEAT*1.5);
+        b.connect(bg); bg.connect(mg); b.start(mTime); b.stop(mTime+BEAT*1.5);
+      }
+      mTime+=BEAT; mNext++;
+      if(mNext%12===0) mTime+=BEAT;
+    }
+  }
+
+  function stopMusic(){
+    if(drone){ drone.stop(); drone=null; dGain=null; }
+    if(mTimer){ clearInterval(mTimer); mTimer=null; }
+    mNext=0;
+  }
+
+  function duckMusic(sec){
+    if(!ctx) return;
+    musicDuck=ctx.currentTime+sec;
+    if(dGain){ var n=ctx.currentTime; dGain.gain.setValueAtTime(0.008,n); dGain.gain.linearRampToValueAtTime(0.025,n+sec); }
+  }
+
+  return { init:init, play:play, setMute:setMute, isMuted:isMuted, startMusic:startMusic, stopMusic:stopMusic, duckMusic:duckMusic };
+})();
+
+/* ══════════════════════════════════════════════════
    8. GAME FLOW (transitions, doors, glyphs)
    ══════════════════════════════════════════════════ */
 
@@ -997,7 +1142,8 @@ function checkGlyphs(){
       setTile(ch,gl.x,gl.y,AIR);
       collectedGlyphs[ch]=true;
       glyphsCollected++;
-      Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T, PARTICLE_COLORS.glyph, 15, 'star');
+     Particles.spawn((gl.x+0.5)*T,(gl.y+0.5)*T, PARTICLE_COLORS.glyph, 15, 'star');
+      Sound.play('glyph');
       const gi = glyphsCollected - 1;
       if(gi >= 0 && gi < GLYPH_EFFECTS.length){
         GLYPH_EFFECTS[gi].set();
@@ -1014,6 +1160,7 @@ function transitionEnding(){
   endingFrame = 0;
   endingStartTime = Date.now();
   gameState='ending';
+  Sound.stopMusic();
   screenFade=1; screenAlpha=0;
   frozenElapsedSec = Math.round((Date.now()-gameStartTime)/1000); // freeze elapsed time
 }
@@ -1105,7 +1252,8 @@ function update(){
       P.vx = P.dashDir * dashSpeed;
       P.vy = 0;
 
-      Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashBurst, 6, 'circle');
+    Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashBurst, 6, 'circle');
+      Sound.play('dash');
     } else {
       /* Still holding — accumulate charge */
       if(P.dashCharge < DASH_CHARGE_MAX){
@@ -1114,19 +1262,20 @@ function update(){
       /* Charge particles */
       Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_CHARGE_PARTICLE_COLOR, 2, 'circle');
     }
-  } else if(P.canDash && !P.dashing && P.dashCooldown<=0){
-    /* Start charging on Shift press */
-    if(inputShiftPressed()){
+ } else if(P.canDash && !P.dashing && P.dashCooldown<=0){
+    /* Start charging on Shift press or hold */
+    if(shiftHeld()){
       P.dashCharge = 1;  /* Start charging — at least 1 frame */
     }
   }
 
-  /* Dash execution */
+ /* Dash execution */
   if(P.dashing){
     P.vx = P.dashDir * (P.vx !== 0 ? Math.abs(P.vx) : 10);
     P.vy = 0;
     P.dashTimer--;
     Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_EXEC_PARTICLE_COLOR, 2, 'circle');
+    if(!P._dashSfx || P.dashTimer % 3 === 0){ Sound.play('dashWhoosh'); P._dashSfx = true; }
     if(P.dashTimer<=0){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
@@ -1148,8 +1297,9 @@ function update(){
   if(coyoteWasActive) P.coyoteTime--;
    /* Airborne clay trail (Phase 4.5) -- removed to reduce visual clutter */
 
-  /* ── Move X + collide (tiles first, then push-block entity) ── */
+/* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
+  P._pushF = P._pushF || 0;
   const prevX = P.x;
   P.x += P.vx;
 
@@ -1163,7 +1313,8 @@ function update(){
         const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
         if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
           setTile(P.chamber,fcx,fcy,AIR);
-          Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
+         Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
+          Sound.play('break');
           endDash();
         } else {
           snapToTileX(gx1, gx2, prevX);
@@ -1195,7 +1346,8 @@ function update(){
         P.vy=0;
         land();
         P.landSquish=10;
-        Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
+      Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
+        Sound.play('land');
       } else if(P.vy<0){
         P.y=(gy1+1)*T;
         P.vy=0;
@@ -1211,8 +1363,9 @@ function update(){
           P.vy = 0;
           const justLanded = prevY + P.h < pb.y;
           land();
-          if(justLanded){
+        if(justLanded){
             Particles.spawn(P.x+P.w/2, P.y+P.h, PARTICLE_COLORS.jump, 2, 'diamond');
+            Sound.play('land');
           }
         }
       }
@@ -1236,7 +1389,8 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-  Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
+     Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
+      Sound.play('jump');
   }
   else if(jumpPressed && P.jumps===0 && P.coyoteTime>0){
     P.vy = JUMP_VEL_1;
@@ -1244,13 +1398,15 @@ function update(){
     P.onGround=false;
     P.coyoteTime=0;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
+   Particles.spawn(jx, jy, PARTICLE_COLORS.jump, 5, 'diamond');
+    Sound.play('jump');
   }
   else if(jumpPressed && P.jumps < P.maxJumps && P.jumps>0){
     P.vy = JUMP_VEL_2;
     P.jumps++;
     P.jumpBuffer=0;
-    Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star');
+   Particles.spawn(jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star');
+    Sound.play('jumpHi');
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
     P.jumpBuffer = JUMP_BUFFER_FRAMES;
@@ -1294,7 +1450,8 @@ function updateAnim(){
     P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
     fullDashReset();
     resetPushBlock();
-   animState='idle'; animFrame=0;
+  animState='idle'; animFrame=0;
+    Sound.play('respawn');
   }
   syncPrevKeys();
 }
@@ -2086,6 +2243,8 @@ function resetGameState(){
 
 function startGame(){
   gameState = 'playing';
+  Sound.init();
+  Sound.startMusic();
   gameStartTime = Date.now();
   titleScreen.style.display = 'none';
   pauseOverlay.style.display = 'none';
@@ -2097,14 +2256,17 @@ function togglePause(){
   if(gameState === 'playing'){
     gameState = 'paused';
     pauseOverlay.style.display = 'flex';
+    Sound.stopMusic();
   } else if(gameState === 'paused'){
     gameState = 'playing';
     pauseOverlay.style.display = 'none';
+    Sound.startMusic();
   }
 }
 
 function returnToMenu(){
   resetGameState();
+  Sound.stopMusic();
   pauseOverlay.style.display = 'none';
   titleScreen.style.display = 'flex';
   document.getElementById('hud-bar').style.display = 'none';

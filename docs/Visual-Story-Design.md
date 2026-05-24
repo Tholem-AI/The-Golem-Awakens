@@ -15,7 +15,7 @@ Context spec for the visual and narrative overhaul of [`golem.html`](../golem.ht
 | Typography | System fonts only — `FONT_UI`, `FONT_DISPLAY`, `FONT_HEBREW` (Phase 1); no CDN or `@font-face` |
 | Canvas | `<canvas id="c">` at **800×480** internal pixels (`W=800`, `H=480`, `T=32`) |
 | Overlay UI | Title/pause menus use HTML/CSS overlays in a `position:relative` `#game-shell` wrapper |
-| Audio (future) | Web Audio API only — no external audio files (Phase 10a/10b) |
+| Audio | Web Audio API only — no external audio files (Phase 10a/10b, implemented) |
 
 See also [`docs/Project-Constraints.md`](Project-Constraints.md) and [`docs/File-Structure-Reference.md`](File-Structure-Reference.md).
 
@@ -237,23 +237,25 @@ Per-tile render goals in Section 10 — no new data structures:
 
 **Phase 5.5 visual refinements (~103 lines, render-only):** beveled wall highlights, chamfered platform edges, 4-edge pit danger glow, rounded push blocks (arcTo), hexagonal magical wall core (Cosmic Purple `#7B68EE`), X-pattern cracked walls with edge glow, geometric door icons (seal/chevron replacing text), particle shape system (circle/diamond/star/square), dash compass rose (8 segments), golem rounded head (arcTo) + splayed trapezoid feet, push effort stroke lines + spark, glyph RTL ordering + dark stroke outline, ending sequence golem consistent with in-game design + text repositioning, pushblock particle spam fix (removed per-frame spawn).
 
-### 4.8 Audio stub (Phase 10 — future)
+### 4.8 Audio (Phase 10a/10b — implemented)
 
 Web Audio API only; no external files. SFX peak 0.06–0.10; ambient 0.02–0.04.
 
+**Implemented:** Sound IIFE module (Section 7.5) with 9 SFX definitions (4 oscillator types: triangle, square, chord, noise), 11 call sites, ambient drone (D2, 73.42 Hz sine) + D minor arpeggio loop at 75 BPM, M-key mute toggle with HUD indicator, music lifecycle wired to game state transitions. Pre-allocated noise buffer, ctx.resume() in startMusic(). JS syntax OK, zero browser errors.
+
 | Primitive | Waveform | Examples |
 |-----------|----------|----------|
-| Stone | Triangle | Push, break, footstep |
+| Stone | Triangle | Push, break, landing |
 | Breath | Square sweep | Jump, double jump, dash |
-| Spirit | Sine chord | Glyph, door, ending |
-| Dust | Filtered noise | Death, wall hit |
+| Spirit | Sine chord | Glyph, respawn |
+| Dust | Filtered noise | Death, crack break |
 
-| Event | Phase | Est. lines |
-|-------|-------|------------|
-| SFX engine + call sites | 10a | ~60 |
-| Temple drone + optional E Dorian loop | 10b | ~60 |
+| Event | Phase | Status |
+|-------|-------|--------|
+| SFX engine + call sites | 10a | Complete |
+| Temple drone + D minor arpeggio loop | 10b | Complete |
 
-Init on first keydown/click; mute toggle in title/pause when Phase 6–7 exist. See [`ROADMAP.md`](../ROADMAP.md) Sound Effects.
+Init on first keydown/click; mute toggle via M key (fresh edge detection) + HUD indicator. See [`ROADMAP.md`](../ROADMAP.md) Sound Effects.
 
 ---
 
@@ -331,12 +333,12 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **4.5** Movement polish | §4.7 last bullet | **Complete** | ~25 |
 | **5** Ending | §5.3 animated sequence | **Complete** | ~90 |
 | **5.5** Visual refinements | §4.7 geometry refinements (beveled walls, chamfered platforms, danger pits, rounded push blocks, hex magical walls, X-crack walls, geometric door, particle shapes, compass rose dash, rounded golem, Hebrew RTL glyphs, ending cleanup) | **Complete** | ~103 |
-| **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | Future | ~60 |
-| **7** Pause menu | `P` key, skip update, overlay | Future | ~40 |
+| **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | **Complete** | ~60 |
+| **7** Pause menu | `P` key, skip update, overlay | **Complete** | ~40 |
 | **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | **Complete** | ~40 |
 | **9** Responsive CSS | §5.4 | **Complete** | ~13 |
-| **10a** SFX | Web Audio primitives + call sites | Future | ~60 |
-| **10b** Ambient | Drone + optional melody loop | Future | ~60 |
+| **10a** SFX | Web Audio primitives + call sites, 9 sounds, 11 call sites, Section 7.5 IIFE | **Complete** | ~60 |
+| **10b** Ambient | Drone (D2 73.42Hz) + D minor arpeggio 75 BPM, mute toggle | **Complete** | ~60 |
 
 ---
 

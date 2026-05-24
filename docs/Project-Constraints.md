@@ -20,7 +20,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
 | Target FPS | 60 (requestAnimationFrame) | Game loop |
-||| File size | ~2195 lines, ~92 KB | Single-file constraint (Phases 1-9 theming, HUD, title/pause menus, responsive scaling added ~470 lines net) |
+||| File size | ~2322 lines, ~91 KB | Single-file constraint (Phases 1-10b: theming, HUD, title/pause menus, responsive scaling, Web Audio SFX + ambient music, ~490 lines net) |
 || Dash system | Hold-to-charge (max 180 frames/3s), linear distance 60-267px | Section 1 constants |
 || Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
 || Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |
@@ -32,8 +32,9 @@ Inferred from `golem.html` source code and design artifacts.
 
 | Constraint | Detail | Source |
 |-----------|--------|--------|
-| 12 sections | 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 9.5, 10, 11 | `golem.html` delimiter comments |
+| 13 sections | 1, 1.5, 2, 3, 4, 5, 6, 7, 7.5, 8, 9, 9.5, 10, 11 | `golem.html` delimiter comments |
 | Section 1.5 | Shared utility functions (11 helpers) — between Setup/Constants and Chamber Data | Section 1.5 |
+| Section 7.5 | Sound engine (IIFE: init, play, setMute, isMuted, startMusic, stopMusic) — between Particles and Game Flow | Section 7.5 |
 | Section 8 | Contains MSG_* message system constants + `showMessage()`, `calcDisplayDuration()` | Section 8 |
 | Section 9.5 | Animation state machine (death/respawn) — between Update and Render | Section 9.5 |
 | Function hoisting | All helpers use `function` declarations; call order within file does not matter | `golem.html` |
@@ -59,5 +60,5 @@ Inferred from `golem.html` source code and design artifacts.
 1. **No build step or bundler** — the game runs directly in any modern browser. Adding a build tool would be an architectural change per governance rule 1.
 2. **No external assets** — all visuals are currently procedurally drawn (Canvas 2D primitives, particle colors). Adding image/sprite assets would change the asset model.
 3. **60 FPS target** — physics constants are tuned for 60 FPS. Changing frame rate requires re-tuning gravity, speed, and timing values.
-4. **No audio** — the current implementation has no sound system. Adding audio requires architectural decisions (Web Audio API vs. library).
+4. **Audio** — Web Audio API sound system (Section 7.5 IIFE): 9 SFX definitions (4 oscillator types: triangle, square, chord, noise), 11 call sites, ambient drone (D2 73.42 Hz) + D minor arpeggio loop at 75 BPM with look-ahead scheduler. M-key mute toggle with HUD indicator. Lazy-init on first user gesture (browser autoplay policy). No external audio files — all synthesized.
 5. **rAF continues during ending** — the animation loop continues during the animated ending sequence (Phase 5). `update()` skips while `render()` draws the 6-beat ending animation. Play Again button reloads the page.
