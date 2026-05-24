@@ -345,6 +345,15 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 
 **Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
 
+### Pause Menu Controls + HUD Enhancements (May 2026)
+
+- [x] Pause menu controls reference: added `.po-controls` block with CONTROLS header and 5 control rows (Move, Jump, Dash, Pause, Mute)
+- [x] HUD difficulty display: shows "Clay Weight" (#5CB3AF) or "Temple Pace" (#C5B391) in `hudRight.innerHTML`
+- [x] HUD "P to pause" reminder: subtle ink-colored (#454560) 10px text in HUD right section
+- [x] CSS: 5 new rules (.po-controls, .po-controls-title, .po-control-row, .po-key, .po-action) scoped under #pause-overlay
+- [x] No game logic changes — purely UI additions. ~60 lines added/modified out of 2655 (~2.3%)
+- [x] Validation: JS syntax OK, zero browser errors, RIPER process (research->plan->execute->review), reviewer-agent approved
+
 ### Touch/Mobile Controls (Not Started)
 
 - [ ] Add on-screen virtual D-pad and action buttons for mobile
@@ -405,7 +414,8 @@ Prepare the project for public repository sharing.
 |||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 |||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 ||||||||| Visual/story overhaul | Complete | Phases 1-10b implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling, Web Audio SFX (9 sounds, 11 call sites), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), mute toggle. RIPER reviewed. ~310 lines net. |
-||||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
+||||||||||| Pause menu controls + HUD | Complete | Controls reference in pause overlay, HUD difficulty display, P-to-pause hint. Zero JS errors, browser verified, RIPER reviewed. |
+||||||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 ||||||||| Ending sequence overhaul | Complete | Extracted drawGolemSprite() shared function (gameplay + ending), fixed ending sprite proportions (center-to-top-left math), 2x scale + glow + front-facing variant on ending screen, captionAlpha() timing helper, staggered Ibis lines (3s read each), extended beat timing (~9s -> ~15s), skip-on-click, caption shadow. RIPER reviewed.
 ||||||| Ending glyph smoothing | Complete | easeOutQuint/lerp/smoothStep helpers, getEndingGlyphState() continuous state machine replacing per-beat hard cuts, unified ending renderer, orbit speed/radius/center ramps, easeOutQuint convergence, EMET cross-fade, Gaussian flash bloom, font size lerp 24-28px, deterministic glow pulse, Ibis fade-in-then-persist, easeOutCubic stats/PlayAgain alpha. 8 discontinuities resolved (2 HIGH, 4 MEDIUM, 2 LOW). |
 ||| Touch/mobile controls | Not Started | — |
