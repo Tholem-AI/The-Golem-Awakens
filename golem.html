@@ -2353,8 +2353,21 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
 const titleScreen = document.getElementById('title-screen');
 const pauseOverlay = document.getElementById('pause-overlay');
 
+function restoreAllChambers(){
+  chambers.forEach(c => {
+    c.tiles = c.initialTiles.map(row => row.slice());
+    c.solidTiles = [];
+    for(let y=0; y<c.h; y++)
+      for(let x=0; x<c.w; x++){
+        if(c.tiles[y][x] !== AIR) c.solidTiles.push({x, y});
+        if(c.tiles[y][x] === GOLEM_SPAWN){ c.spawnPx = x*T; c.spawnPy = y*T; }
+      }
+  });
+}
+
 function resetGameState(){
   if(animFrameId){ cancelAnimationFrame(animFrameId); }
+  restoreAllChambers();
   P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy; P.vx=0; P.vy=0;
   P.onGround=false; P.jumps=0; P.maxJumps=1;
   P.canDash=false; P.dashing=false; P.dashTimer=0; P.dashDir=0; P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
@@ -2483,10 +2496,13 @@ chambers.forEach(c => {
   c.solidTiles = [];
   for(let y=0; y<c.h; y++)
     for(let x=0; x<c.w; x++){
-      if(c.tiles[y][x] !== AIR) c.solidTiles.push({x, y});
+     if(c.tiles[y][x] !== AIR) c.solidTiles.push({x, y});
       if(c.tiles[y][x] === GOLEM_SPAWN){ c.spawnPx = x*T; c.spawnPy = y*T; }
     }
 });
+
+/* Snapshot original grids — used to restore after menu reset */
+chambers.forEach(c => { c.initialTiles = c.tiles.map(row => row.slice()); });
 
 P.x=chambers[0].spawnPx; P.y=chambers[0].spawnPy;
 P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
