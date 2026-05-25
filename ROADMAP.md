@@ -202,6 +202,19 @@
 - [x] Item 4: Dash arc segments extraction — extracted `drawSegArcs(cx,cy,r,count,gap)` helper replacing 3 inline arc-drawing for-loops. ~8 lines saved.
 - [x] File: 2666 -> 2625 lines (-41 lines, -1.5%). JS syntax OK, zero console errors, chamber_diff.py --strict 0 mismatches, browser test OK, reviewer-agent approved.
 
+### Code Review Line Reduction Cleanup (May 2026)
+- [x] Dead code removal: unused `smoothStep()` function, unused `vLine()` function, unused `inputShiftPressed()` function, unused `_snd` property from push blocks (A1-A4)
+- [x] Duplicate assignment cleanup: removed redundant `respawnX/Y` assignment in `resetGameState()` (A5)
+- [x] Dead comments removed: 2 stale feature comments (A6)
+- [x] Unused constants: removed 4 MSG base constants (MSG_FADE_IN_FRAMES, etc.) no longer used after wall-clock ending (B1)
+- [x] Constant folding: DASH_EXEC and CHARGE_PARTICLE_COLOR folded into PARTICLE_COLORS object (B2)
+- [x] Pattern compression: `endingBeat` if/else chain compressed to loop (6->2 lines), `captionAlphaSec()` compressed (11->6 lines), `resetGameState()` assignments compressed (C1-C3)
+- [x] Comment reduction: verbose phase comments in `getEndingGlyphState()` trimmed (C4)
+- [x] Whitespace: blank line removed in `fullDashReset()` (E2)
+- [x] Skipped: E1 (not present), E3 (audio change out of scope), Section D (NOT RECOMMENDED per plan)
+- [x] No architectural changes, no new features, no behavioral changes
+- [x] File: 2625 -> 2588 lines (-37 lines, -1.4%). JS syntax OK, zero console errors, chamber_diff.py --strict 0 mismatches, --check-flow OK, browser test OK.
+
 ---
 
 ## Remaining Work
@@ -418,8 +431,9 @@ Prepare the project for public repository sharing.
 ||||| Code optimization | Complete | 6 slices implemented, JS syntax OK |
 ||||| Code refinement pass | Complete | Dead code removed, helpers consolidated, data-driven glyphs, section cleanup |
 |||||| Code review slices S1-S11 | Complete | 11 slices: dead code, state guards, shadowText, player/dash reset, grid bounds, 8 constants, doJump, DOM cache, drawWallBase, data-driven ending. 2668 -> 2577 lines (-91, -3.4%). JS syntax OK, zero console errors, reviewer approved. |
-|||||| Code review remaining reduction | Complete | 4 items: ending messages unified (data-driven array), chamber boundary helpers (sBounds/hLine/vLine), screen fade simplification, dash arc segments extraction. 2666 -> 2625 lines (-41, -1.5%). JS syntax OK, chamber_diff 0 mismatches, browser OK, reviewer approved. |
-||| Golem spawn system | Complete | `GOLEM_SPAWN=3` in golem.html, all chambers updated |
+||||||| Code review remaining reduction | Complete | 4 items: ending messages unified (data-driven array), chamber boundary helpers (sBounds/hLine/vLine), screen fade simplification, dash arc segments extraction. 2666 -> 2625 lines (-41, -1.5%). JS syntax OK, chamber_diff 0 mismatches, browser OK, reviewer approved. |
+||||||| Code review line reduction cleanup | Complete | Dead code (smoothStep, vLine, inputShiftPressed, _snd), duplicate assignment, dead comments, unused MSG constants, constant folding (DASH_EXEC/CHARGE_PARTICLE_COLOR -> PARTICLE_COLORS), pattern compression (endingBeat loop, captionAlphaSec, resetGameState), comment reduction, whitespace. 2625 -> 2588 lines (-37, -1.4%). Zero behavioral/architectural changes. chamber_diff.py --strict 0 mismatches, --check-flow OK, JS syntax OK, browser test OK. |
+|||| Golem spawn system
 ||| Transition snap-back fix | Complete | Fade-driven _transitionTarget with guard, JS syntax OK |
 ||| Dash teleport collision fix | Complete | platSolid one-way + null prevY + PB landing, JS syntax OK, RIPER reviewed |
 ||| Death & respawn animations | Complete | 1.5s collapse/construct, state machine, easing, particles, RIPER reviewed |

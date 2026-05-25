@@ -6,14 +6,14 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, pus
 
 ## Architecture
 
-Single HTML file (~2655 lines, ~108 KB) organized into 13 sections with delimiter comments.
+Single HTML file (~2588 lines, ~105 KB) organized into 13 sections with delimiter comments.
 
 ### Section Map
 
 | # | Section | Functions |
 |---|---------|-----------|
 | 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays, SIM_HZ, derived frame constants, pace system, ENDING timeline |
-| 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `easeOutQuint`, `lerp`, `smoothStep`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn`, `captionAlpha`, `captionAlphaSec`, `startGame`, `returnToMenu`, `getEndingGlyphState` |
+|| 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `easeOutQuint`, `lerp`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn`, `captionAlpha`, `captionAlphaSec`, `startGame`, `returnToMenu`, `getEndingGlyphState` |
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
 | 4 | INPUT | Key listeners, `fresh()`, `shiftHeld()`, 5 input helper functions |
@@ -205,9 +205,8 @@ All shared helper functions consolidated in a dedicated section between Setup/Co
 | `land()` | Land on ground — reset jumps and coyote timer |
 | `easeOutCubic(t)` | Easing function for death/respawn animations, ending ramps, stats/PlayAgain alpha |
 | `easeOutQuint(t)` | Easing function for glyph convergence (slow start, fast finish) |
-| `lerp(a, b, t)` | Linear interpolation — used for orbit center/radius, font size, glyph convergence |
-| `smoothStep(t)` | Smoothstep interpolation (S-curve) — available for future easing needs |
-| `syncPrevKeys()` | Snapshot `prevKeys = { ...keys }` (replaces unbounded `for...in` copy) |
+|| `lerp(a, b, t)` | Linear interpolation — used for orbit center/radius, font size, glyph convergence |
+|| `syncPrevKeys()` | Snapshot `prevKeys = { ...keys }` (replaces unbounded `for...in` copy) |
 | `advanceTimers()` | Advance message queue phases + decrement portal lock timer |
 | `fullDashReset()` | Reset all dash state — used on death/transition (clears charge too) |
 | `cancelDash()` | Cancel active dash without resetting cooldown — used on immediate death |

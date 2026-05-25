@@ -23,7 +23,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Sim accumulator | simAcc (ms) + simDt (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death. Only accumulates during 'playing' state (not paused/ending/title). | Section 11 loop() |
 | Derived frame constants | COYOTE_FRAMES_ACTUAL, JUMP_BUFFER_ACTUAL, DASH_CHARGE_MAX_ACTUAL, DASH_DURATION_ACTUAL, DASH_COOLDOWN_ACTUAL, ANIM_TOTAL_ACTUAL, MSG_FADE_IN/OUT_ACTUAL, MSG_MIN/MAX_HOLD_ACTUAL — scaled by applyPaceAssists() based on simHz ratio | Section 1, applyPaceAssists() |
 | Ending timeline | Wall-clock (performance.now()), independent of sim Hz: beats at 0s, 2s, 5s, 9s, 14s, 16s. captionAlphaSec() for time-based fades. | Section 3, ENDING object |
-| File size | ~2577 lines, ~102 KB | Single-file constraint |
+|| File size | ~2588 lines, ~105 KB | Single-file constraint |
 | Dash system | Hold-to-charge (max 180 frames @ 240Hz / 3s), linear distance 60-267px. Uses DASH_CHARGE_MAX_ACTUAL (scaled). | Section 1 constants |
 | Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
 | Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |
@@ -37,7 +37,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Constraint | Detail | Source |
 |-----------|--------|--------|
 | 13 sections | 1, 1.5, 2, 3, 4, 5, 6, 7, 7.5, 8, 9, 9.5, 10, 11 | `golem.html` delimiter comments |
-| Section 1.5 | Shared utility functions (23 helpers) — between Setup/Constants and Chamber Data. Added easeOutQuint, lerp, smoothStep, getEndingGlyphState for ending sequence smoothing. Added shadowText, playerGridBounds, doJump, drawWallBase from code review S3-S4-S6-S8-S11. | Section 1.5 |
+| Section 1.5 | Shared utility functions (22 helpers) — between Setup/Constants and Chamber Data. Added easeOutQuint, lerp, getEndingGlyphState for ending sequence smoothing. Added shadowText, playerGridBounds, doJump, drawWallBase from code review S3-S4-S6-S8-S11. | Section 1.5 |
 | Section 1 | Named constants from code review S7: TRANSITION_FADE_SPEED (0.06), ENDING_FADE_SPEED (0.03), SIM_ACCUMULATOR_CAP (128), MAX_TICKS_PER_FRAME (8), SHADOW_BLUR (4), LAND_SQUISH_FRAMES (10), TURN_LEAN_FRAMES (8), STARS_PER_CHAMBER (40) | Section 1 |
 | Section 7.5 | Sound engine (IIFE: init, play, setMute, isMuted, startMusic, stopMusic) — between Particles and Game Flow | Section 7.5 |
 | Section 8 | Contains MSG_* message system constants + `showMessage()`, `calcDisplayDuration()` | Section 8 |

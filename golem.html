@@ -108,10 +108,6 @@ const DASH_CHARGE_RING_MIN = 8;    // px — minimum indicator radius
 const DASH_CHARGE_RING_MAX = 40;   // px — maximum indicator radius
 const PUSH_SPEED = 1.25;           // px/frame — half of walk speed 2.5
 
-/* ── Particle color constants (extracted from call sites) ── */
-const DASH_EXEC_PARTICLE_COLOR = 'rgba(92,179,175,0.50)';
-const DASH_CHARGE_PARTICLE_COLOR = 'rgba(71,158,153,0.35)';
-
 /* ── Player physics constants ── */
 const H_ACCEL_GROUND = 0.05;    // horizontal acceleration on ground
 const H_ACCEL_AIR = 0.2;        // horizontal acceleration in air
@@ -194,6 +190,8 @@ const PARTICLE_COLORS = {
   doubleJump: '#C5B391',
   glyph: '#C5B391',
   dashBurst: 'rgba(92,179,175,0.6)',
+  dashExec: 'rgba(92,179,175,0.50)',
+  dashCharge: 'rgba(71,158,153,0.35)',
   death: '#A89B8E',
 };
 
@@ -242,8 +240,6 @@ function land() {
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
 function lerp(a, b, t) { return a + (b - a) * t; }
-function smoothStep(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
-
 /* ── Sync prevKeys with current keys (spread, no unbounded growth) ── */
 function syncPrevKeys() { prevKeys = { ...keys }; }
 
@@ -266,7 +262,6 @@ function advanceTimers() {
 /* Reset all dash state — used on death/transition to fully clear */
 function fullDashReset() {
   cancelDash(); P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
-
 }
 /* Cancel an active dash without resetting cooldown — used on immediate death */
 function cancelDash() {
@@ -274,16 +269,12 @@ function cancelDash() {
 }
 
 /* Caption fade timing (wall-clock seconds) — for ending sequence */
-function captionAlphaSec(t, start, fadeIn, hold, fadeOut) {
-  if (t < start) return 0;
-  let elapsed = t - start;
-  if (fadeIn > 0 && elapsed < fadeIn) return elapsed / fadeIn;
-  elapsed -= fadeIn;
-  if (hold > 0 && elapsed < hold) return 1;
-  elapsed -= hold;
-  if (fadeOut > 0 && elapsed < fadeOut) return 1 - (elapsed / fadeOut);
-  if (fadeOut === 0) return 1;
-  return 0;
+function captionAlphaSec(t, start, fi, hold, fo) {
+  let e = t - start; if (e < 0) return 0;
+  if (fi && e < fi) return e / fi; e -= fi;
+  if (hold && e < hold) return 1; e -= hold;
+  if (fo && e < fo) return 1 - e / fo;
+  return fo ? 0 : 1;
 }
 
 /* Restore player position and velocity to respawn point */
@@ -309,7 +300,6 @@ function killAndRespawn(msg, duration) {
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
 function sBounds(g,w,h){for(let x=0;x<w;x++){g[0][x]=WALL;g[h-1][x]=WALL;}for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;} }
 function hLine(g,y,x1,x2,v){for(let x=x1;x<=x2;x++)g[y][x]=v;}
-function vLine(g,x,y1,y2,v){for(let y=y1;y<=y2;y++)g[y][x]=v;}
 
 const chambers = [];
 
@@ -667,7 +657,6 @@ function inputLeft()         { return keys['ArrowLeft']  || keys['KeyA']; }
 function inputRight()        { return keys['ArrowRight'] || keys['KeyD']; }
 function inputJumpPressed()  { return fresh('ArrowUp')||fresh('KeyW')||fresh('Space'); }
 function inputJumpHeld()     { return keys['ArrowUp'] || keys['KeyW'] || keys['Space']; }
-function inputShiftPressed() { return fresh('ShiftLeft')||fresh('ShiftRight'); }
 function inputDown()         { return keys['ArrowDown']  || keys['KeyS']; }
 
 /* ══════════════════════════════════════════════════
@@ -870,7 +859,7 @@ function resetPushBlock(){
   const spawns=c.pushSpawns||(c.pushSpawn?[c.pushSpawn]:null);
   if(!spawns) return;
   for(const sp of spawns){
-    PBlocks.push({x:sp.x*T,y:sp.y*T,w:T,h:T,vx:0,vy:0,active:true,inSlot:false,_snd:false});
+    PBlocks.push({x:sp.x*T,y:sp.y*T,w:T,h:T,vx:0,vy:0,active:true,inSlot:false});
   }
 }
 
@@ -1157,12 +1146,8 @@ const Sound = (function(){
    ══════════════════════════════════════════════════ */
 
 /* ── Message system constants ── */
-const MSG_FADE_IN_FRAMES   = 180;
-const MSG_FADE_OUT_FRAMES  = 180;
 const MSG_MAX_QUEUE_DEPTH  = 5;
 const MSG_CHARS_PER_FRAME  = 0.35;
-const MSG_MIN_HOLD         = 90;
-const MSG_MAX_HOLD         = 360;
 const MSG_FOREVER_THRESHOLD = 99999;
 
 /* ── Message queue system ── */
@@ -1376,7 +1361,7 @@ function update(){
         P.dashCharge++;
       }
       /* Charge particles */
-      Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_CHARGE_PARTICLE_COLOR, 2, 'circle');
+      Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashCharge, 2, 'circle');
     }
  } else if(P.canDash && !P.dashing && P.dashCooldown<=0){
     /* Start charging on Shift press or hold */
@@ -1390,7 +1375,7 @@ function update(){
     P.vx = P.dashDir * (P.vx !== 0 ? Math.abs(P.vx) : 10);
     P.vy = 0;
     P.dashTimer--;
-    Particles.spawn(P.x+P.w/2, P.y+P.h/2, DASH_EXEC_PARTICLE_COLOR, 2, 'circle');
+    Particles.spawn(P.x+P.w/2, P.y+P.h/2, PARTICLE_COLORS.dashExec, 2, 'circle');
     if(!P._dashSfx || P.dashTimer % 3 === 0){ Sound.play('dashWhoosh'); P._dashSfx = true; }
     if(P.dashTimer<=0){
       endDash();
@@ -1410,8 +1395,7 @@ function update(){
 
  /* ── Coyote time countdown ── */
   const coyoteWasActive = P.coyoteTime > 0;
-  if(coyoteWasActive) P.coyoteTime--;
-   /* Airborne clay trail (Phase 4.5) -- removed to reduce visual clutter */
+if(coyoteWasActive) P.coyoteTime--;
 
 /* ── Move X + collide (tiles first, then push-block entity) ── */
   P.pushing = false;
@@ -2110,9 +2094,7 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
     X.fillStyle='rgba(197,179,145,'+(effortPulse*0.6)+')';
     const sparkX = dir>0 ? px+pw+2 : px-4;
     X.fillRect(sparkX, py+10, 2, 2);
-  }
-
-  /* Hebrew letters on body -- removed (glyph count shown in HUD instead) */
+}
 
   /* Falling motion lines */
   if(fallingFast){
@@ -2194,80 +2176,69 @@ function getEndingGlyphState(endSec, cx, cy) {
   let emetAlpha = 0, emetFontSize = 24, emetGlowIntensity = 0;
   let emetY = cy - 50, flashAlpha = 0, convergeProgress = 0;
 
-  /* ── Phase A: Orbit (0-5s) ── */
-  const orbitEnd = B3; // 5s
-  const orbitPhase = Math.min(endSec / orbitEnd, 1); // 0→1 over orbit
+  /* orbit */
+  const orbitEnd = B3;
+  const orbitPhase = Math.min(endSec / orbitEnd, 1);
 
-  // Speed ramps: slow start, accelerates after 2s (B2)
-  const speedPhase = Math.min(Math.max((endSec - B2) / 1, 0), 1); // 0-1 over [2,3]
+  const speedPhase = Math.min(Math.max((endSec - B2) / 1, 0), 1);
   const orbitRate = lerp(0.6, 2.2, easeOutCubic(speedPhase));
 
-  // Center shifts from (cx,cy) toward (cx, cy-30) starting at B2
   const centerPhase = Math.min(Math.max((endSec - B2) / 2, 0), 1);
   const orbitCX = cx;
   const orbitCY = lerp(cy, cy - 30, easeOutCubic(centerPhase));
 
-  // Radius shrinks from ~50 to ~35 starting at B2
   const radius = lerp(50, 35, easeOutCubic(centerPhase));
 
-  /* ── Phase B: Convergence (5-7.5s) ── */
+  /* converge */
   const convergeStart = B3;
-  const convergeDur = B4 - convergeStart; // 9 - 5 = 4s, but glyphs converge in first 2.5s
   const rawConverge = Math.min(Math.max((endSec - convergeStart) / 2.5, 0), 1);
   convergeProgress = rawConverge;
   const easedConverge = easeOutQuint(rawConverge);
 
-  /* ── Compute glyph positions ── */
+  /* glyph positions */
   for (let i = 0; i < 4; i++) {
-    // Orbit position (deterministic, uses endSec not Date.now())
     const angle = (i / 4) * PI2 + endSec * orbitRate;
     const ox = cx + Math.cos(angle) * radius;
     const oy = orbitCY + Math.sin(angle) * radius;
 
-    // EMET target positions: Aleph/Mem/Tav spread across center
-    // RTL: \u05ea\u05de\u05d0 (Tav right, Mem center, Aleph left)
     const letterSpacing = 20;
-    const targetX = cx + (i - 1.5) * letterSpacing; // Aleph=-30, Mem=-10, He=+10, Tav=+30
+    const targetX = cx + (i - 1.5) * letterSpacing;
     const targetY = emetY;
 
     let x, y, alpha;
 
     if (rawConverge <= 0) {
-      // Pure orbit
       x = ox; y = oy; alpha = 0.6 + Math.sin(endSec / 300) * 0.3 + 0.1;
     } else if (rawConverge < 1) {
-      // Converging: lerp from orbit to target
       x = lerp(ox, targetX, easedConverge);
       y = lerp(oy, targetY, easedConverge);
-      // He (index 2) dissolves starting at converge=0.5
       if (i === 2) {
         alpha = 1 - easeOutCubic(Math.min((rawConverge - 0.4) / 0.6, 1));
       } else {
         alpha = lerp(1, 0, easeOutCubic(Math.max((rawConverge - 0.7) / 0.3, 0)));
       }
     } else {
-      // Converged
       x = targetX; y = targetY;
-      alpha = (i === 2) ? 0 : 0; // All faded, He gone first
+      alpha = (i === 2) ? 0 : 0;
     }
 
     glyphs.push({ x, y, alpha: Math.max(0, alpha) });
   }
 
-  /* ── EMET cross-fade (starts at converge=0.6) ── */
+  /* emet cross-fade */
   if (rawConverge >= 0.6) {
     emetAlpha = easeOutCubic(Math.min((rawConverge - 0.6) / 0.4, 1));
   }
 
-  /* ── Phase C: Flash bloom (Gaussian bell at converge≈0.7) ── */
+  /* flash bloom */
   const flashCenter = 0.7, flashWidth = 0.15;
   const flashT = (rawConverge - flashCenter) / flashWidth;
   flashAlpha = Math.exp(-flashT * flashT) * 0.25;
 
-  /* ── Phase 4: Font size smoothing ── */
+  /* fontSize smoothing */
   emetFontSize = lerp(24, 28, easeOutCubic(Math.min(Math.max((rawConverge - 0.5) / 0.5, 0), 1)));
 
-  /* ── Phase D: Glow (7.5s+) — EMET persists at full brightness ── */
+  /* glow */
   if (endSec >= B3 + 2.5) {
     const glowPhase = Math.min((endSec - (B3 + 2.5)) / 1.5, 1);
     const baseGlow = easeOutCubic(glowPhase) * 0.7;
@@ -2296,12 +2267,8 @@ if (gameState === 'ending') {
       { beat: 4, text: 'You are the Golem of Truth.', y: H - 105, start: ENDING.BEAT_4 + 3.5, type: 'ibis' },
     ];
 
-    if(endSec < ENDING.BEAT_2) endingBeat = 1;
-    else if(endSec < ENDING.BEAT_3) endingBeat = 2;
-    else if(endSec < ENDING.BEAT_4) endingBeat = 3;
-    else if(endSec < ENDING.BEAT_5) endingBeat = 4;
-    else if(endSec < ENDING.BEAT_6) endingBeat = 5;
-    else endingBeat = 6;
+    endingBeat = 1;
+    for (let b = 2; b <= 6; b++) if (endSec >= ENDING['BEAT_' + b]) endingBeat = b;
 
     /* Background */
     const fadeAlpha = Math.min(endSec/2, 0.95);
@@ -2421,8 +2388,7 @@ function resetGameState(){
   P.canPush=false; P.canBreak=false;
   P.facing=1; P.chamber=0;
   P.coyoteTime=0; P.jumpBuffer=0; P.pushing=false;
-  P.landSquish=0; P.turnLean=0; P.lastFacing=1;
-  P.respawnX=chambers[0].spawnPx; P.respawnY=chambers[0].spawnPy;
+ P.landSquish=0; P.turnLean=0; P.lastFacing=1;
   PBlocks.length=0;
   glyphsCollected=0;
   collectedGlyphs=new Array(chambers.length).fill(false);
@@ -2430,16 +2396,13 @@ function resetGameState(){
   screenFade=0; screenAlpha=0;
   messageQueue.length=0;
   particles.length=0;
-  portalLockMsg=0;
-  testChamberSrc=-1;
+portalLockMsg=0; testChamberSrc=-1;
   _c=undefined;
   _transitionTarget=-1;
- animState='idle'; animFrame=0;
- endingBeat=0;
+  animState='idle'; animFrame=0; endingBeat=0;
   endingStartTime=performance.now();
-  frozenElapsedSec=0;
+  frozenElapsedSec=0; totalDeaths=0;
   gameStartTime=undefined;
-  totalDeaths=0;
   simAcc=0; lastSimTime=0;
   keys={}; prevKeys={};
 }
