@@ -319,6 +319,17 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 
 - [ ] `MSG_CHARS_PER_FRAME` doesn't scale with `SIM_HZ` (minor — text scroll speed fixed at 240 Hz)
 
+### Left/Right Input Asymmetry Fix (June 2026)
+
+- [x] Added `lastDirKey` global variable tracking most recently pressed horizontal direction key
+- [x] Keydown handler records `lastDirKey` (Left=37, Right=39) on each press
+- [x] Keyup handler recalculates `inputDirLeft()`/`inputDirRight()` instead of clearing flags — prevents stale direction
+- [x] Tiebreaker in `update()`: when both Left and Right held, `lastDirKey` determines direction (last key pressed is sovereign)
+- [x] Reset `lastDirKey` in `resetGameState()`
+- [x] Fixed indentation on lines 1283-1286 (3-space to 2-space)
+- [x] Minimal change: ~15 lines in golem.html only. No chamber changes, no new game mechanics. Purely input handling improvement.
+- [x] Validation: JS syntax OK, zero behavioral changes beyond fixing asymmetric input
+
 ### Chamber Redesign (Not Started)
 
 Redesign each chamber for better experience using `chamber-proposal.md` as staging area.
