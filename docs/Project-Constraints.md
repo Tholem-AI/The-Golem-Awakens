@@ -42,7 +42,7 @@ Inferred from `golem.html` source code and design artifacts.
 | Section 8 | Contains MSG_* message system constants + `showMessage()`, `calcDisplayDuration()` | Section 8 |
 | Section 9.5 | Animation state machine (death/respawn) — between Update and Render | Section 9.5 |
 | Function hoisting | All helpers use `function` declarations; call order within file does not matter | `golem.html` |
-| IIFE encapsulation | Particle system is an IIFE module (`Particles.shatter`, `.spawn(x,y,color,count,shape)`, `.update`). Shape param: 'square' (default), 'circle', 'diamond', 'star'. Render selects shape via path. | Section 7 |
+|| IIFE encapsulation | Particle system is an IIFE module (`Particles.shatter`, `.spawn(x,y,color,count,shape)`, `.update`, `.magicalWallDeath(x,y)`). Shape param: 'square' (default), 'circle', 'diamond', 'star', 'hex'. Render selects shape via path. | Section 7 |
 | Data structures | `PARTICLE_COLORS` object (Section 1), `GLYPH_EFFECTS` array (Section 1), `ENDING` object (Section 3) | Section 1, 3 |
 
 ## Design Constraints
@@ -52,11 +52,12 @@ Inferred from `golem.html` source code and design artifacts.
 | Single-file architecture | All game code in one HTML file | `golem.html` |
 | 12 tile types | AIR through PUSH_SPAWN (values 0-11, with value 6 removed) | `golem.html` line 26 |
 | 4 glyphs, sequential | Each grants one ability; must collect in order | Section 8 game flow |
-| 5 canonical chambers + 1 test | Progressive difficulty chain via flow. Test chamber accessible by pressing T. | `chamber-data.md` |
+|| 5 canonical chambers + 1 test | Progressive difficulty chain via flow. Test chamber accessible by pressing T. | `chamber-data.md` |
+|| MAGICAL_WALL mechanics | Solid for normal movement, passable during dash. Death triggered when dash ends (collision or timer expiry) with player center inside MAGICAL_WALL tile. Persistent safety net kills stuck player (idle + zero velocity + center overlap). Visual death effect: hexagonal teal/purple particle burst + fracture overlay. | Sections 1.5, 4, 9 |
 | Chamber flow system | Chambers ordered by CHAMBER_FLOW array, not array index. Each main chamber has flowId property. DOOR_D follows flow. Test chamber has no flowId (identified by !c.flowId). | golem.html Section 1 |
 | Grant-then-use ability chain | Chamber N grants ability for Chamber N+1 | `chamber-proposal.md` |
 | Chamber proposals | chamber-proposal.md is a reusable template. Copy and fill for each new proposal. | `chamber-proposal.md` |
-| API stability | `killAndRespawn(msg, duration)` — no `onGround` parameter (removed as unused) | Section 1.5 |
+|| API stability | `killAndRespawn(msg, duration, cause)` — `cause` is optional (null|'magicalWall'), defaults to null. Visual death effect varies by cause. | Section 1.5 |
 | setTile | Simplified — no longer maintains `solidTiles` cache | Section 5 |
 | Sim timing preserves per-tick constants | All per-tick physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, JUMP_VEL_1=-5, etc.) are preserved AS-IS. They define behavior per sim tick, not per rAF frame. Changing sim Hz changes the rate of ticks, not the physics per tick. | Section 1 constants |
 | Ending independence | Ending sequence uses wall-clock time (performance.now() - endingStartTime) in seconds. Timeline beats (0s, 2s, 5s, 9s, 14s, 16s) fixed at single 240 Hz mode. | Section 3, ENDING object |

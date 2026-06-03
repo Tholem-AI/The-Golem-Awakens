@@ -235,14 +235,16 @@ function resetPlayerToRespawn() {
 }
 
 /* Kill and respawn player at checkpoint */
-function killAndRespawn(msg, duration) {
+function killAndRespawn(msg, duration, cause) {
   if(animState!=='idle') return; // prevent double-trigger
   cancelDash();
- animState='dying'; animFrame=0;
+  deathCause = cause || null;
+  animState='dying'; animFrame=0;
   Sound.play('death');
   Sound.duckMusic(1.5);
   totalDeaths++;
   showMessage(msg, duration);
+  if(cause==='magicalWall') Particles.magicalWallDeath(P.x+P.w/2, P.y+P.h/2);
 }
 
 /* ══════════════════════════════════════════════════
@@ -538,6 +540,7 @@ let _c;                            // cached chambers[P.chamber] for getTile opt
 let _transitionTarget = -1;        // stores target chamber during async fade cycle
 let animState = 'idle';            // 'idle' | 'dying' | 'respawning'
 let animFrame = 0;
+let deathCause = null;             // tracks death cause for visual effects
 /* ── Ending sequence state (Phase 5) ── */
 let endingBeat = 0;
 let endingStartTime = performance.now();
@@ -942,20 +945,48 @@ const Particles = (function(){
   }
 
  function spawn(x,y,color,count,shape){
-    for(let i=0;i<count;i++)
-      pool.push({
-        x, y,
-        vx:(Math.random()-0.5)*4,
-        vy:-Math.random()*3-1,
-        life:20+Math.random()*15,
-        maxLife:35,
-        color,
-        size:2+Math.random()*3,
-        shape: shape || 'square'
-      });
-  }
+     for(let i=0;i<count;i++)
+       pool.push({
+         x, y,
+         vx:(Math.random()-0.5)*4,
+         vy:-Math.random()*3-1,
+         life:20+Math.random()*15,
+         maxLife:35,
+         color,
+         size:2+Math.random()*3,
+         shape: shape || 'square'
+       });
+   }
 
-  function update(){
+   function magicalWallDeath(x,y){
+     /* Hexagonal fracture shards — teal and purple */
+     const colors = ['rgba(92,179,175,0.9)','rgba(92,179,175,0.7)','rgba(123,104,238,0.9)','rgba(123,104,238,0.7)','rgba(92,179,175,0.5)','rgba(123,104,238,0.5)'];
+     for(let i=0;i<18;i++){
+       const ang = (i/18)*Math.PI*2;
+       const spd = 2 + Math.random()*4;
+       pool.push({
+         x, y,
+         vx:Math.cos(ang)*spd + (Math.random()-0.5)*2,
+         vy:Math.sin(ang)*spd + (Math.random()-0.5)*2,
+         life:20+Math.random()*20, maxLife:40,
+         color:colors[i%colors.length],
+         size:3+Math.random()*4,
+         shape:'hex'
+       });
+     }
+     /* Inner sparkle burst */
+     for(let i=0;i<10;i++)
+       pool.push({
+         x, y,
+         vx:(Math.random()-0.5)*6, vy:-Math.random()*4-1,
+         life:10+Math.random()*10, maxLife:20,
+         color:'rgba(200,200,255,0.8)',
+         size:1+Math.random()*2,
+         shape:'circle'
+       });
+   }
+
+   function update(){
     for(let i=pool.length-1;i>=0;i--){
       const p=pool[i];
       p.x+=p.vx; p.y+=p.vy; p.vy+=0.1; p.life--;
@@ -963,7 +994,7 @@ const Particles = (function(){
     }
   }
 
-  return { spawn, shatter, update };
+   return { spawn, shatter, update, magicalWallDeath };
 })();
 
 /* ══════════════════════════════════════════════════
@@ -1345,7 +1376,7 @@ function update(){
       endDash();
       const cx=Math.floor((P.x+P.w/2)/T), cy=Math.floor((P.y+P.h/2)/T);
       if(_getTile(cx,cy)===MAGICAL_WALL){
-        killAndRespawn("The boundary rejects the unfinished.", 90);
+        killAndRespawn("The boundary rejects the unfinished.", 90, 'magicalWall');
       }
     }
   }
@@ -1372,16 +1403,18 @@ if(coyoteWasActive) P.coyoteTime--;
     const colFn = P.dashPhase ? collidesDash : collidesNoPlat;
     if(colFn(gx1,gy1,gx2,gy2,P.chamber,P.y)){
      if(P.dashPhase){
-        const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
-        if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
-          setTile(P.chamber,fcx,fcy,AIR);
-         Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
-          Sound.play('break');
-          endDash();
-        } else {
-          snapToTileX(gx1, gx2, prevX);
-          endDash();
-        }
+         const fcx=Math.floor((P.x+(P.vx>0?P.w:0))/T), fcy=Math.floor((P.y+P.h/2)/T);
+         if(_getTile(fcx,fcy)===CRACKED && P.canBreak){
+           setTile(P.chamber,fcx,fcy,AIR);
+          Particles.shatter((fcx+0.5)*T,(fcy+0.5)*T);
+           Sound.play('break');
+           endDash();
+         } else {
+           snapToTileX(gx1, gx2, prevX);
+           endDash();
+           const {gx:cgx,gy:cgy} = playerGridPos();
+           if(_getTile(cgx,cgy)===MAGICAL_WALL) killAndRespawn("The boundary rejects the unfinished.", 90, 'magicalWall');
+         }
       } else {
         snapToTileX(gx1, gx2, prevX);
       }
@@ -1415,8 +1448,8 @@ if(coyoteWasActive) P.coyoteTime--;
         P.vy=0;
       }
     } else {
-      P.onGround = false;
-    }
+          P.onGround = false;
+        }
  /* Push block Y collision — land on top */
     for(const pb of PBlocks){
       if(pb.active && aabb(P.x, P.y, P.w, P.h, pb.x, pb.y, pb.w, pb.h) && P.vy > 0 && Math.abs(P.vx) < 3){
@@ -1468,6 +1501,12 @@ if(inPit() || P.y > chambers[P.chamber].h*T){
     resetPushBlock();
   }
 
+  /* ── Persistent stuck safety net: player idle + stationary + on MAGICAL_WALL ── */
+  if(animState==='idle' && !P.dashing && P.vx===0 && P.vy===0){
+    const {gx:sgx,gy:sgy} = playerGridPos();
+    if(_getTile(sgx,sgy)===MAGICAL_WALL) killAndRespawn("The boundary rejects the unfinished.", 90, 'magicalWall');
+  }
+
   checkDoors();
   checkGlyphs();
  Particles.update();
@@ -1496,6 +1535,7 @@ function updateAnim(){
     P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
     fullDashReset();
     resetPushBlock();
+    deathCause = null;
   animState='idle'; animFrame=0;
     Sound.play('respawn');
   }
@@ -1638,12 +1678,32 @@ function renderDeathRespawnAnimation(ox, oy){
     X.fillRect(cx + spread, arm2Y, 3, 10);
 
     // Legs (spread outward and down with gravity)
-    const legY = cy + ph/2 + spread * 0.5;
-    X.fillStyle = COLORS.golemDark;
-    X.fillRect(cx - spread*0.7, legY, 7, 4);
-    X.fillRect(cx + spread*0.7 - 7, legY, 7, 4);
+     const legY = cy + ph/2 + spread * 0.5;
+     X.fillStyle = COLORS.golemDark;
+     X.fillRect(cx - spread*0.7, legY, 7, 4);
+     X.fillRect(cx + spread*0.7 - 7, legY, 7, 4);
 
-    X.restore();
+     // Hexagonal fracture overlay for magical wall death
+     if(deathCause==='magicalWall'){
+       const hexAlpha = alpha * 0.5;
+       for(let i=0;i<6;i++){
+         const ang = (i/6)*Math.PI*2 + animFrame*0.05;
+         const dist = spread * 0.6;
+         const hx = cx + Math.cos(ang)*dist;
+         const hy = cy + Math.sin(ang)*dist;
+         X.fillStyle = i%2===0 ? `rgba(92,179,175,${hexAlpha})` : `rgba(123,104,238,${hexAlpha})`;
+         X.beginPath();
+         for(let j=0;j<6;j++){
+           const a2 = (j/6)*Math.PI*2 - Math.PI/6;
+           const r = 4 + progress*3;
+           const px2 = hx + Math.cos(a2)*r, py2 = hy + Math.sin(a2)*r;
+           j===0 ? X.moveTo(px2,py2) : X.lineTo(px2,py2);
+         }
+         X.closePath(); X.fill();
+       }
+     }
+
+     X.restore();
 
   } else if(animState === 'respawning'){
     // ── RESPAWN: parts materialize bottom-up (legs->arms->torso->head->eye->glyphs) ──
@@ -1969,17 +2029,26 @@ function render(){
       X.lineTo(ox+p.x-p.size/2, oy+p.y);
       X.closePath(); X.fill();
     } else if(p.shape==='star'){
-      X.save(); X.translate(ox+p.x, oy+p.y);
-      X.beginPath();
-      for(let i=0;i<5;i++){
-        const ang = (i*4*Math.PI/5)-Math.PI/2;
-        const r = i%2===0 ? p.size/2 : p.size/5;
-        i===0 ? X.moveTo(Math.cos(ang)*r, Math.sin(ang)*r) : X.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
-      }
-      X.closePath(); X.fill(); X.restore();
-    } else {
-      X.fillRect(ox+p.x-p.size/2, oy+p.y-p.size/2, p.size, p.size);
-    }
+       X.save(); X.translate(ox+p.x, oy+p.y);
+       X.beginPath();
+       for(let i=0;i<5;i++){
+         const ang = (i*4*Math.PI/5)-Math.PI/2;
+         const r = i%2===0 ? p.size/2 : p.size/5;
+         i===0 ? X.moveTo(Math.cos(ang)*r, Math.sin(ang)*r) : X.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
+       }
+       X.closePath(); X.fill(); X.restore();
+     } else if(p.shape==='hex'){
+       X.beginPath();
+       for(let i=0;i<6;i++){
+         const ang = (i/6)*Math.PI*2 - Math.PI/6;
+         const hx2 = ox+p.x + Math.cos(ang)*p.size/2;
+         const hy2 = oy+p.y + Math.sin(ang)*p.size/2;
+         i===0 ? X.moveTo(hx2,hy2) : X.lineTo(hx2,hy2);
+       }
+       X.closePath(); X.fill();
+     } else {
+       X.fillRect(ox+p.x-p.size/2, oy+p.y-p.size/2, p.size, p.size);
+     }
     X.globalAlpha=1;
   }
 
@@ -2363,7 +2432,7 @@ function resetGameState(){
 portalLockMsg=0; testChamberSrc=-1;
   _c=undefined;
   _transitionTarget=-1;
-  animState='idle'; animFrame=0; endingBeat=0;
+  animState='idle'; animFrame=0; endingBeat=0; deathCause=null;
   endingStartTime=performance.now();
   frozenElapsedSec=0; totalDeaths=0;
   gameStartTime=undefined;

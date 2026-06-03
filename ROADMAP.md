@@ -330,6 +330,18 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 - [x] Minimal change: ~15 lines in golem.html only. No chamber changes, no new game mechanics. Purely input handling improvement.
 - [x] Validation: JS syntax OK, zero behavioral changes beyond fixing asymmetric input
 
+### MAGICAL_WALL Stuck Bug Fix + Visual Death Effect (June 2026)
+
+- [x] Root cause: `collidesDash()` skips MAGICAL_WALL, but dash collision with WALL behind it called `endDash()` without the death check (which only fired on `dashTimer<=0`). Player snapped to WALL boundary overlapping MAGICAL_WALL, permanently trapped since MAGICAL_WALL is solid for normal movement.
+- [x] Fix A1: MAGICAL_WALL center-tile check after X-axis dash collision resolution (snapToTileX + endDash path)
+- [x] Fix A2: Persistent safety net for stuck players (animState==='idle' && !P.dashing && P.vx===0 && P.vy===0 && center on MAGICAL_WALL)
+- [x] Fix B1-B8: Death cause tracking (`deathCause` state), `killAndRespawn(msg, duration, cause)` API, `Particles.magicalWallDeath()` with hexagonal teal/purple fracture particles, 'hex' particle shape, hexagonal fracture energy overlay in death animation
+- [x] Review finding: CRITICAL Y-axis check killed player during ANY dash through MAGICAL_WALL (gravity drift triggered false positive). Removed entirely — X-axis check + timer expiry check + safety net cover all stuck scenarios.
+- [x] Review finding: `deathCause` reset in `resetGameState()` added for defensive hygiene.
+- [x] Safety guards: center-tile check (not AABB) prevents adjacent-stand false positives; `!P.dashing` prevents killing during active dash; `animState==='idle'` prevents double-trigger during animations.
+- [x] Visual effect: 28 particles (18 hex teal/purple fracture shards + 10 white-teal energy sparks) + rotating hexagonal ring overlay during dying animation.
+- [x] JS syntax OK, zero console errors, browser tests verified: dash through MW survival, dash-into-WALL death, safety net activation, adjacent stand safety.
+
 ### Chamber Redesign (Not Started)
 
 Redesign each chamber for better experience using `chamber-proposal.md` as staging area.
