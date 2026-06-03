@@ -1882,13 +1882,26 @@ function render(){
       X.closePath(); X.fill();
 
   } else if(t===PIT){
-      X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
-      const glow=Math.sin(now/600+x)*0.3+0.3;
-      X.fillStyle='rgba(92,179,175,'+(glow*0.28)+')';
-      X.fillRect(px,py,T,1); X.fillRect(px,py+T-1,T,1);
-      X.fillRect(px,py,1,T); X.fillRect(px+T-1,py,1,T);
-      X.fillStyle='rgba(71,158,153,'+(glow*0.15)+')'; X.fillRect(px,py,T,3);
-      X.strokeStyle='rgba(197,179,145,'+(glow*0.15)+')'; X.lineWidth=1;
+       X.fillStyle=COLORS.pit; X.fillRect(px,py,T,T);
+       const glow=Math.sin(now/600+x)*0.3+0.3;
+       // Soft radial glow — extends 0.1*T (~3.2px) beyond tile edges, all sides for visual consistency
+        X.save();
+        X.beginPath();
+        X.rect(px-T*0.1, py-T*0.1, T*1.2, T*1.2);
+        X.clip();
+        var rg=X.createRadialGradient(px+T/2,py+T/2,T*0.4,px+T/2,py+T/2,T*0.6);
+        rg.addColorStop(0,'rgba(92,179,175,0)');
+        rg.addColorStop(1,'rgba(92,179,175,'+(glow*0.15)+')');
+        X.fillStyle=rg; X.fillRect(px-T*0.1,py-T*0.1,T*1.2,T*1.2);
+        X.restore();
+       // Sharp rim at tile boundary (alpha peak: 0.6*0.42=0.252, meets spec >=0.25)
+       X.fillStyle='rgba(92,179,175,'+(glow*0.42)+')';
+       X.fillRect(px,py,T,1); X.fillRect(px,py+T-1,T,1);
+       X.fillRect(px,py,1,T); X.fillRect(px+T-1,py,1,T);
+       // Inner teal depth
+       X.fillStyle='rgba(71,158,153,'+(glow*0.22)+')'; X.fillRect(px,py,T,3);
+       // Champagne hairline cracks
+       X.strokeStyle='rgba(197,179,145,'+(glow*0.22)+')'; X.lineWidth=1;
       X.beginPath(); X.moveTo(px+5,py); X.lineTo(px+T/2,py+T/3); X.lineTo(px+T-5,py); X.stroke();
       X.beginPath(); X.moveTo(px+5,py+T); X.lineTo(px+T/2,py+2*T/3); X.lineTo(px+T-5,py+T); X.stroke();
       X.beginPath(); X.moveTo(px,py+T/2-T/6); X.lineTo(px+T/6,py+T/2); X.lineTo(px,py+T/2+T/6); X.stroke();

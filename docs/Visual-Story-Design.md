@@ -2,7 +2,7 @@
 
 Context spec for the visual and narrative overhaul of [`golem.html`](../golem.html). All changes are polish and theming only — no gameplay mechanics, chamber layouts, or tile behavior.
 
-**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-9 (+ 4.5, +5.5, +5.6, +5.6.1, +5.6.2) **implemented and reviewed**. Phases 10a-10b **implemented**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
+**Document status (May 2026):** Runtime baseline verified against `golem.html`. Theming Phases 1-9 (+ 4.5, +5.5, +5.5.1, +5.6, +5.6.1, +5.6.2) **implemented and reviewed**. Phases 10a-10b **implemented**. Palette spec reflects tholem.ai brand tokens — code uses implemented palette.
 
 ---
 
@@ -146,7 +146,8 @@ Obsidian #0A0A12     — body CSS, pit fill
 | Wall bevel | Ink Bright | `#3A3A52` | WALL top, PLATFORM |
 | Platform | — | `#42425C` | PLATFORM ledge |
 | Pit base | — | `#060608` | Deeper than bg |
-| Pit rim | — | `rgba(92,179,175,0.28)` min | Teal hazard cue |
+|| Pit rim | — | `rgba(92,179,175,0.42)` peak | Teal hazard cue (spec: alpha >= 0.25) |
+|| Pit glow | — | `createRadialGradient` teal radial | Soft glow 0.1*T beyond all edges (includes top) |
 | Golem body | Lit clay | `#A89B8E` | ≥4.5:1 vs Midnight bg |
 | Golem shadow | — | `#4A4858` | Feet shadow |
 | Cracked | — | `#2E2840` + Champagne fracture lines | Breakable read |
@@ -222,7 +223,7 @@ Per-tile render goals in Section 10 — no new data structures:
 |-------------|------------|
 | WALL | Beveled top + 1px capstone trim + corner highlight `rgba(197,179,145,0.12)` |
 | PLATFORM | Chamfered edges via path drawing (2px triangle cuts at each end) |
-| PIT | Obsidian fill + teal rim on all 4 edges + champagne hairline cracks |
+|| PIT | Obsidian fill + radial teal glow (0.1*T beyond all edges) + sharp rim at tile boundary + champagne hairline cracks |
 | CRACKED | Bevel top + corner highlight + full X-pattern fractures + edge glow when breakable |
 | DOOR_D | Recessed panel; seal icon locked / Seafoam chevron open; rounded rect border |
 | MAGICAL_WALL | Seafoam veil + Cosmic Purple hexagonal core `#7B68EE` + spark particles |
@@ -333,6 +334,7 @@ Priority-ordered; each phase is a self-contained change. Details in §3–5 abov
 | **4.5** Movement polish | §4.7 last bullet | **Complete** | ~25 |
 | **5** Ending | §5.3 animated sequence | **Complete** | ~90 |
 | **5.5** Visual refinements | §4.7 geometry refinements (beveled walls, chamfered platforms, danger pits, rounded push blocks, hex magical walls, X-crack walls, geometric door, particle shapes, compass rose dash, rounded golem, Hebrew RTL glyphs, ending cleanup) | **Complete** | ~103 |
+| **5.5.1** PIT glow improvement | Radial gradient glow (0.1*T extension all edges), rim alpha 0.42 peak, inner/crack alpha 0.22 | **Complete** | ~10 |
 | **6** Title menu | `#game-shell`, inline SVG, `gameState='title'` | **Complete** | ~60 |
 | **7** Pause menu | `P` key, skip update, overlay | **Complete** | ~40 |
 | **8** Extended HUD | Bar above canvas, timer, deaths, glyph slots | **Complete** | ~40 |

@@ -396,6 +396,7 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [x] Phase 7: Pause menu — P key toggle (fresh edge detection), "PAUSED" overlay, RESUME + RETURN TO MAIN MENU buttons, HUD visible during pause, full game reset on return to menu (resetGameState()), loop restart on startGame().
 - [x] Phase 9: Responsive CSS scaling — `transform-origin: center center` on `#game-wrapper`, JS IIFE calculates `min(viewportWidth/800, viewportHeight/512)` scale factor, window resize listener, scales entire game (canvas + HUD + overlays + fonts + SVG). Zero JS errors, browser verified, reviewer approved. ~13 lines net.
 - [x] Phases 10a-10b: Web Audio SFX (9 sounds, 11 call sites, Section 7.5) + ambient drone (D2 73.42Hz) + D minor arpeggio at 75 BPM. M-key mute toggle with HUD indicator. Music lifecycle wired to game state transitions. JS syntax OK, zero browser errors.
+- [x] Phase 5.5.1 PIT glow improvement (June 2026): Teal rim alpha boosted 0.28->0.42 (peak 0.252 meets spec >=0.25), soft radial gradient glow extends 0.1*T beyond all edges via createRadialGradient, inner glow/crack alpha boosted 0.15->0.22. RIPER process (research->plan->execute->review), JS syntax OK, zero browser errors, canvas pixel verification confirms smooth gradient falloff. ~10 lines net.
 
 **Reviewer notes:** Contrast guardrails for WALL/PLATFORM vs BG inherent conflict in dark temple palette (spec-level, not implementation). Minor font/color consolidation opportunities (cosmetic, non-blocking).
 
