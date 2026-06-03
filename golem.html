@@ -60,12 +60,7 @@ canvas { display: block; image-rendering: pixelated; }
         <div class="ts-title">THE GOLEM AWAKENS</div>
         <div class="ts-credits">made by <a href="https://tholem.ai" target="_blank" id="tholem-link">Tholem Labs</a></div>
        <div class="ts-blurb"><a href="https://github.com/Tholem-AI" target="_blank" id="github-link">Fully open source</a> &bull; Built entirely with local AI models on a single RTX 3090 Ti</div>
-        <div class="ts-pace" style="margin-bottom:24px;">
-          <button id="btn-easy" style="font-family:Georgia,serif;font-size:14px;color:#C5B391;background:none;border:1px solid rgba(197,179,145,0.35);padding:6px 16px;cursor:pointer;letter-spacing:2px;transition:background 0.2s,color 0.2s;">Clay Weight</button>
-          <button id="btn-hard" style="font-family:Georgia,serif;font-size:14px;color:#C5B391;background:none;border:1px solid rgba(197,179,145,0.35);padding:6px 16px;cursor:pointer;letter-spacing:2px;transition:background 0.2s,color 0.2s;">Temple Pace</button>
-        </div>
-        <div class="ts-pace-label" style="font-family:Georgia,serif;font-size:11px;color:#4A4A5C;margin-bottom:16px;"></div>
-        <div class="ts-start">PRESS ANY KEY TO BEGIN</div>
+         <div class="ts-start">PRESS ANY KEY TO BEGIN</div>
       </div>
     </div>
    <div id="pause-overlay">
@@ -122,61 +117,18 @@ const JUMP_BUFFER_FRAMES = 12;  // jump buffer in frames (200ms at 240Hz)
 const CHARGE_FRICTION = 0.85;   // dash charge state friction
 
 /* ── Simulation timing ── */
-const SIM_HZ_DEFAULT    = 240;        // Hard: 240 Hz (preserves tuned constants)
-const SIM_HZ_EASY       = 144;        // Easy: 144 Hz (slower, more forgiving)
-let simHz               = SIM_HZ_DEFAULT;
-let simDt               = 1000 / simHz; // ms per tick
-let simAcc              = 0;           // accumulator in ms
-let lastSimTime         = 0;          // last performance.now() for accumulator
+const SIM_HZ = 240;                   // fixed: 240 Hz (Temple Pace)
+const SIM_DT = 1000 / SIM_HZ;        // ~4.167ms per tick
+let simAcc = 0;                       // accumulator in ms
+let lastSimTime = 0;                 // last performance.now() for accumulator
 
-/* ── Derived frame-count constants (scaled by SIM_HZ, computed in applyPaceAssists) ── */
-let COYOTE_FRAMES_ACTUAL  = 12;
-let JUMP_BUFFER_ACTUAL    = 12;
-let DASH_CHARGE_MAX_ACTUAL = 180;
-let DASH_DURATION_ACTUAL  = 10;
-let DASH_COOLDOWN_ACTUAL  = 20;
-let ANIM_TOTAL_ACTUAL     = 90;
-let MSG_FADE_IN_ACTUAL    = 180;
-let MSG_FADE_OUT_ACTUAL   = 180;
-let MSG_MIN_HOLD_ACTUAL   = 90;
-let MSG_MAX_HOLD_ACTUAL   = 360;
-
-function applyPaceAssists(){
-  const r = simHz / SIM_HZ_DEFAULT;
-  COYOTE_FRAMES_ACTUAL   = Math.ceil(12 * r);
-  JUMP_BUFFER_ACTUAL     = Math.ceil(12 * r);
-  DASH_CHARGE_MAX_ACTUAL = Math.ceil(180 * r);
-  DASH_DURATION_ACTUAL   = Math.ceil(10 * r);
-  DASH_COOLDOWN_ACTUAL   = Math.ceil(20 * r);
-  ANIM_TOTAL_ACTUAL      = Math.ceil(90 * r);
-  MSG_FADE_IN_ACTUAL     = Math.ceil(180 * r);
-  MSG_FADE_OUT_ACTUAL    = Math.ceil(180 * r);
-  MSG_MIN_HOLD_ACTUAL    = Math.ceil(90 * r);
-  MSG_MAX_HOLD_ACTUAL    = Math.ceil(360 * r);
-}
-applyPaceAssists();
-
-/* ── Pace (difficulty) persistence ── */
-let paceMode = 'hard';
-
-function loadPace(){
-  const saved = localStorage.getItem('golem_pace');
-  if(saved === 'easy' || saved === 'hard') paceMode = saved;
-  else paceMode = 'easy';
-  applyPace();
-}
-
-function applyPace(){
-  simHz = paceMode === 'easy' ? SIM_HZ_EASY : SIM_HZ_DEFAULT;
-  simDt = 1000 / simHz;
-  applyPaceAssists();
-}
-
-function togglePace(){
-  paceMode = paceMode === 'easy' ? 'hard' : 'easy';
-  localStorage.setItem('golem_pace', paceMode);
-  applyPace();
-}
+/* ── Frame-count constants (fixed at 240Hz Temple Pace) ── */
+// Note: COYOTE_FRAMES, JUMP_BUFFER_FRAMES, DASH_* consts exist above
+const ANIM_TOTAL = 90;
+const MSG_FADE_IN = 180;
+const MSG_FADE_OUT = 180;
+const MSG_MIN_HOLD = 90;
+const MSG_MAX_HOLD = 360;
 
 /* ── Push block physics constants ── */
 const PB_GRAVITY = 0.3;         // push block gravity
@@ -228,12 +180,12 @@ function playerGridPos() {
 
 /* End dash state cleanly */
 function endDash() {
-  cancelDash(); P.dashCooldown=DASH_COOLDOWN_ACTUAL; P.dashPhase=false; P._dashSfx=false;
+  cancelDash(); P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false; P._dashSfx=false;
 }
 
 /* Land on ground — reset jumps and coyote */
 function land() {
-  P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES_ACTUAL;
+  P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES;
 }
 
 /* ── Easing functions for animations ── */
@@ -248,11 +200,11 @@ function advanceTimers() {
   if(messageQueue.length>0){
     const m=messageQueue[0];
     m.elapsed++;
-   if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN_ACTUAL){
+   if(m.phase==='fadeIn' && m.elapsed>=MSG_FADE_IN){
       m.phase='display'; m.elapsed=0;
     } else if(m.phase==='display' && m.elapsed>=m.hold){
       m.phase='fadeOut'; m.elapsed=0;
-    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT_ACTUAL){
+    } else if(m.phase==='fadeOut' && m.elapsed>=MSG_FADE_OUT){
       messageQueue.shift();
     }
   }
@@ -594,7 +546,7 @@ let totalDeaths = 0;
 let frozenElapsedSec = 0;       // frozen game time for ending stats
 
 let hudBar, hudLeft, hudRight;
-let lastHudTime = -1, lastHudDeaths = -1, lastHudGlyphs = '', lastHudPace = '';
+let lastHudTime = -1, lastHudDeaths = -1, lastHudGlyphs = '';
 function initHUD() {
   hudBar = document.getElementById('hud-bar');
   hudLeft = hudBar.querySelector('.hud-left');
@@ -1153,8 +1105,8 @@ const MSG_FOREVER_THRESHOLD = 99999;
 /* ── Message queue system ── */
 function calcDisplayDuration(text, providedDur) {
     const auto = Math.floor(text.length / MSG_CHARS_PER_FRAME);
-    const dur = providedDur || MSG_MIN_HOLD_ACTUAL;
-    return Math.min(MSG_MAX_HOLD_ACTUAL, Math.max(dur, auto));
+    const dur = providedDur || MSG_MIN_HOLD;
+    return Math.min(MSG_MAX_HOLD, Math.max(dur, auto));
 }
 function showMessage(txt, dur) {
     const isForever = (dur || 0) >= MSG_FOREVER_THRESHOLD;
@@ -1339,13 +1291,13 @@ function update(){
 
     if(!shiftHeld()){
       /* Shift released — execute dash */
-     const chargeRatio = P.dashCharge / DASH_CHARGE_MAX_ACTUAL;
+     const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
       const dashDist = DASH_DISTANCE_MIN + (DASH_DISTANCE_MAX - DASH_DISTANCE_MIN) * chargeRatio;
-      const moveFrames = DASH_DURATION_ACTUAL;
+      const moveFrames = DASH_DURATION;
       const dashSpeed = dashDist / moveFrames;
 
       P.dashing = true;
-      P.dashTimer = DASH_DURATION_ACTUAL;
+      P.dashTimer = DASH_DURATION;
       P.dashDir = P.facing;
       P.dashPhase = true;
       P.dashCharge = 0;
@@ -1357,7 +1309,7 @@ function update(){
       Sound.play('dash');
     } else {
       /* Still holding — accumulate charge */
-      if(P.dashCharge < DASH_CHARGE_MAX_ACTUAL){
+      if(P.dashCharge < DASH_CHARGE_MAX){
         P.dashCharge++;
       }
       /* Charge particles */
@@ -1491,7 +1443,7 @@ if(coyoteWasActive) P.coyoteTime--;
     doJump(JUMP_VEL_2, jx, jy, PARTICLE_COLORS.doubleJump, 8, 'star', 'jumpHi', false);
   }
   else if(jumpPressed && P.jumps < P.maxJumps){
-    P.jumpBuffer = JUMP_BUFFER_ACTUAL;
+    P.jumpBuffer = JUMP_BUFFER_FRAMES;
   }
 
   /* Variable jump height: cut upward velocity on release */
@@ -1519,17 +1471,17 @@ function updateAnim(){
   advanceTimers();
   Particles.update();
   animFrame++;
- const progress = animFrame / ANIM_TOTAL_ACTUAL;
+ const progress = animFrame / ANIM_TOTAL;
  // Dying -> transition to respawning
-  if(animState==='dying' && animFrame>=ANIM_TOTAL_ACTUAL){
+  if(animState==='dying' && animFrame>=ANIM_TOTAL){
     resetPlayerToRespawn();
     animState='respawning'; animFrame=0;
     showMessage('Clay reforms...', 60);
   }
 // Respawning -> transition back to idle
-  if(animState==='respawning' && animFrame>=ANIM_TOTAL_ACTUAL){
+  if(animState==='respawning' && animFrame>=ANIM_TOTAL){
     resetPlayerToRespawn();
-    P.onGround=true; P.coyoteTime=COYOTE_FRAMES_ACTUAL;
+    P.onGround=true; P.coyoteTime=COYOTE_FRAMES;
     fullDashReset();
     resetPushBlock();
   animState='idle'; animFrame=0;
@@ -1629,7 +1581,7 @@ function drawGolemSprite(ctx, px, py, opts) {
 /* ── Death/Respawn animation renderer ── */
 function renderDeathRespawnAnimation(ox, oy){
   const now = Date.now();
- const progress = animFrame / ANIM_TOTAL_ACTUAL;
+ const progress = animFrame / ANIM_TOTAL;
   const cx = ox + P.respawnX + P.w/2;
   const cy = oy + P.respawnY + P.h/2;
   const pw = P.w, ph = P.h;
@@ -2023,7 +1975,7 @@ function render(){
   if(P.dashCharge > 0){
     const cx = ox + P.x + P.w / 2;
     const cy = oy + P.y + P.h / 2;
-    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX_ACTUAL;
+    const chargeRatio = P.dashCharge / DASH_CHARGE_MAX;
     const radius = DASH_CHARGE_RING_MIN + (DASH_CHARGE_RING_MAX - DASH_CHARGE_RING_MIN) * chargeRatio;
     const segs = 8, segAngle = Math.PI * 2 / segs;
 
@@ -2115,7 +2067,7 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
     const elapsed = gameState === 'ending' ? frozenElapsedSec : Math.floor((Date.now() - gameStartTime) / 1000);
     const glyphState = collectedGlyphs.join('');
     /* Only update DOM when state actually changes — saves 95%+ of DOM writes */
-    if(elapsed !== lastHudTime || totalDeaths !== lastHudDeaths || glyphState !== lastHudGlyphs || paceMode !== lastHudPace){
+    if(elapsed !== lastHudTime || totalDeaths !== lastHudDeaths || glyphState !== lastHudGlyphs){
       const hebrewHUD = ['\u05d0','\u05de','\u05d4','\u05ea'];
       const glyphSlots = hebrewHUD.map((l,i) =>
         collectedGlyphs[i]
@@ -2126,8 +2078,8 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
       const timeStr = mins + ':' + String(secs).padStart(2, '0');
-      hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span><span style="color:' + (paceMode === 'easy' ? '#5CB3AF' : '#C5B391') + ';margin-left:8px;font-size:10px;">' + (paceMode === 'easy' ? 'Clay Weight' : 'Temple Pace') + '</span><span style="color:#454560;margin-left:12px;font-size:10px;">P to pause</span>';
-      lastHudTime = elapsed; lastHudDeaths = totalDeaths; lastHudGlyphs = glyphState; lastHudPace = paceMode;
+      hudRight.innerHTML = '<span style="color:#A18F75;">' + timeStr + '</span><span style="color:#A18F75;margin-left:8px;">Deaths: ' + totalDeaths + '</span><span style="color:#454560;margin-left:12px;font-size:10px;">P to pause</span>';
+       lastHudTime = elapsed; lastHudDeaths = totalDeaths; lastHudGlyphs = glyphState;
     }
   }
 
@@ -2153,8 +2105,8 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
   if(messageQueue.length>0){
     const m=messageQueue[0];
     let alpha=1;
-  if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN_ACTUAL;
-    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT_ACTUAL);
+  if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN;
+    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT);
   X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
     shadowText(X, m.text, W/2, H/2-60, 'rgba(232,232,240,'+alpha+')');
   }
@@ -2410,7 +2362,6 @@ portalLockMsg=0; testChamberSrc=-1;
 function startGame(){
   gameState = 'playing';
   Sound.init();
-  applyPace();
   lastSimTime = performance.now();
   Sound.startMusic();
   gameStartTime = Date.now();
@@ -2456,32 +2407,8 @@ titleScreen.addEventListener('click', function(e){
   if(gameState === 'title'){
     /* Prevent clicks on the THOLEM link from starting the game */
     if(e.target.id === 'tholem-link' || e.target.closest('#tholem-link') || e.target.id === 'github-link' || e.target.closest('#github-link')) return;
-    if(e.target.id === 'btn-easy' || e.target.id === 'btn-hard') return;
     startGame();
   }
-});
-
-/* Pace toggle buttons */
-const paceLabel = document.querySelector('.ts-pace-label');
-const btnEasy = document.getElementById('btn-easy');
-const btnHard = document.getElementById('btn-hard');
-
-function updatePaceUI(){
-  btnEasy.style.color = paceMode === 'easy' ? '#5CB3AF' : '#C5B391';
-  btnEasy.style.borderColor = paceMode === 'easy' ? 'rgba(92,179,175,0.5)' : 'rgba(197,179,145,0.35)';
-  btnHard.style.color = paceMode === 'hard' ? '#5CB3AF' : '#C5B391';
-  btnHard.style.borderColor = paceMode === 'hard' ? 'rgba(92,179,175,0.5)' : 'rgba(197,179,145,0.35)';
-  paceLabel.textContent = paceMode === 'easy' ? '144 Hz \u2014 slower, more forgiving' : '240 Hz \u2014 faithful to the original weight';
-}
-
-btnEasy.addEventListener('click', function(e){
-  e.stopPropagation();
-  if(paceMode !== 'easy'){ togglePace(); updatePaceUI(); }
-});
-
-btnHard.addEventListener('click', function(e){
-  e.stopPropagation();
-  if(paceMode !== 'hard'){ togglePace(); updatePaceUI(); }
 });
 
 /* ══════════════════════════════════════════════════
@@ -2491,8 +2418,6 @@ btnHard.addEventListener('click', function(e){
 /* ── Init ── */
 collectedGlyphs = new Array(chambers.length).fill(false);
 
-loadPace();
-updatePaceUI();
 initHUD();
 
 /* B4: Precompute starfield per chamber */
@@ -2555,9 +2480,9 @@ function loop(ts){
     simAcc += dt;
     if(simAcc > SIM_ACCUMULATOR_CAP) simAcc = SIM_ACCUMULATOR_CAP;
     let ticks = 0;
-    while(simAcc >= simDt && ticks < MAX_TICKS_PER_FRAME){
-      update();
-      simAcc -= simDt;
+    while(simAcc >= SIM_DT && ticks < MAX_TICKS_PER_FRAME){
+       update();
+       simAcc -= SIM_DT;
       ticks++;
     }
   }

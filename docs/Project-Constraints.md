@@ -19,15 +19,14 @@ Inferred from `golem.html` source code and design artifacts.
 | Canvas resolution | 800 x 480 pixels | `golem.html` line 22 |
 | Tile size | 32 x 32 pixels | `golem.html` line 22 (T=32) |
 | Grid dimensions | 25 columns x 15 rows (existing chambers) | Chamber IIFE blocks |
-| Sim timing | Fixed timestep: 240 Hz (Hard/Temple Pace) or 144 Hz (Easy/Clay Weight) via accumulator pattern with performance.now() | Section 1 constants (SIM_HZ_DEFAULT, SIM_HZ_EASY) |
-| Sim accumulator | simAcc (ms) + simDt (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death. Only accumulates during 'playing' state (not paused/ending/title). | Section 11 loop() |
-| Derived frame constants | COYOTE_FRAMES_ACTUAL, JUMP_BUFFER_ACTUAL, DASH_CHARGE_MAX_ACTUAL, DASH_DURATION_ACTUAL, DASH_COOLDOWN_ACTUAL, ANIM_TOTAL_ACTUAL, MSG_FADE_IN/OUT_ACTUAL, MSG_MIN/MAX_HOLD_ACTUAL — scaled by applyPaceAssists() based on simHz ratio | Section 1, applyPaceAssists() |
+| Sim timing | Fixed timestep: 240 Hz (SIM_HZ=240) via accumulator pattern with performance.now() | Section 1 constants (SIM_HZ) |
+| Sim accumulator | simAcc (ms) + SIM_DT (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death. Only accumulates during 'playing' state (not paused/ending/title). | Section 11 loop() |
+| Fixed frame constants | COYOTE_FRAMES, JUMP_BUFFER, DASH_CHARGE_MAX, DASH_DURATION, DASH_COOLDOWN, ANIM_TOTAL, MSG_FADE_IN/OUT, MSG_MIN/MAX_HOLD — fixed at 240 Hz | Section 1 constants |
 | Ending timeline | Wall-clock (performance.now()), independent of sim Hz: beats at 0s, 2s, 5s, 9s, 14s, 16s. captionAlphaSec() for time-based fades. | Section 3, ENDING object |
-|| File size | ~2588 lines, ~105 KB | Single-file constraint |
-| Dash system | Hold-to-charge (max 180 frames @ 240Hz / 3s), linear distance 60-267px. Uses DASH_CHARGE_MAX_ACTUAL (scaled). | Section 1 constants |
+| File size | ~2520 lines, ~101 KB | Single-file constraint |
+| Dash system | Hold-to-charge (max 180 frames @ 240Hz / 3s), linear distance 60-267px. Uses DASH_CHARGE_MAX (180 frames). | Section 1 constants |
 | Color palette | tholem.ai brand tokens: Midnight bg (#12121F), Temple Stone walls, Champagne sacred accents, Seafoam interactive, Emerald completion | Section 10 COLORS |
 | Typography | System fonts: FONT_UI (system-ui), FONT_DISPLAY (italic Georgia), FONT_HEBREW (Segoe UI/Arial Hebrew) | Section 1 constants |
-| Pace toggle | "Clay Weight" (Easy, 144Hz) / "Temple Pace" (Hard, 240Hz) on title screen. localStorage key 'golem_pace'. Defaults to 'easy'. Seafoam highlight for active mode. | Section 1, title screen HTML |
 | Push block | PBlocks[] array — supports N push blocks per chamber via `pushSpawns` array. Backward-compatible with `pushSpawn` single-block. Velocity-based push at PUSH_SPEED (1.25 px/frame). 3-phase orchestrator: horizontal velocity -> rider coupling -> gravity/vertical. Block-vs-block AABB collision: solid walls horizontally, stacking vertically. Riders get individual wall collision via `resolveBlockX()`. Falling block crush death via `checkPushBlockCrush()` with 3 guards: golem-on-top skip, block-below skip, horizontal overlap >=10px. Runs after player Y resolution. Bottom-up processing via `activePushBlocks()`. | Sections 3, 5, 6 |
 | rAF lifecycle | Continues during `'ending'` state (animated ending sequence); update() skips, render() draws ending beats | Section 10/11 |
 | Deployment | Single HTML file, no external dependencies | — |
@@ -60,14 +59,14 @@ Inferred from `golem.html` source code and design artifacts.
 | API stability | `killAndRespawn(msg, duration)` — no `onGround` parameter (removed as unused) | Section 1.5 |
 | setTile | Simplified — no longer maintains `solidTiles` cache | Section 5 |
 | Sim timing preserves per-tick constants | All per-tick physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, JUMP_VEL_1=-5, etc.) are preserved AS-IS. They define behavior per sim tick, not per rAF frame. Changing sim Hz changes the rate of ticks, not the physics per tick. | Section 1 constants |
-| Ending independence | Ending sequence uses wall-clock time (performance.now() - endingStartTime) in seconds. Timeline beats (0s, 2s, 5s, 9s, 14s, 16s) are identical regardless of difficulty/pace mode. | Section 3, ENDING object |
+| Ending independence | Ending sequence uses wall-clock time (performance.now() - endingStartTime) in seconds. Timeline beats (0s, 2s, 5s, 9s, 14s, 16s) fixed at single 240 Hz mode. | Section 3, ENDING object |
 | Frozen timer during ending | HUD displays frozenElapsedSec (captured in transitionEnding()) during 'ending' state instead of live Date.now() timer. | Section 10 render |
 
 ## Assumptions (labeled)
 
 1. **No build step or bundler** — the game runs directly in any modern browser. Adding a build tool would be an architectural change per governance rule 1.
 2. **No external assets** — all visuals are currently procedurally drawn (Canvas 2D primitives, particle colors). Adding image/sprite assets would change the asset model.
-3. **Per-tick physics constants** — physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, etc.) are tuned per simulation tick. At 240 Hz (Hard/Temple Pace), each tick is ~4.17ms. At 144 Hz (Easy/Clay Weight), each tick is ~6.94ms. The per-tick physics values are identical; only the tick rate changes, which effectively slows down the perceived speed of all frame-count-dependent mechanics proportionally.
+3. **Per-tick physics constants** — physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, etc.) are tuned per simulation tick. At 240 Hz, each tick is ~4.17ms. The per-tick physics values define behavior per tick, and all frame-count constants (COYOTE_FRAMES, JUMP_BUFFER, DASH_CHARGE_MAX, etc.) are fixed at 240 Hz.
 4. **Audio** — Web Audio API sound system (Section 7.5 IIFE): 9 SFX definitions (4 oscillator types: triangle, square, chord, noise), 11 call sites, ambient drone (D2 73.42 Hz) + D minor arpeggio loop at 75 BPM with look-ahead scheduler. M-key mute toggle with HUD indicator. Lazy-init on first user gesture (browser autoplay policy). No external audio files — all synthesized.
 5. **rAF continues during ending** — the animation loop continues during the animated ending sequence (Phase 5). `update()` skips while `render()` draws the 6-beat ending animation. Wall-clock timing (performance.now()) makes ending duration independent of sim Hz. Play Again button returns to title menu via returnToMenu().
 6. **Accumulator only during playing** — simAcc accumulates only when gameState==='playing'. It is reset to 0 (along with lastSimTime) in togglePause(), resetGameState(). lastSimTime is set to performance.now() in startGame(). This prevents phantom ticks during pauses, transitions, and the title screen.

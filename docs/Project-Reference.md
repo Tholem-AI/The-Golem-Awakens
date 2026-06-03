@@ -6,13 +6,13 @@ Condensed reference for `golem.html` architecture, physics tuning rationale, pus
 
 ## Architecture
 
-Single HTML file (~2588 lines, ~105 KB) organized into 13 sections with delimiter comments.
+Single HTML file (~2513 lines, ~104 KB) organized into 13 sections with delimiter comments.
 
 ### Section Map
 
 | # | Section | Functions |
 |---|---------|-----------|
-| 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays, SIM_HZ, derived frame constants, pace system, ENDING timeline |
+| 1 | SETUP & CONSTANTS | Canvas, tile types, dash/physics constants, PARTICLE_COLORS, GLYPH_EFFECTS, static UI arrays, SIM_HZ, fixed frame constants, ENDING timeline |
 || 1.5 | UTILITIES | `snapToTileX`, `playerGridPos`, `endDash`, `land`, `easeOutCubic`, `easeOutQuint`, `lerp`, `syncPrevKeys`, `advanceTimers`, `fullDashReset`, `cancelDash`, `resetPlayerToRespawn`, `killAndRespawn`, `captionAlpha`, `captionAlphaSec`, `startGame`, `returnToMenu`, `getEndingGlyphState` |
 | 2 | CHAMBER DATA | `mkGrid()`, 6 chamber IIFEs (Ch.0-4 + Test) |
 | 3 | ENTITIES | `P` (player), `PB` (push block), game state globals |
@@ -31,9 +31,8 @@ Single HTML file (~2588 lines, ~105 KB) organized into 13 sections with delimite
 
 - **Single file** — no build step, no modules, no external assets. All visuals drawn procedurally with Canvas 2D primitives.
 - **Function hoisting** — all helpers use `function` declarations (not `const` arrow functions), so order within file does not matter.
-- **Fixed timestep simulation** — configurable Hz (240 Hard, 144 Easy) via accumulator pattern. All per-tick physics constants preserved as-is; only tick rate changes. Derived frame-count constants scale proportionally.
-- **Wall-clock ending** — ending sequence uses performance.now() in seconds, independent of sim Hz and difficulty.
-- **Pace toggle** — difficulty system on title screen with localStorage persistence.
+- **Fixed timestep simulation** — 240 Hz fixed via accumulator pattern. All per-tick physics constants preserved as-is; frame-count constants fixed at 240 Hz values.
+- **Wall-clock ending** — ending sequence uses performance.now() in seconds, independent of sim Hz.
 
 ### Dependency Flow
 
@@ -49,16 +48,14 @@ Push Block --> Particles --> Sound Engine --> Game Flow --> Update / Render (bot
 
 ### Fixed Timestep Architecture
 
-The game uses a **fixed timestep** simulation with configurable Hz, decoupling physics from display refresh rate.
+The game uses a **fixed timestep** simulation at 240 Hz, decoupling physics from display refresh rate.
 
 #### Core Variables (Section 1)
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `SIM_HZ_DEFAULT` | 240 | Hard mode: 240 Hz (~4.17ms per tick) |
-| `SIM_HZ_EASY` | 144 | Easy mode: 144 Hz (~6.94ms per tick) |
-| `simHz` | dynamic | Current simulation frequency (set by applyPace()) |
-| `simDt` | `1000 / simHz` | Milliseconds per simulation tick |
+| `SIM_HZ` | 240 | Fixed simulation frequency (~4.17ms per tick) |
+| `SIM_DT` | `1000 / SIM_HZ` | Milliseconds per simulation tick (~4.167ms) |
 | `simAcc` | 0 | Accumulator in ms — collects elapsed time |
 | `lastSimTime` | 0 | Last performance.now() timestamp |
 
@@ -74,9 +71,9 @@ function loop(ts){
     simAcc += dt;
     if(simAcc > 128) simAcc = 128;  // clamp prevents spiral of death
     let ticks = 0;
-    while(simAcc >= simDt && ticks < 8){  // max 8 ticks per frame
+    while(simAcc >= SIM_DT && ticks < 8){  // max 8 ticks per frame
       update();
-      simAcc -= simDt;
+      simAcc -= SIM_DT;
       ticks++;
     }
   }
@@ -96,30 +93,26 @@ function loop(ts){
 - **128ms clamp** — drops excess accumulator time to prevent spiral of death.
 - **Reset on state transitions** — `simAcc=0; lastSimTime=0;` in `togglePause()` and `resetGameState()`. `lastSimTime=performance.now()` in `startGame()`.
 
-### Derived Frame-Count Constants (Section 1)
+### Fixed Frame-Count Constants (Section 1)
 
-Frame-count constants are scaled proportionally by `applyPaceAssists()` based on `r = simHz / SIM_HZ_DEFAULT`:
+Frame-count constants are fixed at 240 Hz values:
 
-| Derived Constant | 240 Hz (Hard) | 144 Hz (Easy) | Purpose |
-|-----------------|---------------|---------------|---------|
-| `COYOTE_FRAMES_ACTUAL` | 12 | 8 | Coyote time |
-| `JUMP_BUFFER_ACTUAL` | 12 | 8 | Jump input buffer |
-| `DASH_CHARGE_MAX_ACTUAL` | 180 | 108 | Max dash charge frames |
-| `DASH_DURATION_ACTUAL` | 10 | 6 | Dash execution frames |
-| `DASH_COOLDOWN_ACTUAL` | 20 | 12 | Dash cooldown frames |
-| `ANIM_TOTAL_ACTUAL` | 90 | 54 | Death/respawn animation total frames |
-| `MSG_FADE_IN_ACTUAL` | 180 | 108 | Message fade-in frames |
-| `MSG_FADE_OUT_ACTUAL` | 180 | 108 | Message fade-out frames |
-| `MSG_MIN_HOLD_ACTUAL` | 90 | 54 | Message minimum hold frames |
-| `MSG_MAX_HOLD_ACTUAL` | 360 | 216 | Message maximum hold frames |
-
-**Scaling formula:** `Math.ceil(baseFrames * r)` where `r = simHz / SIM_HZ_DEFAULT`.
-
-At 144 Hz, r=0.6, so 12-frame values become 8 frames. The wall-clock duration remains ~200ms (12/240 = 8/144).
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `COYOTE_FRAMES` | 12 | Coyote time (50ms) |
+| `JUMP_BUFFER_FRAMES` | 12 | Jump input buffer (50ms) |
+| `DASH_CHARGE_MAX` | 180 | Max dash charge frames (750ms) |
+| `DASH_DURATION` | 10 | Dash execution frames (42ms) |
+| `DASH_COOLDOWN` | 20 | Dash cooldown frames (83ms) |
+| `ANIM_TOTAL` | 90 | Death/respawn animation total frames (375ms) |
+| `MSG_FADE_IN` | 180 | Message fade-in frames (750ms) |
+| `MSG_FADE_OUT` | 180 | Message fade-out frames (750ms) |
+| `MSG_MIN_HOLD` | 90 | Message minimum hold frames (375ms) |
+| `MSG_MAX_HOLD` | 360 | Message maximum hold frames (1500ms) |
 
 ### Original Per-Tick Physics Constants (Unchanged)
 
-The following constants define behavior **per simulation tick**, not per display frame. They are preserved identically across both modes:
+The following constants define behavior **per simulation tick** at 240 Hz:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -140,13 +133,13 @@ The following constants define behavior **per simulation tick**, not per display
 | `PB_STOP_THRESH` | 0.1 | Push block stop threshold |
 | `PUSH_SPEED` | 1.25 | Push block movement px/tick |
 
-**Why this works:** At 240 Hz, physics runs at 4.17ms intervals. At 144 Hz, at 6.94ms intervals. The per-tick physics values are identical, so at lower Hz each tick covers more "time" — making the game feel slower and more forgiving without changing the physics model itself.
+**Note:** At 240 Hz, physics runs at 4.17ms intervals. The per-tick physics values are the tuned baseline.
 
 ---
 
 ## Ending Sequence Timeline (Wall-Clock)
 
-The ending sequence uses **wall-clock seconds** (performance.now()) instead of simulation ticks, making it independent of difficulty/pace mode.
+The ending sequence uses **wall-clock seconds** (performance.now()) instead of simulation ticks, making it independent of sim Hz.
 
 ### ENDING Constants (Section 3)
 
@@ -201,7 +194,7 @@ All shared helper functions consolidated in a dedicated section between Setup/Co
 |----------|---------|
 | `snapToTileX(gx1, gx2, prevX)` | Snap player X to tile boundary after collision |
 | `playerGridPos()` | Return player center as grid coordinates `{gx, gy}` |
-| `endDash()` | End dash state cleanly; sets cooldown to `DASH_COOLDOWN_ACTUAL` |
+| `endDash()` | End dash state cleanly; sets cooldown to `DASH_COOLDOWN` |
 | `land()` | Land on ground — reset jumps and coyote timer |
 | `easeOutCubic(t)` | Easing function for death/respawn animations, ending ramps, stats/PlayAgain alpha |
 | `easeOutQuint(t)` | Easing function for glyph convergence (slow start, fast finish) |
@@ -259,7 +252,7 @@ vy_2 = -sqrt(2 * g_new * target_height) = -sqrt(2 * 0.07 * 134) = -4.33
 | Time to max speed (ground) | ~50 ticks (~208ms) |
 | Stopping distance from max | ~28 px (~0.9 tiles) |
 
-**Note:** At 144 Hz (Easy), the tick-based metrics scale proportionally in wall-clock time. 161 ticks at 240 Hz = 671ms; the same 161 ticks at 144 Hz would be 1118ms — but `ANIM_TOTAL_ACTUAL` is scaled to 54 from 90, so the actual wall-clock durations remain consistent.
+**Note:** Metrics calculated at 240 Hz (SIM_HZ=240). `ANIM_TOTAL` (90 frames) = 375ms wall-clock.
 
 ### Dash Gravity
 

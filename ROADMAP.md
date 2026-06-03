@@ -279,22 +279,19 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 - [x] Reviewer improvements: pre-allocated noise buffer, ctx.resume() in startMusic()
 - [x] File: 2195 -> 2322 lines, ~96KB -> ~91KB. JS syntax PASS, zero browser errors.
 
-### Fixed Timestep + Wall-Clock Ending + Pace Toggle (May 2026)
+### Fixed Timestep + Wall-Clock Ending (May 2026)
 
-- [x] Fixed simulation timestep: configurable Hz (SIM_HZ_DEFAULT=240 Hard, SIM_HZ_EASY=144 Easy) via accumulator pattern with performance.now()
-- [x] Accumulator: simAcc (ms) + simDt (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death
+- [x] Fixed simulation timestep: 240 Hz (SIM_HZ=240) via accumulator pattern with performance.now()
+- [x] Accumulator: simAcc (ms) + SIM_DT (ms/tick), max 8 ticks/frame, 128ms clamp prevents spiral of death
 - [x] Accumulator only during 'playing' state — not paused, not ending, not title
-- [x] Derived frame-count constants scaled by simHz ratio: COYOTE/JUMP_BUFFER/DASH/ANIM/MSG_ACTUAL via applyPaceAssists()
+- [x] Fixed frame-count constants: COYOTE_FRAMES/JUMP_BUFFER/DASH_CHARGE_MAX/DASH_DURATION/DASH_COOLDOWN/ANIM_TOTAL/MSG_* (240 Hz)
 - [x] Original per-tick physics constants (GRAVITY=0.07, TERMINAL_VEL=2.5, JUMP_VEL_1=-5, etc.) preserved AS-IS
 - [x] Wall-clock ending timeline: ENDING constants (BEAT_1-6 at 0s/2s/5s/9s/14s/16s), independent of difficulty
 - [x] captionAlphaSec() helper for time-based caption fades in ending (vs frame-based captionAlpha())
 - [x] Exclusive beat rendering (===) for beats 1-4, persistent (>=) for beats 5-6
 - [x] Fixed caption Y overlaps: Beat 2 at H-155, Beat 3 at H-130, Beat 4 ibis lines staggered
 - [x] Ending uses performance.now() - endingStartTime for wall-clock timing
-- [x] Pace toggle on title screen: "Clay Weight" (Easy, 144Hz) and "Temple Pace" (Hard, 240Hz)
-- [x] localStorage persistence with key 'golem_pace', defaults to 'easy'
-- [x] Seafoam (#5CB3AF) color highlight for active pace mode
-- [x] updatePaceUI() function updates button colors and description label
+- [x] Pace toggle removed: single 240 Hz mode (Temple Pace) only
 - [x] Integration: simAcc reset in togglePause() and resetGameState(), lastSimTime=performance.now() in startGame()
 - [x] HUD uses frozenElapsedSec during 'ending' state
 - [x] Removed dead endingFrame variable; endingStartTime uses performance.now() consistently
@@ -320,7 +317,7 @@ See `docs/Visual-Story-Design.md` §4.8 and Phase 10a/10b.
 
 #### Known Issues / Future Work
 
-- [ ] `MSG_CHARS_PER_FRAME` doesn't scale with `SIM_HZ` (minor — text scroll speed differs slightly between paces)
+- [ ] `MSG_CHARS_PER_FRAME` doesn't scale with `SIM_HZ` (minor — text scroll speed fixed at 240 Hz)
 
 ### Chamber Redesign (Not Started)
 
@@ -382,7 +379,6 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 ### Pause Menu Controls + HUD Enhancements (May 2026)
 
 - [x] Pause menu controls reference: added `.po-controls` block with CONTROLS header and 5 control rows (Move, Jump, Dash, Pause, Mute)
-- [x] HUD difficulty display: shows "Clay Weight" (#5CB3AF) or "Temple Pace" (#C5B391) in `hudRight.innerHTML`
 - [x] HUD "P to pause" reminder: subtle ink-colored (#454560) 10px text in HUD right section
 - [x] CSS: 5 new rules (.po-controls, .po-controls-title, .po-control-row, .po-key, .po-action) scoped under #pause-overlay
 - [x] No game logic changes — purely UI additions. ~60 lines added/modified out of 2655 (~2.3%)
@@ -451,11 +447,11 @@ Prepare the project for public repository sharing.
 |||||||| Chamber 4 redesign (The Ibis Chamber) | Complete | 0 tile mismatches, flow OK, JS syntax OK, browser verified, END_PORTAL final chamber |
 |||||||| Chamber redesign | Complete | All 5 chambers (0-4) redesigned. Diff infrastructure ready (`chamber_diff.py`), proposals in `chamber-proposal.md` |
 ||||||||| Visual/story overhaul | Complete | Phases 1-10b implemented: palette, fonts, Hebrew glyphs, runes, geometry, movement polish, animated ending, visual refinements (symmetric pit, reduced particles, clean golem body, push arm guard), HUD bar, title menu, pause menu, responsive CSS scaling, Web Audio SFX (9 sounds, 11 call sites), ambient drone (D2 73.42Hz), D minor arpeggio (75 BPM), mute toggle. RIPER reviewed. ~310 lines net. |
-||||||||||| Pause menu controls + HUD | Complete | Controls reference in pause overlay, HUD difficulty display, P-to-pause hint. Zero JS errors, browser verified, RIPER reviewed. |
+||||||||||| Pause menu controls + HUD | Complete | Controls reference in pause overlay, P-to-pause hint. Zero JS errors, browser verified, RIPER reviewed. |
 ||||||||||| Glyph ordering & ending fixes | Complete | Chamber-index glyph letters, RTL Hebrew, EMET Ayin->Aleph, 3-letter orbit, frozen timer, text outline, overlap guard. RIPER reviewed.
 ||||||||| Ending sequence overhaul | Complete | Extracted drawGolemSprite() shared function (gameplay + ending), fixed ending sprite proportions (center-to-top-left math), 2x scale + glow + front-facing variant on ending screen, captionAlpha() timing helper, staggered Ibis lines (3s read each), extended beat timing (~9s -> ~15s), skip-on-click, caption shadow. RIPER reviewed.
 ||||||| Ending glyph smoothing | Complete | easeOutQuint/lerp/smoothStep helpers, getEndingGlyphState() continuous state machine replacing per-beat hard cuts, unified ending renderer, orbit speed/radius/center ramps, easeOutQuint convergence, EMET cross-fade, Gaussian flash bloom, font size lerp 24-28px, deterministic glow pulse, Ibis fade-in-then-persist, easeOutCubic stats/PlayAgain alpha. 8 discontinuities resolved (2 HIGH, 4 MEDIUM, 2 LOW). |
 ||| Touch/mobile controls | Not Started | — |
 ||| Website integration prep | Not Started | — |
 ||| Open source release prep | Not Started | — |
-||| Fixed timestep + wall-clock ending + pace toggle | Complete | SIM_HZ_DEFAULT=240/SIM_HZ_EASY=144, accumulator pattern (simAcc+simDt, max 8 ticks, 128ms clamp), derived frame constants scaled by applyPaceAssists(), ENDING wall-clock timeline (0s/2s/5s/9s/14s/16s), captionAlphaSec() helper, pace toggle with localStorage 'golem_pace', default 'easy'. All per-tick physics constants preserved.
+||| Fixed timestep + wall-clock ending | Complete | SIM_HZ=240, accumulator pattern (simAcc+SIM_DT, max 8 ticks, 128ms clamp), fixed frame-count constants (240 Hz), ENDING wall-clock timeline (0s/2s/5s/9s/14s/16s), captionAlphaSec() helper. Single 240 Hz mode (Temple Pace). All per-tick physics constants preserved. Pace toggle removed.
