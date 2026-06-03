@@ -243,7 +243,7 @@ function killAndRespawn(msg, duration, cause) {
   Sound.play('death');
   Sound.duckMusic(1.5);
   totalDeaths++;
-  showMessage(msg, duration);
+  showMessage(msg, duration, MSG_DEATH);
   if(cause==='magicalWall') Particles.magicalWallDeath(P.x+P.w/2, P.y+P.h/2);
 }
 
@@ -1143,6 +1143,11 @@ const Sound = (function(){
 const MSG_MAX_QUEUE_DEPTH  = 5;
 const MSG_CHARS_PER_FRAME  = 0.35;
 const MSG_FOREVER_THRESHOLD = 99999;
+const MSG_DEFAULT  = 0;   // standard lore/awakening text
+const MSG_ABILITY  = 1;   // ability unlock — emerald glow
+const MSG_DEATH    = 2;   // death/respawn — sepia tone
+const MSG_DEATH_COLOR = 'rgba(180,150,110,';  // sepia for death/respawn text
+const MSG_ABILITY_GLOW = 'rgba(5,150,105,0.6)';  // emerald glow for ability unlocks
 
 /* ── Message queue system ── */
 function calcDisplayDuration(text, providedDur) {
@@ -1150,15 +1155,15 @@ function calcDisplayDuration(text, providedDur) {
     const dur = providedDur || MSG_MIN_HOLD;
     return Math.min(MSG_MAX_HOLD, Math.max(dur, auto));
 }
-function showMessage(txt, dur) {
+function showMessage(txt, dur, type) {
     const isForever = (dur || 0) >= MSG_FOREVER_THRESHOLD;
     if (isForever) {
-        messageQueue = [{ text: txt, hold: dur || MSG_FOREVER_THRESHOLD, phase: 'display', elapsed: 0 }];
+        messageQueue = [{ text: txt, hold: dur || MSG_FOREVER_THRESHOLD, phase: 'display', elapsed: 0, type: type || MSG_DEFAULT }];
         return;
     }
     if (messageQueue.length > 0 && messageQueue[0].text === txt) return;
     if (messageQueue.length < MSG_MAX_QUEUE_DEPTH) {
-        messageQueue.push({ text: txt, hold: calcDisplayDuration(txt, dur), phase: 'fadeIn', elapsed: 0 });
+        messageQueue.push({ text: txt, hold: calcDisplayDuration(txt, dur), phase: 'fadeIn', elapsed: 0, type: type || MSG_DEFAULT });
     }
 }
 
@@ -1233,8 +1238,8 @@ function checkGlyphs(){
       const gi = glyphsCollected - 1;
       if(gi >= 0 && gi < GLYPH_EFFECTS.length){
         GLYPH_EFFECTS[gi].set();
-        showMessage(GLYPH_EFFECTS[gi].msg, 120);
-        showMessage("Ability: " + GLYPH_EFFECTS[gi].name, 120);
+        showMessage(GLYPH_EFFECTS[gi].msg, 120, MSG_DEFAULT);
+         showMessage("Ability: " + GLYPH_EFFECTS[gi].name, 120, MSG_ABILITY);
       }
     }
   }
@@ -1527,7 +1532,7 @@ function updateAnim(){
   if(animState==='dying' && animFrame>=ANIM_TOTAL){
     resetPlayerToRespawn();
     animState='respawning'; animFrame=0;
-    showMessage('Clay reforms...', 60);
+    showMessage('Clay reforms...', 60, MSG_DEATH);
   }
 // Respawning -> transition back to idle
   if(animState==='respawning' && animFrame>=ANIM_TOTAL){
@@ -1801,10 +1806,25 @@ function drawWallBase(ctx, px, py, baseColor) {
   ctx.fillStyle = 'rgba(197,179,145,0.12)'; ctx.fillRect(px, py, 1, 3);
 }
 
-/* ── Shadow text helper (deduplicates shadowColor/shadowBlur/shadowBlur=0) ── */
+/* ── Styled text helper: dark shadow + optional glow ── */
+function styledText(ctx, text, x, y, color, glowColor) {
+  // Glow layer (rendered first so text sits on top)
+  if (glowColor) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+  // Dark shadow layer (always present for readability)
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = SHADOW_BLUR;
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.shadowBlur = 0;
+}
+/* Keep shadowText as thin wrapper for backward compat */
 function shadowText(ctx, text, x, y, color) {
-  ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = SHADOW_BLUR;
-  ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.shadowBlur = 0;
+  styledText(ctx, text, x, y, color, null);
 }
 /* Draw segmented arc for dash charge ring */
 function drawSegArcs(cx,cy,r,count,gap){
@@ -2196,14 +2216,21 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
   }
 
  /* Message */
-  if(messageQueue.length>0){
-    const m=messageQueue[0];
-    let alpha=1;
-  if(m.phase==='fadeIn')alpha=m.elapsed/MSG_FADE_IN;
-    else if(m.phase==='fadeOut')alpha=1-(m.elapsed/MSG_FADE_OUT);
-  X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
-    shadowText(X, m.text, W/2, H/2-60, 'rgba(232,232,240,'+alpha+')');
-  }
+   if(messageQueue.length>0){
+     const m=messageQueue[0];
+     let alpha=1;
+     if(m.phase==='fadeIn') alpha=m.elapsed/MSG_FADE_IN;
+     else if(m.phase==='fadeOut') alpha=1-(m.elapsed/MSG_FADE_OUT);
+     X.direction='ltr'; X.font=FONT_DISPLAY; X.textAlign='center';
+     const mtype = m.type || MSG_DEFAULT;
+     if(mtype === MSG_ABILITY){
+       styledText(X, m.text, W/2, H/2-60, 'rgba(232,232,240,'+alpha+')', MSG_ABILITY_GLOW);
+     } else if(mtype === MSG_DEATH){
+       styledText(X, m.text, W/2, H/2-60, MSG_DEATH_COLOR+alpha+')', null);
+     } else {
+       shadowText(X, m.text, W/2, H/2-60, 'rgba(232,232,240,'+alpha+')');
+     }
+   }
 
   /* Screen fade overlay */
   if(screenAlpha>0){

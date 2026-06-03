@@ -353,6 +353,18 @@ Redesign each chamber for better experience using `chamber-proposal.md` as stagi
 - [x] Chamber 4 — The Ibis Chamber: Replaced placeholder with complex grid (134 walls, 22 pits, 8 platforms, 8 MAGICAL_WALLs, 8 CRACKED, 3 PUSH_SPAWN, 1 END_PORTAL). Spawn at (2,4), END_PORTAL at (1,1), row 13 AIR override. Validation: 0 tile mismatches, flow OK, JS syntax OK, browser verified, reviewer approved.
 - [ ] See `chamber-proposal.md` for detailed proposals and verification criteria
 
+### Ability Unlock Glow + Death Text Visual Distinction (June 2026)
+
+- [x] Added message type constants: MSG_DEFAULT (0), MSG_ABILITY (1), MSG_DEATH (2)
+- [x] Created styledText() helper with optional glow layer (shadowBlur=8, emerald rgba(5,150,105,0.6))
+- [x] shadowText() preserved as thin wrapper for backward compatibility (HUD, ending captions, default messages)
+- [x] showMessage() extended with optional type parameter (defaults to MSG_DEFAULT)
+- [x] Message rendering: type-aware branch — ability gets emerald glow, death gets sepia tone, default unchanged
+- [x] Ability name tagged MSG_ABILITY (lore message stays MSG_DEFAULT for visual hierarchy)
+- [x] Death/respawn messages tagged MSG_DEATH (sepia rgba(180,150,110,a) — aged papyrus tone)
+- [x] Aligned with Visual-Story-Design.md thematic requirements
+- [x] Validation: JS syntax OK, zero console errors, browser test OK, all 3 message types verified, backward compat confirmed
+
 ### Ending Sequence Overhaul (May 2026)
 
 - [x] Extracted `drawGolemSprite(ctx, px, py, opts)` shared rendering function — single source of truth for golem sprite proportions
