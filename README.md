@@ -55,6 +55,8 @@ Each chamber grants a knowledge glyph that unlocks a new ability for the next le
 
 Made by [Tholem Labs](https://tholem.ai). Fully open source — built entirely with local AI models on a single RTX 3090 Ti.
 
+**Repository:** [github.com/Tholem-AI/The-Golem-Awakens](https://github.com/Tholem-AI/The-Golem-Awakens)
+
 ## For Contributors
 
 - [Adding Chambers](docs/Adding-Chambers.md) — Guide for designing and implementing new levels
