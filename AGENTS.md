@@ -1,5 +1,7 @@
 # The Golem Awakens — System Instructions
 
+> **Note for contributors:** This file documents the internal AI-agent governance and development workflow used during the project's creation. It is kept here for transparency into the development process, not as a contribution guide. For contributing to the game, see [README.md](README.md) and the [docs/](docs/) directory.
+
 This file defines always-on governance, execution lifecycle, safety, quality, and project-constraint policy for the GOLEM_GAME project.
 
 ## Governance (always-on)

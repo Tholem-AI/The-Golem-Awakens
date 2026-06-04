@@ -166,36 +166,63 @@ const GLYPH_EFFECTS = [
    1.5. UTILITIES (shared helper functions)
    ══════════════════════════════════════════════════ */
 
-/* Snap player X to tile boundary after collision */
+/**
+ * Snap player X to tile boundary after collision.
+ * @param {number} gx1 - Left grid column
+ * @param {number} gx2 - Right grid column
+ * @param {number} prevX - Previous X position
+ */
 function snapToTileX(gx1, gx2, prevX) {
   if(P.vx>0){ P.x=gx2*T-P.w; }
   else if(P.vx<0){ P.x=(gx1+1)*T; }
   else { P.x=prevX; }
 }
 
-/* Get player center as grid coordinates */
+/**
+ * Get player center as grid coordinates.
+ * @returns {{gx: number, gy: number}} Grid coordinates of player center
+ */
 function playerGridPos() {
   return { gx: Math.floor((P.x+P.w/2)/T), gy: Math.floor((P.y+P.h/2)/T) };
 }
 
-/* End dash state cleanly */
+/**
+ * End dash state cleanly.
+ */
 function endDash() {
   cancelDash(); P.dashCooldown=DASH_COOLDOWN; P.dashPhase=false; P._dashSfx=false;
 }
 
-/* Land on ground — reset jumps and coyote */
+/**
+ * Land on ground — reset jumps and coyote.
+ */
 function land() {
   P.onGround=true; P.jumps=0; P.coyoteTime=COYOTE_FRAMES;
 }
 
 /* ── Easing functions for animations ── */
+/** @param {number} t - Normalized time (0-1) @returns {number} Eased value */
 function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+/** @param {number} t - Normalized time (0-1) @returns {number} Eased value */
 function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
+/**
+ * Linear interpolation between two values.
+ * @param {number} a - Start value
+ * @param {number} b - End value
+ * @param {number} t - Interpolation factor (0-1)
+ * @returns {number} Interpolated value
+ */
 function lerp(a, b, t) { return a + (b - a) * t; }
 /* ── Sync prevKeys with current keys (spread, no unbounded growth) ── */
+/**
+ * Copy current keys state into prevKeys for frame-delta detection.
+ */
 function syncPrevKeys() { prevKeys = { ...keys }; }
 
 /* ── Advance message queue phases and decrement portal lock timer ── */
+/**
+ * Advance message queue display phases and tick down portal lock message.
+ */
 function advanceTimers() {
   if(messageQueue.length>0){
     const m=messageQueue[0];
@@ -211,16 +238,28 @@ function advanceTimers() {
   if(portalLockMsg>0) portalLockMsg--;
 }
 
-/* Reset all dash state — used on death/transition to fully clear */
+/**
+ * Reset all dash state — used on death/transition to fully clear.
+ */
 function fullDashReset() {
   cancelDash(); P.dashCooldown=0; P.dashPhase=false; P.dashCharge=0;
 }
-/* Cancel an active dash without resetting cooldown — used on immediate death */
+/**
+ * Cancel an active dash without resetting cooldown — used on immediate death.
+ */
 function cancelDash() {
   P.dashing=false; P.dashTimer=0;
 }
 
-/* Caption fade timing (wall-clock seconds) — for ending sequence */
+/**
+ * Compute caption fade alpha from wall-clock seconds for ending sequence.
+ * @param {number} t - Current time in seconds
+ * @param {number} start - Fade start time
+ * @param {number} fi - Fade-in duration
+ * @param {number} hold - Hold duration at full opacity
+ * @param {number} fo - Fade-out duration
+ * @returns {number} Alpha value (0-1)
+ */
 function captionAlphaSec(t, start, fi, hold, fo) {
   let e = t - start; if (e < 0) return 0;
   if (fi && e < fi) return e / fi; e -= fi;
@@ -229,12 +268,19 @@ function captionAlphaSec(t, start, fi, hold, fo) {
   return fo ? 0 : 1;
 }
 
-/* Restore player position and velocity to respawn point */
+/**
+ * Restore player position and velocity to respawn point.
+ */
 function resetPlayerToRespawn() {
   P.x=P.respawnX; P.y=P.respawnY; P.vx=0; P.vy=0; P.jumps=0; P.dashCharge=0;
 }
 
-/* Kill and respawn player at checkpoint */
+/**
+ * Kill and respawn player at checkpoint with death animation.
+ * @param {string} msg - Death message to display
+ * @param {number} duration - Message display duration in frames
+ * @param {string} [cause] - Cause of death (e.g., 'magicalWall')
+ */
 function killAndRespawn(msg, duration, cause) {
   if(animState!=='idle') return; // prevent double-trigger
   cancelDash();
@@ -251,8 +297,28 @@ function killAndRespawn(msg, duration, cause) {
    2. CHAMBER DATA (Level data)
    ══════════════════════════════════════════════════ */
 
+/**
+ * Create a grid of width x height filled with AIR tiles.
+ * @param {number} w - Width in tiles
+ * @param {number} h - Height in tiles
+ * @returns {number[][]} 2D grid filled with AIR (0)
+ */
 function mkGrid(w,h) { let g=[]; for(let y=0;y<h;y++) g[y]=new Array(w).fill(AIR); return g; }
+/**
+ * Set WALL tiles along the four boundaries of a grid.
+ * @param {number[][]} g - Grid to modify
+ * @param {number} w - Grid width
+ * @param {number} h - Grid height
+ */
 function sBounds(g,w,h){for(let x=0;x<w;x++){g[0][x]=WALL;g[h-1][x]=WALL;}for(let y=0;y<h;y++){g[y][0]=WALL;g[y][w-1]=WALL;} }
+/**
+ * Draw a horizontal line of a given tile value in a grid row.
+ * @param {number[][]} g - Grid to modify
+ * @param {number} y - Row index
+ * @param {number} x1 - Start column (inclusive)
+ * @param {number} x2 - End column (inclusive)
+ * @param {number} v - Tile value to set
+ */
 function hLine(g,y,x1,x2,v){for(let x=x1;x<=x2;x++)g[y][x]=v;}
 
 const chambers = [];
@@ -550,6 +616,9 @@ let frozenElapsedSec = 0;       // frozen game time for ending stats
 
 let hudBar, hudLeft, hudRight;
 let lastHudTime = -1, lastHudDeaths = -1, lastHudGlyphs = '';
+/**
+ * Cache HUD DOM references.
+ */
 function initHUD() {
   hudBar = document.getElementById('hud-bar');
   hudLeft = hudBar.querySelector('.hud-left');
@@ -614,42 +683,88 @@ document.addEventListener('keyup', function(e){
   }
 });
 
+/**
+ * Check if a key was freshly pressed this frame (pressed now, not pressed last frame).
+ * @param {string} code - Keyboard event code
+ * @returns {boolean} True if key was just pressed
+ */
 function fresh(code){ return keys[code] && !prevKeys[code]; }
 
+/**
+ * Check if Shift key is currently held down.
+ * @returns {boolean} True if either Shift key is pressed
+ */
 function shiftHeld(){ return keys['ShiftLeft']||keys['ShiftRight']; }
 
 /* Input normalization abstractions */
+/** @returns {boolean} True if left movement key is pressed */
 function inputLeft()         { return keys['ArrowLeft']  || keys['KeyA']; }
+/** @returns {boolean} True if right movement key is pressed */
 function inputRight()        { return keys['ArrowRight'] || keys['KeyD']; }
+/** @returns {boolean} True if jump key was freshly pressed */
 function inputJumpPressed()  { return fresh('ArrowUp')||fresh('KeyW')||fresh('Space'); }
+/** @returns {boolean} True if jump key is currently held */
 function inputJumpHeld()     { return keys['ArrowUp'] || keys['KeyW'] || keys['Space']; }
+/** @returns {boolean} True if down movement key is pressed */
 function inputDown()         { return keys['ArrowDown']  || keys['KeyS']; }
 
 /* ══════════════════════════════════════════════════
    5. TILE HELPERS & COLLISION
    ══════════════════════════════════════════════════ */
 
+/**
+ * Get tile value at grid coordinates in a specific chamber.
+ * @param {number} ch - Chamber index
+ * @param {number} x - Grid column
+ * @param {number} y - Grid row
+ * @returns {number} Tile type value
+ */
 function getTile(ch,x,y){
   const c=chambers[ch];
   if(x<0||x>=c.w||y<0||y>=c.h) return WALL;
   return c.tiles[y][x];
 }
+/**
+ * Set tile value at grid coordinates in a specific chamber.
+ * @param {number} ch - Chamber index
+ * @param {number} x - Grid column
+ * @param {number} y - Grid row
+ * @param {number} v - New tile value
+ */
 function setTile(ch,x,y,v){
   const c=chambers[ch];
   if(x>=0&&x<c.w&&y>=0&&y<c.h){ c.tiles[y][x]=v; }
 }
 
 /* Fast tile access — uses pre-cached _c (set at update/render entry) */
+/**
+ * Get tile from cached chamber reference (avoids repeated chamber lookup).
+ * @param {number} x - Grid column
+ * @param {number} y - Grid row
+ * @returns {number} Tile type value
+ */
 function _getTile(x,y){
   if(x<0||x>=_c.w||y<0||y>=_c.h) return WALL;
   return _c.tiles[y][x];
 }
 
 /* Solid for walls/blocks/doors/end-portal (not one-way platforms) */
+/**
+ * Check if a tile type counts as solid for collision.
+ * @param {number} t - Tile type value
+ * @returns {boolean} True if tile is solid
+ */
 function solid(t){ return t===WALL||t===CRACKED||t===DOOR_D||t===END_PORTAL||t===MAGICAL_WALL; }
 
 /* Platform is solid ONLY when player feet were at/above platform top (true one-way).
    prevFeet = previous feet bottom (prevY+P.h). gy = platform tile row. */
+/**
+ * Check if a platform tile is solid (one-way: only from above).
+ * @param {number} t - Tile type value
+ * @param {number} prevFeet - Previous frame feet Y position in pixels
+ * @param {number} gy - Platform tile grid row
+ * @returns {boolean} True if platform blocks movement
+ */
 function platSolid(t, prevFeet, gy){
   if(t!==PLATFORM) return false;
   if(inputDown()) return false;
@@ -658,6 +773,16 @@ function platSolid(t, prevFeet, gy){
 
 /* Unified tile collision checker — grid-space iteration with configurable options.
    Options: {skipTileType: tileValue, includePlatforms: bool, prevY: px, curY: px} */
+/**
+ * Check if any solid tiles exist within a grid rectangle.
+ * @param {number} ch - Chamber index
+ * @param {number} gx1 - Left grid column
+ * @param {number} gy1 - Top grid row
+ * @param {number} gx2 - Right grid column
+ * @param {number} gy2 - Bottom grid row
+ * @param {{skipTileType?: number, includePlatforms?: boolean, prevY?: number, curY?: number}} [opts] - Collision options
+ * @returns {boolean} True if any solid tile overlaps the rectangle
+ */
 function tileCollidesRect(ch, gx1, gy1, gx2, gy2, opts) {
   for(let gy=gy1;gy<=gy2;gy++)
     for(let gx=gx1;gx<=gx2;gx++){
@@ -670,16 +795,47 @@ function tileCollidesRect(ch, gx1, gy1, gx2, gy2, opts) {
 }
 
 /* collides: for Y movement — check solid tiles + platforms at the NEW position */
+/**
+ * Check collision for vertical movement (includes one-way platforms).
+ * @param {number} gx1 - Left grid column
+ * @param {number} gy1 - Top grid row
+ * @param {number} gx2 - Right grid column
+ * @param {number} gy2 - Bottom grid row
+ * @param {number} ch - Chamber index
+ * @param {number} prevY - Previous Y position
+ * @param {number} curY - Current Y position
+ * @returns {boolean} True if collision detected
+ */
 function collides(gx1,gy1,gx2,gy2,ch,prevY,curY) {
   return tileCollidesRect(ch, gx1, gy1, gx2, gy2, {includePlatforms:true, prevY, curY});
 }
 
 /* collidesNoPlat: for X movement — solid tiles only, no platforms */
+/**
+ * Check collision for horizontal movement (solid tiles only, ignores platforms).
+ * @param {number} gx1 - Left grid column
+ * @param {number} gy1 - Top grid row
+ * @param {number} gx2 - Right grid column
+ * @param {number} gy2 - Bottom grid row
+ * @param {number} ch - Chamber index
+ * @returns {boolean} True if collision detected
+ */
 function collidesNoPlat(gx1,gy1,gx2,gy2,ch) {
   return tileCollidesRect(ch, gx1, gy1, gx2, gy2, {});
 }
 
 /* collidesDash: skips MAGICAL_WALL + checks push-block AABB */
+/**
+ * Check collision during dash (skips magical walls, includes push blocks).
+ * @param {number} gx1 - Left grid column
+ * @param {number} gy1 - Top grid row
+ * @param {number} gx2 - Right grid column
+ * @param {number} gy2 - Bottom grid row
+ * @param {number} ch - Chamber index
+ * @param {number} prevY - Previous Y position
+ * @param {number} curY - Current Y position
+ * @returns {boolean} True if collision detected
+ */
 function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
   if(tileCollidesRect(ch, gx1, gy1, gx2, gy2, {skipTileType:MAGICAL_WALL, includePlatforms:true, prevY, curY})) return true;
   /* Push block during dash */
@@ -690,6 +846,10 @@ function collidesDash(gx1,gy1,gx2,gy2,ch,prevY,curY) {
   return false;
 }
 
+/**
+ * Check if player is standing inside a pit tile (death zone).
+ * @returns {boolean} True if player center is within a pit tile
+ */
 function inPit(){
   const px=P.x+P.w/2, py=P.y+P.h/2;
   const {gx, gy} = playerGridPos();
@@ -705,11 +865,32 @@ function inPit(){
 }
 
 /* AABB overlap test */
+/**
+ * Axis-aligned bounding box overlap test.
+ * @param {number} ax - Box A X position
+ * @param {number} ay - Box A Y position
+ * @param {number} aw - Box A width
+ * @param {number} ah - Box A height
+ * @param {number} bx - Box B X position
+ * @param {number} by - Box B Y position
+ * @param {number} bw - Box B width
+ * @param {number} bh - Box B height
+ * @returns {boolean} True if boxes overlap
+ */
 function aabb(ax,ay,aw,ah, bx,by,bw,bh){
   return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
 }
 
 /* Find overlapping push block (exclude self). inSlot blocks stay solid. */
+/**
+ * Find the first active push block overlapping an AABB.
+ * @param {number} x - Box X position
+ * @param {number} y - Box Y position
+ * @param {number} w - Box width
+ * @param {number} h - Box height
+ * @param {object} [skip] - Push block to exclude (for self-check)
+ * @returns {object|null} Overlapping push block or null
+ */
 function pushBlockHit(x, y, w, h, skip){
   for(const ob of PBlocks){
     if(ob === skip || !ob.active) continue;
@@ -718,12 +899,25 @@ function pushBlockHit(x, y, w, h, skip){
   return null;
 }
 
+/**
+ * Check if a block is riding on top of another block.
+ * @param {object} ob - Block to check
+ * @param {object} base - Base block
+ * @returns {boolean} True if ob is resting on base
+ */
 function isRiding(ob, base){
   const feet = ob.y + ob.h;
   return Math.abs(feet - base.y) <= 2 &&
          ob.x + ob.w > base.x + 2 && ob.x < base.x + base.w - 2;
 }
 /* Apply horizontal delta with tile + block collision. Does not touch vx. */
+/**
+ * Apply horizontal displacement to a push block with wall and block collision.
+ * @param {number} ch - Chamber index
+ * @param {object} pb - Push block to move
+ * @param {number} dx - Horizontal displacement
+ * @returns {number} Actual displacement applied
+ */
 function resolveBlockX(ch, pb, dx){
   if(!dx) return 0;
   const prevX = pb.x;
@@ -740,6 +934,12 @@ function resolveBlockX(ch, pb, dx){
   return pb.x - prevX;
 }
 /* Phase B: each rider attempts the same dx, with its own wall collision. */
+/**
+ * Move all blocks riding on a base block by the same horizontal displacement.
+ * @param {number} ch - Chamber index
+ * @param {object} pb - Base block that moved
+ * @param {number} dx - Horizontal displacement to propagate
+ */
 function moveBlockRiders(ch, pb, dx){
   if(!dx) return;
   for(const ob of PBlocks){
@@ -750,6 +950,11 @@ function moveBlockRiders(ch, pb, dx){
   }
 }
 /* Phase A: apply vx as a horizontal move. Returns net displacement. */
+/**
+ * Apply horizontal velocity to a push block, storing actual displacement.
+ * @param {number} ch - Chamber index
+ * @param {object} pb - Push block to update
+ */
 function applyBlockVelocityX(ch, pb){
   if(!pb.vx){ pb._frameDx = 0; return; }
   const dx = pb.vx;
@@ -758,6 +963,11 @@ function applyBlockVelocityX(ch, pb){
   if(moved !== dx) pb.vx = 0;
 }
 /* Phase C: gravity + tile/block Y resolution. */
+/**
+ * Apply gravity and resolve vertical collisions for a push block.
+ * @param {number} ch - Chamber index
+ * @param {object} pb - Push block to update
+ */
 function resolveBlockY(ch, pb){
   const prevBy = pb.y;
   pb.vy += PB_GRAVITY;
@@ -781,12 +991,19 @@ function resolveBlockY(ch, pb){
   }
 }
 /* Active blocks, bottom-up (larger y first). */
+/**
+ * Get active (non-slotted) push blocks sorted bottom-to-top.
+ * @returns {object[]} Sorted array of active push blocks
+ */
 function activePushBlocks(){
   return PBlocks
     .filter(pb => pb.active && !pb.inSlot)
     .sort((a, b) => b.y - a.y);
 }
 /* Falling block crushes golem — only if block is above and actually landing on it. */
+/**
+ * Check if any falling push block is crushing the player (kills on impact).
+ */
 function checkPushBlockCrush(){
   if(animState !== 'idle') return;
   for(const pb of PBlocks){
@@ -805,6 +1022,15 @@ function checkPushBlockCrush(){
 }
 
 /* Check if AABB overlaps any solid tile */
+/**
+ * Check if a pixel-space AABB overlaps any solid tile in a chamber.
+ * @param {number} ch - Chamber index
+ * @param {number} x - AABB X position
+ * @param {number} y - AABB Y position
+ * @param {number} w - AABB width
+ * @param {number} h - AABB height
+ * @returns {boolean} True if any solid tile overlaps
+ */
 function tileCollides(ch, x, y, w, h){
   const x1=Math.floor(x/T), x2=Math.floor((x+w-1)/T);
   const y1=Math.floor(y/T), y2=Math.floor((y+h-1)/T);
@@ -818,6 +1044,9 @@ function tileCollides(ch, x, y, w, h){
    6. PUSH BLOCK SYSTEM
    ══════════════════════════════════════════════════ */
 
+/**
+ * Reset push blocks to their spawn positions for the current chamber.
+ */
 function resetPushBlock(){
   const c=chambers[P.chamber];
   PBlocks.length=0;
@@ -831,6 +1060,9 @@ function resetPushBlock(){
 
 /* Push block: resolve AFTER normal X movement + tile collision.
    Detect push overlap and apply velocity-based movement (not instant teleport). */
+/**
+ * Resolve player push-block collision: push, separate, or stand still.
+ */
 function resolvePushBlockCollision(){
   for(const pb of PBlocks){
     if(!pb.active || pb.inSlot) continue;
@@ -878,6 +1110,9 @@ function resolvePushBlockCollision(){
 }
 
 /* Push block: 3-phase orchestrator (crush check moved after player Y + landing) */
+/**
+ * Update all push block physics: horizontal velocity, rider coupling, gravity, friction.
+ */
 function updatePushBlock(){
   const ch = P.chamber;
   const c = chambers[ch];
@@ -920,6 +1155,11 @@ const Particles = (function(){
   /* Reference the global particles array — same array, encapsulated API */
   const pool = particles;
 
+  /**
+   * Spawn shatter particles (debris + dust + sparks) at a point.
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   */
   function shatter(x,y){
     /* Chunky debris — fast, heavy */
     for(let i=0;i<12;i++)
@@ -944,6 +1184,14 @@ const Particles = (function(){
         size:1+Math.random()*2});
   }
 
+ /**
+   * Spawn generic particles at a point.
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {string} color - Particle color
+   * @param {number} count - Number of particles
+   * @param {string} [shape] - Particle shape ('square', 'star', 'diamond', 'circle', 'hex')
+   */
  function spawn(x,y,color,count,shape){
      for(let i=0;i<count;i++)
        pool.push({
@@ -958,6 +1206,11 @@ const Particles = (function(){
        });
    }
 
+ /**
+   * Spawn magical wall death particles (hexagonal fracture shards + sparkles).
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   */
    function magicalWallDeath(x,y){
      /* Hexagonal fracture shards — teal and purple */
      const colors = ['rgba(92,179,175,0.9)','rgba(92,179,175,0.7)','rgba(123,104,238,0.9)','rgba(123,104,238,0.7)','rgba(92,179,175,0.5)','rgba(123,104,238,0.5)'];
@@ -986,6 +1239,9 @@ const Particles = (function(){
        });
    }
 
+ /**
+   * Update all particles: move, apply gravity, remove dead ones.
+   */
    function update(){
     for(let i=pool.length-1;i>=0;i--){
       const p=pool[i];
@@ -1033,6 +1289,9 @@ const Sound = (function(){
   let ctx, mg, muted=false, drone, dGain, mTimer, mNext=0, mTime=0, nBuf, musicDuck=0;
   const BPM=75, BEAT=60/BPM/2, AHEAD=0.1, TICK=25;
 
+  /**
+   * Initialize audio context and master gain node.
+   */
   function init(){
     if(ctx) return;
     ctx = new (window.AudioContext||window.webkitAudioContext)();
@@ -1041,92 +1300,117 @@ const Sound = (function(){
     nBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   }
 
-  function setMute(v){
-    muted=!!v;
-    if(mg) mg.gain.value = muted?0:1;
-  }
+    /**
+      * Set master audio mute state.
+      * @param {boolean} v - True to mute
+      */
+     function setMute(v){
+       muted=!!v;
+       if(mg) mg.gain.value = muted?0:1;
+     }
 
-  function isMuted(){ return muted; }
+     /**
+      * Check if audio is currently muted.
+      * @returns {boolean} True if muted
+      */
+     function isMuted(){ return muted; }
 
-  function play(n){
-    if(!ctx||muted) return;
-    if(ctx.state==='suspended') ctx.resume();
-    const s=SFX[n]; if(!s) return;
-    const now=ctx.currentTime;
-    const gn=ctx.createGain();
-    gn.gain.setValueAtTime(s.g||0.1, now);
-    gn.gain.exponentialRampToValueAtTime(0.001, now+(s.dur||0.1));
-    gn.connect(mg);
+     /**
+      * Play a sound effect by name from the SFX table.
+      * @param {string} n - SFX name (e.g., 'jump', 'death', 'glyph')
+      */
+     function play(n){
+       if(!ctx||muted) return;
+       if(ctx.state==='suspended') ctx.resume();
+       const s=SFX[n]; if(!s) return;
+       const now=ctx.currentTime;
+       const gn=ctx.createGain();
+       gn.gain.setValueAtTime(s.g||0.1, now);
+       gn.gain.exponentialRampToValueAtTime(0.001, now+(s.dur||0.1));
+       gn.connect(mg);
 
-    if(s.crack){
-      var gn2=ctx.createGain(); gn2.gain.setValueAtTime(s.crack,now);
-      gn2.gain.exponentialRampToValueAtTime(0.001,now+0.08); gn2.connect(mg);
-      var d2=nBuf.getChannelData(0); for(var j=0;j<ctx.sampleRate*0.08;j++) d2[j]=Math.random()*2-1;
-      var src2=ctx.createBufferSource(); src2.buffer=nBuf;
-      var bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1200; bp.Q.value=4;
-      src2.connect(bp); bp.connect(gn2); src2.start(0,0,0.08);
-    }
+       if(s.crack){
+         var gn2=ctx.createGain(); gn2.gain.setValueAtTime(s.crack,now);
+         gn2.gain.exponentialRampToValueAtTime(0.001,now+0.08); gn2.connect(mg);
+         var d2=nBuf.getChannelData(0); for(var j=0;j<ctx.sampleRate*0.08;j++) d2[j]=Math.random()*2-1;
+         var src2=ctx.createBufferSource(); src2.buffer=nBuf;
+         var bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1200; bp.Q.value=4;
+         src2.connect(bp); bp.connect(gn2); src2.start(0,0,0.08);
+       }
 
-    if(s.t==='chord'){
-      (s.fs||[]).forEach(function(f){
-        var o=ctx.createOscillator(); o.type=s.wt||'sine'; o.frequency.value=f;
-        if(s.fall) o.frequency.exponentialRampToValueAtTime(f*s.fall, now+(s.dur||0.25));
-        o.connect(gn); o.start(now); o.stop(now+(s.dur||0.25));
-      });
-    } else if(s.t==='noise'){
-      var len=Math.floor(ctx.sampleRate*Math.max(s.dur||0.2,0.01));
-      var d=nBuf.getChannelData(0);
-      for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
-      var src=ctx.createBufferSource(); src.buffer=nBuf; src.playbackRate.value=1;
-      var flt=ctx.createBiquadFilter();
-      flt.type='bandpass'; flt.frequency.value=s.ff||800; flt.Q.value=s.fq||2;
-      src.connect(flt); flt.connect(gn); src.start(0,0,s.dur||0.2);
-    } else {
-      var o=ctx.createOscillator(); o.type=s.t; o.frequency.value=s.f;
-      if(s.f2) o.frequency.linearRampToValueAtTime(s.f2, now+(s.dur||0.1));
-      o.connect(gn); o.start(now); o.stop(now+(s.dur||0.1));
-    }
-  }
+       if(s.t==='chord'){
+         (s.fs||[]).forEach(function(f){
+           var o=ctx.createOscillator(); o.type=s.wt||'sine'; o.frequency.value=f;
+           if(s.fall) o.frequency.exponentialRampToValueAtTime(f*s.fall, now+(s.dur||0.25));
+           o.connect(gn); o.start(now); o.stop(now+(s.dur||0.25));
+         });
+       } else if(s.t==='noise'){
+         var len=Math.floor(ctx.sampleRate*Math.max(s.dur||0.2,0.01));
+         var d=nBuf.getChannelData(0);
+         for(var i=0;i<len;i++) d[i]=Math.random()*2-1;
+         var src=ctx.createBufferSource(); src.buffer=nBuf; src.playbackRate.value=1;
+         var flt=ctx.createBiquadFilter();
+         flt.type='bandpass'; flt.frequency.value=s.ff||800; flt.Q.value=s.fq||2;
+         src.connect(flt); flt.connect(gn); src.start(0,0,s.dur||0.2);
+       } else {
+         var o=ctx.createOscillator(); o.type=s.t; o.frequency.value=s.f;
+         if(s.f2) o.frequency.linearRampToValueAtTime(s.f2, now+(s.dur||0.1));
+         o.connect(gn); o.start(now); o.stop(now+(s.dur||0.1));
+       }
+     }
 
-  function startMusic(){
-    if(!ctx||drone) return;
-    if(ctx.state==='suspended') ctx.resume();
-    dGain=ctx.createGain(); dGain.gain.value=0.025; dGain.connect(mg);
-    drone=ctx.createOscillator(); drone.type='sine'; drone.frequency.value=73.42;
-    drone.connect(dGain); drone.start();
-    mNext=0; mTime=ctx.currentTime;
-    _sched(); mTimer=setInterval(_sched, TICK);
-  }
+     /**
+      * Start ambient music drone and melody scheduler.
+      */
+     function startMusic(){
+       if(!ctx||drone) return;
+       if(ctx.state==='suspended') ctx.resume();
+       dGain=ctx.createGain(); dGain.gain.value=0.025; dGain.connect(mg);
+       drone=ctx.createOscillator(); drone.type='sine'; drone.frequency.value=73.42;
+       drone.connect(dGain); drone.start();
+       mNext=0; mTime=ctx.currentTime;
+       _sched(); mTimer=setInterval(_sched, TICK);
+     }
 
-  function _sched(){
-    if(!ctx) return;
-    var now=ctx.currentTime;
-    while(mTime<now+AHEAD){
-      var nt=MUSIC_NOTES[mNext%MUSIC_NOTES.length];
-      var vol=(musicDuck>now)?0.012:0.03;
-      var o=ctx.createOscillator(); o.type=nt.w||'sine'; o.frequency.value=nt.f;
-      var ng=ctx.createGain();
-      ng.gain.setValueAtTime(vol, mTime);
-      ng.gain.exponentialRampToValueAtTime(0.001, mTime+BEAT*1.5);
-      o.connect(ng); ng.connect(mg);
-      o.start(mTime); o.stop(mTime+BEAT*1.5);
-      if(mNext%2===0){
-        var b=ctx.createOscillator(); b.type=nt.w||'sine'; b.frequency.value=nt.f/2;
-        var bg=ctx.createGain(); bg.gain.setValueAtTime(vol*0.4,mTime); bg.gain.exponentialRampToValueAtTime(0.001,mTime+BEAT*1.5);
-        b.connect(bg); bg.connect(mg); b.start(mTime); b.stop(mTime+BEAT*1.5);
+     /**
+      * Scheduler: queue music notes ahead of playback time.
+      */
+     function _sched(){
+        if(!ctx) return;
+        var now=ctx.currentTime;
+        while(mTime<now+AHEAD){
+          var nt=MUSIC_NOTES[mNext%MUSIC_NOTES.length];
+          var vol=(musicDuck>now)?0.012:0.03;
+          var o=ctx.createOscillator(); o.type=nt.w||'sine'; o.frequency.value=nt.f;
+          var ng=ctx.createGain();
+          ng.gain.setValueAtTime(vol, mTime);
+          ng.gain.exponentialRampToValueAtTime(0.001, mTime+BEAT*1.5);
+          o.connect(ng); ng.connect(mg);
+          o.start(mTime); o.stop(mTime+BEAT*1.5);
+          if(mNext%2===0){
+            var b=ctx.createOscillator(); b.type=nt.w||'sine'; b.frequency.value=nt.f/2;
+            var bg=ctx.createGain(); bg.gain.setValueAtTime(vol*0.4,mTime); bg.gain.exponentialRampToValueAtTime(0.001,mTime+BEAT*1.5);
+            b.connect(bg); bg.connect(mg); b.start(mTime); b.stop(mTime+BEAT*1.5);
+          }
+          mTime+=BEAT; mNext++;
+          if(mNext%12===0) mTime+=BEAT;
+        }
       }
-      mTime+=BEAT; mNext++;
-      if(mNext%12===0) mTime+=BEAT;
-    }
-  }
 
-  function stopMusic(){
-    if(drone){ drone.stop(); drone=null; dGain=null; }
-    if(mTimer){ clearInterval(mTimer); mTimer=null; }
-    mNext=0;
-  }
+     /**
+     * Stop music drone and scheduler.
+     */
+     function stopMusic(){
+      if(drone){ drone.stop(); drone=null; dGain=null; }
+      if(mTimer){ clearInterval(mTimer); mTimer=null; }
+      mNext=0;
+     }
 
-  function duckMusic(sec){
+     /**
+     * Duck (temporarily lower) music volume for a duration.
+     * @param {number} sec - Duration in seconds
+     */
+     function duckMusic(sec){
     if(!ctx) return;
     musicDuck=ctx.currentTime+sec;
     if(dGain){ var n=ctx.currentTime; dGain.gain.setValueAtTime(0.008,n); dGain.gain.linearRampToValueAtTime(0.025,n+sec); }
@@ -1150,11 +1434,23 @@ const MSG_DEATH_COLOR = 'rgba(180,150,110,';  // sepia for death/respawn text
 const MSG_ABILITY_GLOW = 'rgba(5,150,105,0.6)';  // emerald glow for ability unlocks
 
 /* ── Message queue system ── */
+/**
+ * Calculate display duration from text length and provided duration.
+ * @param {string} text - Message text
+ * @param {number} providedDur - Provided duration in frames
+ * @returns {number} Display duration in frames (clamped)
+ */
 function calcDisplayDuration(text, providedDur) {
     const auto = Math.floor(text.length / MSG_CHARS_PER_FRAME);
     const dur = providedDur || MSG_MIN_HOLD;
     return Math.min(MSG_MAX_HOLD, Math.max(dur, auto));
 }
+/**
+ * Queue a message for display (supports forever messages, dedup, queue limit).
+ * @param {string} txt - Message text
+ * @param {number} dur - Display duration in frames
+ * @param {number} [type] - Message type (MSG_DEFAULT, MSG_ABILITY, MSG_DEATH)
+ */
 function showMessage(txt, dur, type) {
     const isForever = (dur || 0) >= MSG_FOREVER_THRESHOLD;
     if (isForever) {
@@ -1168,6 +1464,10 @@ function showMessage(txt, dur, type) {
 }
 
 /* ── Transition with screen fade ── */
+/**
+ * Execute the actual chamber transition (called after fade completes).
+ * @param {number} toChamber - Target chamber index
+ */
 function _doTransition(toChamber){
   P.chamber = toChamber;
   const nc = chambers[toChamber];
@@ -1178,6 +1478,10 @@ function _doTransition(toChamber){
   P.pushing=false;
   resetPushBlock();
 }
+/**
+ * Start screen fade transition to a new chamber (non-blocking, triggers fade then _doTransition).
+ * @param {number} toChamber - Target chamber index
+ */
 function transition(toChamber){
   if(animState!=='idle') return; // don't interrupt death/respawn
   _transitionTarget = toChamber;
@@ -1185,6 +1489,9 @@ function transition(toChamber){
   screenAlpha = 0;
 }
 
+/**
+ * Check if player is near a door or end portal, trigger transition if so.
+ */
 function checkDoors(){
   const ch=P.chamber, c=chambers[ch];
   const {gx, gy} = playerGridPos();
@@ -1221,6 +1528,9 @@ function checkDoors(){
   }
 }
 
+/**
+ * Check if player collected a glyph in the current chamber (applies ability unlock).
+ */
 function checkGlyphs(){
   const ch=P.chamber, c=chambers[ch];
   if(collectedGlyphs[ch]) return;
@@ -1245,6 +1555,9 @@ function checkGlyphs(){
   }
 }
 
+/**
+ * Trigger the ending sequence (game complete).
+ */
 function transitionEnding(){
   if(animState!=='idle') return;
   endingBeat = 0;
@@ -1256,11 +1569,26 @@ function transitionEnding(){
 }
 
 /* ── Grid bounds for player AABB (X uses P.h-1, Y uses P.h for platform detection) ── */
+/**
+ * Compute player grid-space bounding box.
+ * @returns {{gx1: number, gx2: number, gy1: number, gy2: number}} Grid coordinates of player bounds
+ */
 function playerGridBounds() {
   return { gx1:Math.floor(P.x/T), gx2:Math.floor((P.x+P.w-1)/T), gy1:Math.floor(P.y/T), gy2:Math.floor((P.y+P.h-1)/T) };
 }
 
 /* ── Jump helper (deduplicates shared boilerplate across jump branches) ── */
+/**
+ * Execute jump: set velocity, spawn particles, play sound.
+ * @param {number} vel - Jump velocity (negative = upward)
+ * @param {number} jx - Particle spawn X
+ * @param {number} jy - Particle spawn Y
+ * @param {string} color - Particle color
+ * @param {number} count - Particle count
+ * @param {string} shape - Particle shape
+ * @param {string} sfx - Sound effect name
+ * @param {boolean} fromGround - Whether jump originated from ground
+ */
 function doJump(vel, jx, jy, color, count, shape, sfx, fromGround) {
   P.vy = vel; P.jumps++; P.jumpBuffer = 0;
   if(fromGround){ P.onGround = false; P.coyoteTime = 0; }
@@ -1271,6 +1599,9 @@ function doJump(vel, jx, jy, color, count, shape, sfx, fromGround) {
 /* ══════════════════════════════════════════════════
    9. UPDATE — physics, input, game logic
    ══════════════════════════════════════════════════ */
+/**
+ * Main game update tick (runs at fixed 240Hz). Handles input, physics, collision, game logic.
+ */
 function update(){
   /* Pause toggle (P-key, fresh edge detection) — checked before guards */
   if((gameState==='playing'||gameState==='paused') && fresh('KeyP')){
@@ -1522,6 +1853,9 @@ if(inPit() || P.y > chambers[P.chamber].h*T){
 /* ══════════════════════════════════════════════════
    9.5. ANIMATION STATE MACHINE (death/respawn animations)
    ══════════════════════════════════════════════════ */
+/**
+ * Handle death/respawn animation state machine (runs instead of update during animation).
+ */
 function updateAnim(){
   _c = chambers[P.chamber]; // keep chamber cache valid for render
   advanceTimers();
@@ -1561,6 +1895,13 @@ const COLORS = {
 };
 
 /* ── Shared golem sprite renderer ── */
+/**
+ * Draw the golem sprite with configurable options (scale, glow, animation offsets).
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {number} px - Pixel X position
+ * @param {number} py - Pixel Y position
+ * @param {{pw?: number, ph?: number, facing?: number, headOffY?: number, alpha?: number, showArms?: boolean, showFeet?: boolean, showShadow?: boolean, glow?: number, scale?: number, twoEyes?: boolean}} [opts] - Sprite options
+ */
 function drawGolemSprite(ctx, px, py, opts) {
   opts = opts || {};
   const pw = opts.pw !== undefined ? opts.pw : P.w;
@@ -1636,6 +1977,11 @@ function drawGolemSprite(ctx, px, py, opts) {
 }
 
 /* ── Death/Respawn animation renderer ── */
+/**
+ * Render death/respawn animation with dissolve and reform effects.
+ * @param {number} ox - Origin X (scroll offset)
+ * @param {number} oy - Origin Y (scroll offset)
+ */
 function renderDeathRespawnAnimation(ox, oy){
   const now = Date.now();
  const progress = animFrame / ANIM_TOTAL;
@@ -1800,6 +2146,13 @@ function renderDeathRespawnAnimation(ox, oy){
 }
 
 /* Draw shared wall base appearance (used by WALL and CRACKED tiles) */
+/**
+ * Draw a wall tile base with top highlight.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {number} px - Pixel X position
+ * @param {number} py - Pixel Y position
+ * @param {string} baseColor - Wall base color
+ */
 function drawWallBase(ctx, px, py, baseColor) {
   ctx.fillStyle = baseColor; ctx.fillRect(px, py, T, T);
   ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, T, 3);
@@ -1807,6 +2160,15 @@ function drawWallBase(ctx, px, py, baseColor) {
 }
 
 /* ── Styled text helper: dark shadow + optional glow ── */
+/**
+ * Draw styled text with optional glow effect.
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {string} text - Text to draw
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {string} color - Text color (can include alpha)
+ * @param {string} [glowColor] - Optional glow color (CSS shadow color)
+ */
 function styledText(ctx, text, x, y, color, glowColor) {
   // Glow layer (rendered first so text sits on top)
   if (glowColor) {
@@ -1823,10 +2185,26 @@ function styledText(ctx, text, x, y, color, glowColor) {
   ctx.shadowBlur = 0;
 }
 /* Keep shadowText as thin wrapper for backward compat */
+/**
+ * Draw text with dark drop shadow (no glow).
+ * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param {string} text - Text to draw
+ * @param {number} x - X position
+ * @param {number} y - Y position
+ * @param {string} color - Text color
+ */
 function shadowText(ctx, text, x, y, color) {
   styledText(ctx, text, x, y, color, null);
 }
 /* Draw segmented arc for dash charge ring */
+/**
+ * Draw segmented circular arcs (used for glyphs, portals, etc.).
+ * @param {number} cx - Center X
+ * @param {number} cy - Center Y
+ * @param {number} r - Radius
+ * @param {number} count - Number of segments
+ * @param {number} gap - Gap angle between segments
+ */
 function drawSegArcs(cx,cy,r,count,gap){
   const a=Math.PI*2/count;
   for(let s=0;s<count;s++){
@@ -1835,6 +2213,9 @@ function drawSegArcs(cx,cy,r,count,gap){
   }
 }
 
+/**
+ * Main render function — draws the game world, player, particles, HUD, and ending sequence.
+ */
 function render(){
   const now=Date.now(); // B1: cache time once per frame
   const ch=P.chamber, c=chambers[ch];
@@ -2241,6 +2622,13 @@ drawGolemSprite(X, px, py, { pw, ph, facing: P.facing, headOffY, showArms: !P.pu
 /* ── Ending screen — wall-clock animated sequence ── */
 
 /* Continuous ending glyph state — replaces per-beat hard cuts */
+/**
+ * Compute ending glyph positions, EMET cross-fade, flash bloom, and convergence state.
+ * @param {number} endSec - Elapsed seconds since ending started
+ * @param {number} cx - Center X coordinate
+ * @param {number} cy - Center Y coordinate
+ * @returns {{glyphs: Array, emetAlpha: number, emetFontSize: number, emetGlowIntensity: number, emetY: number, flashAlpha: number, convergeProgress: number}} Ending state data
+ */
 function getEndingGlyphState(endSec, cx, cy) {
   const B2 = ENDING.BEAT_2, B3 = ENDING.BEAT_3, B4 = ENDING.BEAT_4;
   const allGlyphs = ['\u05d0', '\u05de', '\u05d4', '\u05ea'];
@@ -2439,6 +2827,9 @@ if (gameState === 'ending') {
 const titleScreen = document.getElementById('title-screen');
 const pauseOverlay = document.getElementById('pause-overlay');
 
+/**
+ * Restore all chamber tiles to their original state (deep copy from initialTiles).
+ */
 function restoreAllChambers(){
   chambers.forEach(c => {
     c.tiles = c.initialTiles.map(row => row.slice());
@@ -2451,6 +2842,10 @@ function restoreAllChambers(){
   });
 }
 
+/**
+ * Reset all game state to initial conditions (full reset).
+ * Cancels rAF loop, restores chambers, resets player, clears all tracking state.
+ */
 function resetGameState(){
   if(animFrameId){ cancelAnimationFrame(animFrameId); }
   restoreAllChambers();
@@ -2480,6 +2875,10 @@ portalLockMsg=0; testChamberSrc=-1;
   keys={}; prevKeys={}; lastDirKey=0;
 }
 
+/**
+ * Start the game from title screen.
+ * Sets gameState to 'playing', initializes sound, starts music and game timer, hides title overlay, shows HUD.
+ */
 function startGame(){
   gameState = 'playing';
   Sound.init();
@@ -2492,6 +2891,10 @@ function startGame(){
   animFrameId = requestAnimationFrame(loop);
 }
 
+/**
+ * Toggle pause state between 'playing' and 'paused'.
+ * Shows/hides pause overlay, stops/resumes music, resets simulation accumulator.
+ */
 function togglePause(){
   if(gameState === 'playing'){
     gameState = 'paused';
@@ -2505,6 +2908,10 @@ function togglePause(){
   }
 }
 
+/**
+ * Return to the title menu with a full game reset.
+ * Calls resetGameState, stops music, hides HUD, shows title screen.
+ */
 function returnToMenu(){
   resetGameState();
   Sound.stopMusic();
@@ -2592,6 +2999,10 @@ C.addEventListener('click', function(e){
 });
 
 /* ── Game loop ── */
+/**
+ * Main game loop — fixed timestep accumulator + render.
+ * @param {number} ts - High-resolution timestamp from requestAnimationFrame
+ */
 function loop(ts){
   if(!lastSimTime) lastSimTime = ts;
   const dt = ts - lastSimTime;
@@ -2619,6 +3030,10 @@ animFrameId = requestAnimationFrame(loop);
 /* ── Responsive scaling (Phase 9) ── */
 (function(){
   var gw = document.getElementById('game-wrapper');
+  /**
+   * Calculate and apply CSS transform scale for responsive viewport fitting.
+   * Scales the game wrapper to fill the browser window while maintaining aspect ratio.
+   */
   function applyScale(){
     var sx = window.innerWidth / 800;
     var sy = window.innerHeight / 512;

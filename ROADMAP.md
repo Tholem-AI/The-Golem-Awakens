@@ -426,24 +426,26 @@ See `docs/Visual-Story-Design.md` for phase breakdown (6-10 future).
 - [ ] Touch event handling for movement, jump, dash, and interaction
 - [ ] Estimated ~100+ lines for UI + touch handling
 
-### Website Integration Prep (Not Started)
+### Website Integration
 
-- [ ] Prepare game for embedding/hosting within website
 - [ ] Ensure iframe compatibility, event isolation, and clean embed API if needed
 
-### Open Source Release Prep (Not Started)
+### Open Source Release Prep (June 2026) — COMPLETED
 
 Prepare the project for public repository sharing.
 
-- [ ] Add LICENSE file (choose license — e.g., MIT or Apache 2.0)
-- [ ] Rewrite `README.md` as a public-facing document: game description, controls, browser requirements, and how to play
-- [ ] Add JSDoc comments to all 38 public functions (parameters, returns, purpose)
-- [ ] Write `docs/Adding-Chambers.md`: guide for contributors on how to design new levels using `chamber-template.md` and `chamber-data.md` format
-- [ ] Write `docs/Code-Architecture.md`: overview of the 11-section structure, physics model, collision system, and entity flow
-- [ ] Write `docs/Tile-System.md`: reference for all tile types, constants, solid/one-way behavior, and rendering
-- [ ] Sanitize project files: remove internal-only governance docs (`AGENTS.md`, Hermes kit scaffolding) or move to a hidden `.hermes/` directory
-- [ ] Add `.gitignore` if not present
-- [ ] Verify `golem.html` runs standalone in any modern browser with a single file open
+- [x] Evaluate git history for GitHub publication — clean, no sensitive data. Recommendation: master branch suitable for direct push.
+- [x] Add LICENSE file (MIT License, Copyright 2026 Tholem Labs)
+- [x] Rewrite `README.md` as a public-facing document: game description, controls, browser requirements, how to play, abilities, chambers, contributor links
+- [x] Add JSDoc comments to all 86+ public functions (parameters, returns, purpose) — lightweight format
+- [x] Write `docs/Adding-Chambers.md`: guide for contributors on how to design new levels using `chamber-template.md` and `chamber-data.md` format and verify using tools
+- [x] Write `docs/Code-Architecture.md`: overview of the 14-section structure, physics model, collision system, and entity flow (renamed from Project-Reference.md)
+- [x] Write `docs/Tile-System.md`: reference for all tile types, constants, solid/one-way behavior, and rendering
+- [x] Keep AGENTS.md with purpose documentation for contributors
+- [x] Add `.gitignore` (generic coverage: __pycache__, *.pyc, node_modules/, .env, OS artifacts, .hermes/, IDE dirs)
+- [x] Clean up legacy documentation: removed check_syntax.js, code-review-line-reduction.md, tools/__pycache__/
+- [x] Update docs/File-Structure-Reference.md to reflect current state
+- [x] Validation: JS syntax OK, zero browser console errors, chamber_diff.py --strict 0 mismatches, --check-flow OK
 
 ---
 
@@ -489,5 +491,5 @@ Prepare the project for public repository sharing.
 ||||||| Ending glyph smoothing | Complete | easeOutQuint/lerp/smoothStep helpers, getEndingGlyphState() continuous state machine replacing per-beat hard cuts, unified ending renderer, orbit speed/radius/center ramps, easeOutQuint convergence, EMET cross-fade, Gaussian flash bloom, font size lerp 24-28px, deterministic glow pulse, Ibis fade-in-then-persist, easeOutCubic stats/PlayAgain alpha. 8 discontinuities resolved (2 HIGH, 4 MEDIUM, 2 LOW). |
 ||| Touch/mobile controls | Not Started | — |
 ||| Website integration prep | Not Started | — |
-||| Open source release prep | Not Started | — |
+||| Open source release prep | Complete | MIT LICENSE, .gitignore, README rewrite, 86+ JSDoc comments, docs/Adding-Chambers.md, docs/Code-Architecture.md (renamed), docs/Tile-System.md, AGENTS.md purpose note, legacy cleanup. JS syntax OK, zero browser errors, chamber_diff 0 mismatches, flow check OK. |
 ||| Fixed timestep + wall-clock ending | Complete | SIM_HZ=240, accumulator pattern (simAcc+SIM_DT, max 8 ticks, 128ms clamp), fixed frame-count constants (240 Hz), ENDING wall-clock timeline (0s/2s/5s/9s/14s/16s), captionAlphaSec() helper. Single 240 Hz mode (Temple Pace). All per-tick physics constants preserved. Pace toggle removed.

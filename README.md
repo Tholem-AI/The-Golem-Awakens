@@ -1,10 +1,22 @@
 # The Golem Awakens
 
-A single-file HTML5 platformer with puzzle elements. An Egyptian-inspired golem collects knowledge glyphs through chambers, unlocking new abilities with each one.
+An Egyptian-inspired golem awakens in ancient chambers, collecting knowledge glyphs inscribed with Hebrew letters. Each glyph unlocks a new ability as the golem progresses deeper — building toward a final convergence where the four glyphs spell **EMET** (אמת) — "truth."
 
-## Play
+A single-file HTML5 platformer with puzzle elements, built entirely with local AI models.
 
-Open `golem.html` in a browser. No build step required.
+## How to Play
+
+Open [`golem.html`](golem.html) in any modern web browser. No build step, no installation, no dependencies. Press any key on the title screen to begin.
+
+You can also play the live version at [tholem.ai](https://tholem.ai).
+
+## Browser Requirements
+
+- **Any modern browser** — Chrome, Firefox, Safari, Edge
+- Canvas 2D support
+- Web Audio API support
+
+No plugins, frameworks, or internet connection required once the file is loaded.
 
 ## Controls
 
@@ -13,39 +25,42 @@ Open `golem.html` in a browser. No build step required.
 | Move | Arrow keys / WASD |
 | Jump | Arrow Up / W / Space |
 | Dash (charge) | Shift (hold to charge, release to fire) |
-| Test chamber | T |
+| Drop through platforms | Arrow Down / S (while above a platform) |
+| Pause | P |
+| Mute | M |
+| Test chamber (developer) | T |
 
-## Abilities
+## Abilities Progression
 
-Each chamber grants a glyph that unlocks the next chamber's core mechanic:
+Each chamber grants a knowledge glyph that unlocks a new ability for the next level:
 
-| Glyph | Ability | Chamber |
-|-------|---------|---------|
-| 1 | Double Jump | Awakening |
-| 2 | Dash | The Library |
-| 3 | Push Blocks | The Hall of Echoes |
-| 4 | Break Cracked | The Weight of Wisdom |
+| Glyph | Hebrew | Ability | Chamber |
+|-------|--------|---------|---------|
+| 1 | א (Aleph) | Double Jump | Awakening |
+| 2 | מ (Mem) | Dash | The Library |
+| 3 | ה (He) | Push Blocks | The Hall of Echoes |
+| 4 | ת (Tav) | Break Cracked | The Weight of Wisdom |
+
+**The Ibis Chamber** is the final test — use all four abilities to break through cracked walls and reach the end portal.
 
 ## Chambers
 
-1. **Awakening** — Tutorial. Learn movement, collect Glyph 1.
-2. **The Library** — Platforming with double jump. Collect Glyph 2.
-3. **The Hall of Echoes** — Dash through magical walls. Collect Glyph 3.
-4. **The Weight of Wisdom** — Push block puzzle. Collect Glyph 4.
-5. **The Ibis Chamber** — Break cracked walls to reach the final portal.
+1. **Awakening** — Tutorial. Learn basic movement and collect your first glyph.
+2. **The Library** — Platforming with double jump. Navigate gaps and reach Glyph 2.
+3. **The Hall of Echoes** — Dash through magical walls to solve the path ahead.
+4. **The Weight of Wisdom** — Push blocks into position to bridge gaps and reach Glyph 4.
+5. **The Ibis Chamber** — The finale. Break cracked walls and combine all abilities to reach the end portal.
 
-## Structure
+## Credits
 
-| File | Purpose |
-|------|---------|
-| `golem.html` | Complete game (~1495 lines, single file, 11-section structure with chamber flow system) |
-| `chamber-data.md` | Chamber layouts (ASCII grids) |
-| `chamber-proposal.md` | Reusable template for new chamber proposals |
-| `chamber-template.md` | Tile legend, coordinate system, chamber flow system, conversion spec |
-| `ROADMAP.md` | Active development checkpoints |
-| `docs/Project-Constraints.md` | Stack and constraints |
-| `docs/File-Structure-Reference.md` | Repository structure |
+Made by [Tholem Labs](https://tholem.ai). Fully open source — built entirely with local AI models on a single RTX 3090 Ti.
 
-## Tech
+## For Contributors
 
-Vanilla JavaScript, HTML5 Canvas 2D, no frameworks, no dependencies. 800x480 canvas with 32x32 tiles on a 25x15 grid per chamber. Chamber progression uses a flow system (`CHAMBER_FLOW` array) — see `chamber-template.md` for adding or reordering levels.
+- [Adding Chambers](docs/Adding-Chambers.md) — Guide for designing and implementing new levels
+- [Tile System](docs/Tile-System.md) — Reference for all 12 tile types and their behaviors
+- [chamber-template.md](chamber-template.md) — Tile legend, grid format, and construction conventions
+- [chamber-proposal.md](chamber-proposal.md) — Reusable template for new chamber proposals
+- [Visual Story Design](docs/Visual-Story-Design.md) — Art and animation design decisions
+- [File Structure Reference](docs/File-Structure-Reference.md) — Repository layout overview
+- [Project Constraints](docs/Project-Constraints.md) — Technical stack and design constraints
